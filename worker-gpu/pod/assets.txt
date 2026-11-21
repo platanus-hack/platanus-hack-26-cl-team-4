@@ -1,0 +1,4 @@
+# Modelos de Omniverse que el pod copia en local (rutas relativas a Assets/Isaac/5.1/).
+# Agrega aquí cada modelo de Isaac Lab que usen sim/ o el agente constructor, y corre de nuevo instalar.sh.
+Isaac/IsaacLab/Robots/Classic/Cartpole/cartpole.usd
+Isaac/Environments/Grid/default_environment.usd
