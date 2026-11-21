@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+import fisica  # noqa: E402
 import plan  # noqa: E402
 
 TOL_POS_M = 0.05
@@ -45,18 +46,23 @@ def main() -> None:
         import numpy as np
         import isaac_comun
         from isaacsim.core.api import World
+        from isaacsim.core.api.materials import PhysicsMaterial
         from isaacsim.core.api.objects import DynamicCuboid
         from isaacsim.core.prims import SingleArticulation, SingleXFormPrim
 
         isaac_comun.abrir_escena(a.dir / "escena.usd")
-        world = World(stage_units_in_meters=1.0, physics_dt=1 / 120, rendering_dt=1 / plano["fps"])
+        world = World(stage_units_in_meters=1.0, physics_dt=fisica.DT_S, rendering_dt=1 / plano["fps"])
         ruta = isaac_comun.importar_urdf(a.dir / "robot.urdf")
         robot = world.scene.add(SingleArticulation(prim_path=ruta, name="robot"))
         efector = SingleXFormPrim(f"{ruta}/efector")
+        m = fisica.material("panel")
+        mat_panel = PhysicsMaterial(prim_path="/World/Materiales/PanelDinamico", static_friction=m["estatica"],
+                                    dynamic_friction=m["dinamica"], restitution=m["restitucion"])
         paneles = [world.scene.add(DynamicCuboid(
             prim_path=f"/World/Panel{k}", name=f"panel{k}", mass=p["peso_kg"],
-            scale=np.array([p["ancho_m"], p["largo_m"], plan.PANEL_ESPESOR]),
-            position=np.array([0.0, 0.0, -10.0 - k]), color=np.array([0.05, 0.1, 0.35])))
+            scale=np.array([p["ancho_m"], p["largo_m"], fisica.PANEL_ESPESOR_M]),
+            position=np.array([0.0, 0.0, -10.0 - k]), color=np.array([0.05, 0.1, 0.35]),
+            physics_material=mat_panel))
             for k in range(len(plano["paneles"]))]
         world.reset()
         indices = [robot.get_dof_index(n) for n in plano["articulaciones"]]
