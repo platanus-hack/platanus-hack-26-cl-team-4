@@ -6,20 +6,23 @@
 import Script from "next/script";
 import { createElement, useEffect, useRef, useState } from "react";
 
+// Sube este número al regenerar los modelos: obliga al celular a bajar los archivos nuevos y no usar los guardados.
+const VERSION = 3;
+
 const MODELOS = {
   maqueta: {
     titulo: "Maqueta de la sala",
     detalle: "Ponla sobre una mesa: aparecen 5 robots, VIAZ escanea la sala, elige el adecuado y este reparte café por el pasillo.",
-    glb: "/ar/maqueta.glb",
-    usdz: "/ar/maqueta.usdz",
-    orbita: "35deg 60deg 1.1m",
+    glb: `/ar/maqueta.glb?v=${VERSION}`,
+    usdz: `/ar/maqueta.usdz?v=${VERSION}`,
+    orbita: "35deg 60deg auto",
   },
   robot: {
     titulo: "Robot a tamaño real",
     detalle: "Apunta al piso: aparecen 5 robots en tu espacio, VIAZ escanea el lugar, elige uno y te trae el café.",
-    glb: "/ar/robot.glb",
-    usdz: "/ar/robot.usdz",
-    orbita: "20deg 75deg 4m",
+    glb: `/ar/robot.glb?v=${VERSION}`,
+    usdz: `/ar/robot.usdz?v=${VERSION}`,
+    orbita: "10deg 72deg auto",
   },
 } as const;
 

@@ -76,20 +76,23 @@ def mallas(stage, ruta: str, grupos: dict, cache: dict):
 def nodo(stage, padre: str, n: E.Nodo, cache: dict, cuadros: int):
     ruta = f"{padre}/{n.nombre}"
     x = UsdGeom.Xform.Define(stage, ruta)
+    pose = E.pose_inicial(n)   # pose de reposo (cuadro 0) también como valor por defecto, para cualquier visor
     op_t = x.AddTranslateOp()
+    op_t.Set(Gf.Vec3d(*pose["t"]))
     if "t" in n.pistas:
         for k in range(cuadros + 1):
             op_t.Set(Gf.Vec3d(*E.muestrear(n.pistas["t"], k / FPS)), k)
-    else:
-        op_t.Set(Gf.Vec3d(*n.t))
     for clave, conv in (("ry", E.quat_y), ("rx", E.quat_x)):
         if clave in n.pistas:
             op = x.AddOrientOp()
+            qx, qy, qz, qw = pose["q"]
+            op.Set(Gf.Quatf(qw, qx, qy, qz))
             for k in range(cuadros + 1):
                 qx, qy, qz, qw = conv(E.muestrear(n.pistas[clave], k / FPS))
                 op.Set(Gf.Quatf(qw, qx, qy, qz), k)
     if "s" in n.pistas:
         op = x.AddScaleOp()
+        op.Set(Gf.Vec3f(pose["s"]))
         for k in range(cuadros + 1):
             op.Set(Gf.Vec3f(E.muestrear(n.pistas["s"], k / FPS)), k)
     if n.mallas:

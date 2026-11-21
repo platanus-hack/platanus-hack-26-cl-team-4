@@ -301,11 +301,15 @@ def textura_matrix(destino, ancho=1024, alto=512, semilla=7):
 
 # ---------------- línea de tiempo ----------------
 VEL = 0.7          # m/s, como un robot de servicio real
-T_APARECE = 0.0    # los 5 robots aparecen uno tras otro
-T_ESCANEO = (2.0, 5.5)
-T_ELIGE = 5.7      # aparece el anillo bajo el elegido
-T_DESAPARECEN = (6.2, 6.9)
-T_ENTREGA = 7.4    # el elegido parte a repartir el café
+# El cuadro 0 es la "pose de reposo": los 5 robots visibles y completos. AR Quick Look (iPhone) y Scene Viewer
+# (Android) usan ese cuadro para medir el objeto, ponerlo sobre el piso, calcular la sombra y moverlo con los dedos.
+# Si algo empieza encogido a cero, el objeto queda "plano" y la AR se comporta mal.
+T_ESCANEO = (1.2, 4.7)
+T_ELIGE = 4.9      # aparece el anillo bajo el elegido
+T_DESAPARECEN = (5.4, 6.1)
+T_ENTREGA = 6.6    # el elegido parte a repartir el café
+REAPARECEN = 1.6   # segundos antes del final: los otros 4 vuelven a aparecer para reiniciar el bucle igual que empezó
+MINIMO = 0.001     # escala de "escondido" (0 exacto rompe algunas normales)
 
 
 def entrega(z_ini: float, z_fin: float, x: float, t0: float):
@@ -339,11 +343,12 @@ class Nodo:
 ROBOTS = [robot_industrial, robot_cuadrupedo, None, robot_dron, robot_humanoide]   # None = el de servicio (elegido)
 ELEGIDO = 2
 
+# Todo centrado en el punto donde se coloca el objeto: la fila queda adelante (z < 0) y el elegido viene hacia quien mira.
 VARIANTES = {
     "maqueta": {"sala": True, "escala": 0.05, "fila_z": -8.7, "fila_x": [-2.6, -1.25, PASILLO_X, 1.55, 2.9],
                 "z_fin": 1.2, "escaneo": (X1 - X0 + 0.4, 3.0, (X0 + X1) / 2, Z0 + 0.4, Z1)},
-    "robot": {"sala": False, "escala": 1.0, "fila_z": -3.0, "fila_x": [-1.9, -0.95, 0.0, 0.95, 1.9],
-              "z_fin": 0.0, "escaneo": (5.2, 2.2, 0.0, -4.5, 1.2)},
+    "robot": {"sala": False, "escala": 1.0, "fila_z": -1.0, "fila_x": [-1.9, -0.95, 0.0, 0.95, 1.9],
+              "z_fin": 1.3, "escaneo": (5.2, 2.2, 0.0, -2.2, 1.9)},
 }
 
 
@@ -355,27 +360,39 @@ def construir(variante: str):
         hijos.append(Nodo("sala", sala()))
     tr, rot, br, fin = entrega(cfg["fila_z"], cfg["z_fin"], cfg["fila_x"][ELEGIDO], T_ENTREGA)
     for k, (fabrica, x) in enumerate(zip(ROBOTS, cfg["fila_x"])):
-        t_in = T_APARECE + 0.3 * k
-        aparecer = [(0.0, 0.001), (t_in, 0.001), (t_in + 0.5, 1.0)]
         if k == ELEGIDO:
-            marca = Nodo("anillo", anillo(), pistas={"s": [(0.0, 0.001), (T_ELIGE, 0.001), (T_ELIGE + 0.3, 1.0),
-                                                            (T_ENTREGA + 1.0, 1.0), (T_ENTREGA + 1.5, 0.001)]})
+            marca = Nodo("anillo", anillo(), pistas={"s": [(0.0, MINIMO), (T_ELIGE, MINIMO), (T_ELIGE + 0.3, 1.0),
+                                                            (T_ENTREGA + 1.0, 1.0), (T_ENTREGA + 1.5, MINIMO), (fin, MINIMO)]})
             brazo = Nodo("brazo", robot_brazo(), t=BRAZO_PIVOTE, pistas={"rx": br})
-            hijos.append(Nodo("robot_servicio", robot_cuerpo(), hijos=[brazo, marca],
-                              pistas={"t": tr, "ry": rot, "s": aparecer + [(fin, 1.0)]}))
+            hijos.append(Nodo("robot_servicio", robot_cuerpo(), hijos=[brazo, marca], pistas={"t": tr, "ry": rot}))
         else:
             d0, d1 = T_DESAPARECEN
-            desaparecer = [(d0 + 0.08 * k, 1.0), (d1 + 0.08 * k, 0.001), (fin, 0.001)]
+            r0 = fin - REAPARECEN + 0.2 * (k if k < ELEGIDO else k - 1)
+            escala = [(0.0, 1.0), (d0 + 0.08 * k, 1.0), (d1 + 0.08 * k, MINIMO),
+                      (r0, MINIMO), (r0 + 0.5, 1.0), (fin, 1.0)]
             hijos.append(Nodo(f"robot_{fabrica.__name__.split('_')[1]}", fabrica(), t=(x, 0, cfg["fila_z"]),
-                              pistas={"s": aparecer + desaparecer}))
+                              pistas={"s": escala}))
     ancho, alto, cx, z_desde, z_hasta = cfg["escaneo"]
     e0, e1 = T_ESCANEO
     hijos.append(Nodo("escaneo", escaneo(ancho, alto), pistas={
         "t": [(0.0, (cx, 0, z_desde)), (e0, (cx, 0, z_desde)), (e1, (cx, 0, z_hasta)), (fin, (cx, 0, z_hasta))],
-        "s": [(0.0, 0.001), (e0 - 0.01, 0.001), (e0, 1.0), (e1, 1.0), (e1 + 0.01, 0.001), (fin, 0.001)]}))
+        "s": [(0.0, MINIMO), (e0 - 0.01, MINIMO), (e0, 1.0), (e1, 1.0), (e1 + 0.01, MINIMO), (fin, MINIMO)]}))
     raiz = Nodo("viaz", hijos=hijos, pistas={})
     _tiempos_crecientes(raiz)
     return raiz, fin
+
+
+def pose_inicial(n: Nodo) -> dict:
+    """Traslación, rotación (cuaternión x, y, z, w) y escala en el cuadro 0: la pose de reposo del objeto."""
+    t = muestrear(n.pistas["t"], 0.0) if "t" in n.pistas else n.t
+    if "ry" in n.pistas:
+        q = quat_y(muestrear(n.pistas["ry"], 0.0))
+    elif "rx" in n.pistas:
+        q = quat_x(muestrear(n.pistas["rx"], 0.0))
+    else:
+        q = (0.0, 0.0, 0.0, 1.0)
+    s = muestrear(n.pistas["s"], 0.0) if "s" in n.pistas else 1.0
+    return {"t": tuple(t), "q": q, "s": s}
 
 
 def _tiempos_crecientes(n: Nodo):

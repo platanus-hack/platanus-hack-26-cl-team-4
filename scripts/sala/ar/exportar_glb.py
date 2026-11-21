@@ -89,8 +89,14 @@ class Constructor:
             kw["mesh"] = self.malla(n.mallas)
         if hijos:
             kw["children"] = hijos
-        if "t" not in n.pistas and any(n.t):
-            kw["translation"] = list(n.t)
+        # pose de reposo (cuadro 0) también como valor fijo: Scene Viewer y model-viewer miden el objeto con ella
+        pose = E.pose_inicial(n)
+        if any(pose["t"]):
+            kw["translation"] = list(pose["t"])
+        if pose["q"] != (0.0, 0.0, 0.0, 1.0):
+            kw["rotation"] = list(pose["q"])
+        if pose["s"] != 1.0:
+            kw["scale"] = [pose["s"]] * 3
         self.g.nodes.append(gl.Node(**kw))
         idx = len(self.g.nodes) - 1
         for clave, claves in n.pistas.items():
