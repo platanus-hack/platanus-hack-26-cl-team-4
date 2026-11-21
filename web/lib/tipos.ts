@@ -1,7 +1,8 @@
 // Tipos del contrato (docs/contrato-datos.md). Si cambias el contrato, cambia esto también.
 
 export type EstadoCorrida =
-  | "en_cola" | "analizando_entorno" | "eligiendo_robot" | "clonando" | "simulando" | "listo" | "error";
+  | "en_cola" | "analizando_entorno" | "eligiendo_robot" | "clonando" | "simulando" | "entrenando" | "evaluando"
+  | "listo" | "error";
 
 export interface Etapa {
   nombre: "entorno" | "tarea" | "robot" | "clon" | "inteligencia";
@@ -17,6 +18,7 @@ export interface Corrida {
 }
 
 export interface Entorno {
+  confianza: Record<string, number>;
   filas: { cantidad: number; largo_m: number; separacion_m: number };
   estructura: { tipo: string; altura_m: number; inclinacion_grados: number };
   panel: { largo_m: number; ancho_m: number; peso_kg: number };
@@ -38,13 +40,31 @@ export interface Robot {
 export interface Clon {
   diferencias_con_real: string[];
   validado_en_escena: boolean;
+  piezas: { base: string; brazo: string; efector: string };
+  construccion?: { metodo: "agente" | "determinista"; intentos: number };
+}
+
+export interface Tolerancia {
+  pos_m: number;
+  ang_grados: number;
+  exitos: number;
+  tasa_exito: number;
 }
 
 export interface Resultado {
+  metodo: "planificador" | "rl" | "planificador_rl";
   fuente: "isaac" | "simulado";
   metricas: { paneles_instalados: number; intentos: number; tasa_exito: number; ciclo_promedio_s: number };
   video: string | null;
   notas: string;
+  evaluacion?: { episodios: number; tolerancias: Tolerancia[]; checkpoint: string };
+  entrenamiento?: { horas: number; iteraciones: number; pasos: number; factor_video: number | null };
+}
+
+export interface VideoInfo {
+  duracion_s: number;
+  horas_representadas: number;
+  factor_video: number | null;
 }
 
 export interface Frame {

@@ -11,6 +11,12 @@ envVarGroups:
         value: r2
       - key: VIAZ_MODELO
         value: claude-opus-5-5
+      - key: VIAZ_FLUJO              # rl = demo con entrenamiento; planificador = flujo anterior
+        value: rl
+      - key: VIAZ_HORAS_ENTRENAMIENTO
+        value: "4"
+      - key: VIAZ_ADMIN_TOKEN        # para POST /corridas/{id}/detener
+        generateValue: true
       - key: PYTHON_VERSION
         value: 3.12.8
 
@@ -48,6 +54,12 @@ services:
       - key: DATABASE_URL
         fromDatabase: { name: viaz-db, property: connectionString }
       - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: VIAZ_DISCORD_WEBHOOK    # avisos del monitor (#entrenamiento). Secreto: no va al repo
+        sync: false
+      - key: VIAZ_ENTORNO_MANUAL     # ruta al entorno.json del parque de referencia (vacío = fixture)
+        sync: false
+      - key: VIAZ_TAREA_MANUAL
         sync: false
       - { key: R2_ENDPOINT, sync: false }
       - { key: R2_BUCKET, sync: false }

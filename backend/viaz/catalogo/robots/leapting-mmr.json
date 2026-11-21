@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "leapting-mmr",
+  "nombre": "LEAPTING MMR (robot de montaje con navegación automática)",
+  "fabricante": "LEAPTING (丽天, China)",
+  "tipo": "base_movil_brazo",
+  "ficticio": false,
+  "carga_util_kg": 100,
+  "alcance_m": 3.1,
+  "velocidad_base_m_s": 0.42,
+  "efector": "ventosa",
+  "fuente": {
+    "url": "https://www.leapting.com/en/product/zj/",
+    "consultado": "2026-11-21"
+  }
+}

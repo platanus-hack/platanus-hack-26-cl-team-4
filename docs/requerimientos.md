@@ -111,7 +111,7 @@ flowchart LR
 
 | Tipo | Must | Should | Could | Won't |
 |---|---|---|---|---|
-| Funcionales | 54 | 24 | 18 | — |
+| Funcionales | 56 | 24 | 18 | — |
 | No funcionales | 14 | 6 | 0 | — |
 | Fuera del alcance | — | — | — | 11 |
 
@@ -182,6 +182,7 @@ flowchart LR
 | RF-CLO-06 | `validar_clon` revisa que el robot cargue, no choque al inicio y alcance el panel y la estructura | **M** |
 | RF-CLO-07 | Si el agente no logra un robot válido en 3 intentos, el sistema usa el clon determinista de `urdf.py` | **S** |
 | RF-CLO-08 | El agente entrega `robot.urdf` con los mismos joints, para el visor web | **C** |
+| RF-CLO-09 | `validar_robot` graba la construcción de cada intento: la escena vacía, las piezas que aparecen (base, brazo, ventosa) y una prueba de alcance. El runner rotula cada intento, agrega una tarjeta por cada intento rechazado por reglas y los une en `construccion.mp4` | **M** |
 
 ### 4.5 Entrenamiento RL de instalar el panel (`sim/`, pod GPU RTX)
 
@@ -224,6 +225,7 @@ flowchart LR
 
 | ID | Requerimiento | MoSCoW |
 |---|---|---|
+| RF-WEB-20 | La web reproduce `construccion.mp4`: el agente construyendo el robot, intento por intento | **M** |
 | RF-WEB-13 | La web reproduce `entrenamiento_rapido.mp4`: el video en cámara rápida del entrenamiento | **M** |
 | RF-WEB-06 | La web reproduce `video.mp4`: la muestra del robot ya entrenado | **M** |
 | RF-WEB-07 | El panel lateral muestra el robot elegido, su justificación, su fuente, las diferencias del clon y las métricas | **M** |
@@ -425,8 +427,8 @@ timeline
 | Checkpoint | Must | Should / Could (si hay tiempo) |
 |---|---|---|
 | **CP1** (sáb 11:00) | RF-MAP-11, RF-MAP-05..06, RF-MAP-12..14, RF-TAR-02, RF-TAR-04, RF-ROB-01..04, RF-API-03..06, RF-GPU-01..04, RF-ORQ-01..02, RF-ORQ-05, RNF-01, RNF-12; ejemplo de RL de Isaac Lab en el pod; webhook de Discord creado | RF-MAP-07, RF-ROB-05..06, RF-ORQ-06 |
-| **CP2** (sáb 23:00) | RF-CLO-01..06, RF-INT-10..13, RF-INT-18..19, RF-INT-22..24, RF-GPU-06, RF-MON-01..04, RF-MON-08 | RF-CLO-07, RF-INT-16, RF-MON-05..06, RF-MON-09..10 |
-| **Freeze** (dom 05:00) | RF-INT-14..15, RF-WEB-06..09, RF-WEB-13, RF-WEB-15..16, RF-WEB-19, RNF-20, RNF-07, RNF-18..19, criterios de §8 | RF-INT-01, RF-INT-17, RF-INT-20..21, RF-MAP-15, RF-MON-07, RF-WEB-04..05, RF-WEB-14 |
+| **CP2** (sáb 23:00) | RF-CLO-01..06, RF-CLO-09, RF-INT-10..13, RF-INT-18..19, RF-INT-22..24, RF-GPU-06, RF-MON-01..04, RF-MON-08 | RF-CLO-07, RF-INT-16, RF-MON-05..06, RF-MON-09..10 |
+| **Freeze** (dom 05:00) | RF-INT-14..15, RF-WEB-06..09, RF-WEB-13, RF-WEB-20, RF-WEB-15..16, RF-WEB-19, RNF-20, RNF-07, RNF-18..19, criterios de §8 | RF-INT-01, RF-INT-17, RF-INT-20..21, RF-MAP-15, RF-MON-07, RF-WEB-04..05, RF-WEB-14 |
 
 ## 10. Supuestos y dependencias
 

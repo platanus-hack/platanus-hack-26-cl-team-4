@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ensamblaje.json",
+  "description": "Lo devuelve el agente constructor. Una plantilla lo convierte en robot_cfg.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "robot_id",
+    "base",
+    "brazo",
+    "efector",
+    "carga_util_kg",
+    "velocidad_max_rad_s",
+    "diferencias_con_real",
+    "razonamiento"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "robot_id": {
+      "type": "string"
+    },
+    "base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "altura_cubierta_m"
+      ],
+      "properties": {
+        "asset": {
+          "type": "string"
+        },
+        "altura_cubierta_m": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 2
+        }
+      }
+    },
+    "brazo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset",
+        "escala_alcance",
+        "esfuerzo_max_nm"
+      ],
+      "properties": {
+        "asset": {
+          "type": "string"
+        },
+        "escala_alcance": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 4
+        },
+        "esfuerzo_max_nm": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20000
+        }
+      }
+    },
+    "efector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset"
+      ],
+      "properties": {
+        "asset": {
+          "type": "string"
+        }
+      }
+    },
+    "carga_util_kg": {
+      "type": "number",
+      "minimum": 0
+    },
+    "velocidad_max_rad_s": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 10
+    },
+    "diferencias_con_real": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "razonamiento": {
+      "type": "string"
+    }
+  }
+}

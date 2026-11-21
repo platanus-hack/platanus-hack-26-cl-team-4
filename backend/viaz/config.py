@@ -32,6 +32,19 @@ class Config:
     origenes: list[str] = field(default_factory=lambda: [o.strip() for o in os.getenv("VIAZ_ORIGENES", "http://localhost:3000").split(",") if o.strip()])
     corrida_demo: str = field(default_factory=lambda: os.getenv("VIAZ_CORRIDA_DEMO", ""))
     espera_trabajo_s: int = field(default_factory=lambda: int(os.getenv("VIAZ_ESPERA_TRABAJO_S", "1800")))
+    # Flujo del orquestador: rl (demo: entorno a mano, constructor, entrenamiento) o planificador (flujo anterior).
+    flujo: str = field(default_factory=lambda: os.getenv("VIAZ_FLUJO", "rl"))
+    # Entorno y tarea escritos a mano (RF-MAP-11, RF-TAR-04). Vacío = fixtures de ejemplo.
+    entorno_manual: str = field(default_factory=lambda: os.getenv("VIAZ_ENTORNO_MANUAL", ""))
+    tarea_manual: str = field(default_factory=lambda: os.getenv("VIAZ_TAREA_MANUAL", ""))
+    horas_entrenamiento: float = field(default_factory=lambda: float(os.getenv("VIAZ_HORAS_ENTRENAMIENTO", "4")))
+    episodios_evaluacion: int = field(default_factory=lambda: int(os.getenv("VIAZ_EPISODIOS_EVALUACION", "100")))
+    intentos_constructor: int = field(default_factory=lambda: int(os.getenv("VIAZ_INTENTOS_CONSTRUCTOR", "3")))
+    # Monitor del entrenamiento (RF-MON): cada cuánto chequea y a dónde avisa.
+    monitor_s: float = field(default_factory=lambda: float(os.getenv("VIAZ_MONITOR_S", "600")))
+    discord_webhook: str = field(default_factory=lambda: os.getenv("VIAZ_DISCORD_WEBHOOK", ""))
+    # Token para acciones del equipo (detener un entrenamiento). Por defecto, el mismo del worker.
+    admin_token: str = field(default_factory=lambda: os.getenv("VIAZ_ADMIN_TOKEN", "") or os.getenv("WORKER_TOKEN", "dev-token"))
 
 
 def cargar() -> Config:

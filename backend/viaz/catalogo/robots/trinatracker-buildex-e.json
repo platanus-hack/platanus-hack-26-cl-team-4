@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "trinatracker-buildex-e",
+  "nombre": "BUILDEX E (compatible con trackers)",
+  "fabricante": "TrinaTracker / Trinabot (China)",
+  "tipo": "vehiculo_con_brazo",
+  "ficticio": false,
+  "carga_util_kg": 35,
+  "alcance_m": 2.5,
+  "velocidad_base_m_s": 1.53,
+  "efector": "ventosa",
+  "fuente": {
+    "url": "https://www.pv-magazine.com/2025/08/26/trinabot-offers-installation-robots-for-large-pv-projects/",
+    "consultado": "2026-11-21"
+  },
+  "estimados": {
+    "carga_util_kg": "No publicada. Instala módulos estándar de gran formato (~30 kg); estimamos 35 kg.",
+    "alcance_m": "No publicado. Monta módulos con borde inferior entre 0,5 y 2,2 m en trackers; estimamos 2,5 m.",
+    "efector": "No publicado; los robots de instalación de módulos usan ventosas."
+  }
+}

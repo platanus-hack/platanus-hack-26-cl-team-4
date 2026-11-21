@@ -4,7 +4,9 @@
 """
 from __future__ import annotations
 
+import math
 import re
+from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,6 +29,21 @@ class FinTrabajo(BaseModel):
     error: str | None = None
 
 
+class Latido(BaseModel):
+    metricas: list[dict[str, Any]] = Field(default_factory=list, max_length=5000,
+                                           description="Líneas nuevas de metricas.jsonl desde el último latido")
+
+
+def _limpiar(fila: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """NaN o infinito → None (Postgres no guarda NaN en JSON). Devuelve (fila limpia, había NaN)."""
+    hubo, limpia = False, {}
+    for k, v in fila.items():
+        if isinstance(v, float) and not math.isfinite(v):
+            hubo, v = True, None
+        limpia[k] = v
+    return limpia, hubo
+
+
 def _nombre_seguro(nombre: str) -> str:
     limpio = re.sub(r"[^A-Za-z0-9._-]+", "-", nombre).strip(".-")
     return limpio[:100] or "video.mp4"
@@ -44,6 +61,10 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     def es_worker(authorization: str = Header(default="")):
         if authorization != f"Bearer {cfg.worker_token}":
             raise HTTPException(401, "token de worker inválido")
+
+    def es_equipo(authorization: str = Header(default="")):
+        if authorization != f"Bearer {cfg.admin_token}":
+            raise HTTPException(401, "token del equipo inválido")
 
     @app.get("/salud")
     def salud():
@@ -83,6 +104,29 @@ def create_app(cfg: Config | None = None) -> FastAPI:
                   for e in c["etapas"]]
         return {"id": cid, "estado": c["estado"], "etapas": etapas, "error": c["error"]}
 
+    @app.get("/corridas/{cid}/metricas")
+    def metricas_corrida(cid: str, desde: int = -1, limite: int = 2000):
+        """Métricas del entrenamiento desde una iteración (para la curva y para depurar)."""
+        if cid == "demo" and cfg.corrida_demo:
+            cid = cfg.corrida_demo
+        with eng.connect() as cx:
+            filas = cx.execute(select(db.metricas.c.datos)
+                               .where(db.metricas.c.corrida_id == cid, db.metricas.c.iteracion > desde)
+                               .order_by(db.metricas.c.iteracion).limit(min(limite, 5000))).scalars().all()
+        return {"corrida_id": cid, "metricas": filas}
+
+    @app.post("/corridas/{cid}/detener", dependencies=[Depends(es_equipo)])
+    def detener_corrida(cid: str):
+        """El equipo detiene el entrenamiento de una corrida. El pod guarda un checkpoint y termina (RF-MON-08)."""
+        with eng.begin() as cx:
+            r = cx.execute(update(db.trabajos)
+                           .where(db.trabajos.c.corrida_id == cid, db.trabajos.c.tipo == "entrenar",
+                                  db.trabajos.c.estado.in_(["pendiente", "tomado"]))
+                           .values(detener=True))
+        if not r.rowcount:
+            raise HTTPException(404, "la corrida no tiene un entrenamiento en curso")
+        return {"ok": True}
+
     # ---------- Archivos (solo almacén local) ----------
 
     if isinstance(store, alm.AlmacenLocal):
@@ -113,9 +157,34 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         cid = t["corrida_id"]
         return {
             "trabajo_id": t["id"], "tipo": t["tipo"], "corrida_id": cid,
+            "parametros": t.get("parametros") or {},
             "entradas": {a: store.url_get(alm.clave_corrida(cid, a)) for a in t["entradas"]},
             "subidas": {a: store.url_put(alm.clave_corrida(cid, a)) for a in t["salidas"]},
         }
+
+    @app.post("/worker/trabajos/{tid}/latido", dependencies=[Depends(es_worker)])
+    def latido(tid: str, body: Latido):
+        """Mantiene vivo un trabajo largo y guarda las métricas nuevas. Responde seguir o detener (RF-API-06).
+        Con NaN en las métricas, pide detener sin esperar al monitor (RF-MON-08)."""
+        hubo_nan = False
+        with eng.begin() as cx:
+            t = cx.execute(select(db.trabajos.c.corrida_id, db.trabajos.c.estado, db.trabajos.c.detener)
+                           .where(db.trabajos.c.id == tid)).mappings().first()
+            if t is None or t["estado"] != "tomado":
+                raise HTTPException(409, "el trabajo no está tomado")
+            filas = []
+            for m in body.metricas:
+                limpia, nan = _limpiar(m)
+                hubo_nan |= nan
+                if isinstance(limpia.get("iteracion"), int):
+                    filas.append({"trabajo_id": tid, "corrida_id": t["corrida_id"], "iteracion": limpia["iteracion"],
+                                  "datos": {**limpia, "nan": nan} if nan else limpia})
+            if filas:
+                cx.execute(insert(db.metricas), filas)
+            detener = bool(t["detener"]) or hubo_nan
+            cx.execute(update(db.trabajos).where(db.trabajos.c.id == tid)
+                       .values(latido_en=db.ahora(), detener=detener))
+        return {"accion": "detener" if detener else "seguir", "nan": hubo_nan}
 
     @app.post("/worker/trabajos/{tid}/fin", dependencies=[Depends(es_worker)])
     def fin_trabajo(tid: str, f: FinTrabajo):

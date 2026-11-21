@@ -159,19 +159,37 @@ Para la web:
 | `POST` | `/proyectos/{id}/corridas` | — | `201 {"corrida_id"}` |
 | `GET` | `/corridas/{id}` | — | `200 {"id", "estado", "etapas": [{"nombre", "estado", "artefactos": {"<archivo>": "<url>"}}], "error"}` |
 | `GET` | `/corridas/demo` | — | La corrida de `VIAZ_CORRIDA_DEMO` |
+| `GET` | `/corridas/{id}/metricas?desde=N` | — | `200 {"corrida_id", "metricas": [<línea de metricas.jsonl>]}` |
+| `POST` | `/corridas/{id}/detener` | — (header `Authorization: Bearer <VIAZ_ADMIN_TOKEN>`) | `200` · `404` si no hay entrenamiento en curso |
 | `GET` | `/salud` | — | `200 {"ok", "agentes", "almacen"}` |
 
 - **Subida:** la web sube cada video con `PUT` a su `url_firmada` (R2 o `/archivos/...` en local).
-- **`estado` de la corrida:** `en_cola` → `analizando_entorno` → `eligiendo_robot` → `clonando` → `simulando` → `listo`, o `error` en cualquier punto.
+- **`estado` de la corrida:** `en_cola` → `analizando_entorno` → `eligiendo_robot` → `clonando` → `simulando` (flujo planificador) o `entrenando` → `evaluando` (flujo rl) → `listo`, o `error` en cualquier punto.
 - **`estado` de una etapa:** `pendiente` | `en_curso` | `listo` | `error`.
 
 Para el sim runner (header `Authorization: Bearer <WORKER_TOKEN>`):
 
 | Método | Ruta | Body | Respuesta |
 |---|---|---|---|
-| `POST` | `/worker/trabajos/tomar` | — | `200 {"trabajo_id", "tipo", "corrida_id", "entradas": {"<archivo>": "<url>"}, "subidas": {"<archivo>": "<url_firmada>"}}` · `204` si no hay trabajos |
+| `POST` | `/worker/trabajos/tomar` | — | `200 {"trabajo_id", "tipo", "corrida_id", "parametros", "entradas": {"<archivo>": "<url>"}, "subidas": {"<archivo>": "<url_firmada>"}}` · `204` si no hay trabajos |
+| `POST` | `/worker/trabajos/{id}/latido` | `{"metricas": [<líneas nuevas de metricas.jsonl>]}` | `200 {"accion": "seguir" \| "detener", "nan": bool}` · `409` si no estaba tomado |
 | `POST` | `/worker/trabajos/{id}/fin` | `{"ok": true}` o `{"ok": false, "error": "..."}` | `200` · `409` si no estaba tomado |
 
-- **`tipo`:** `generar_escena` | `validar_clon` | `ejecutar_tarea` | `entrenar_subtarea` (este último todavía no se usa).
+- **`tipo`:** `generar_escena` | `validar_clon` | `ejecutar_tarea` (flujo planificador) | `validar_robot` | `entrenar` | `grabar_clips` | `evaluar` (flujo rl). Los del flujo rl llaman al entorno RL ([`contrato-entorno-rl.md`](contrato-entorno-rl.md)).
+- **Latido:** `entrenar` manda uno cada `latido_s` con las métricas nuevas. Con NaN, o si el equipo pidió detener, la respuesta es `detener` (RF-API-06, RF-MON-08).
 - **Salidas:** el worker sube solo los archivos de `subidas` que generó. Por ejemplo, sin video no sube `video.mp4`.
-- **Trabajo vencido:** un trabajo tomado y sin `fin` en 30 min vuelve a la cola.
+- **Trabajo vencido:** un trabajo tomado sin `fin` ni latido en 30 min vuelve a la cola.
+
+## Archivos del flujo rl
+
+| Archivo | Lo escribe | Esquema |
+|---|---|---|
+| `ensamblaje.json` | Agente constructor | [`ensamblaje.schema.json`](../backend/viaz/esquemas/ensamblaje.schema.json) |
+| `robot_cfg.py` | Plantilla ([`robot_cfg.py`](../backend/viaz/robot_cfg.py)) | `PARAMETROS` ([`contrato-entorno-rl.md`](contrato-entorno-rl.md) §7) |
+| `metricas.jsonl` | Entorno RL (en el pod); llega a la API por latido | [`metricas.schema.json`](../backend/viaz/esquemas/metricas.schema.json) |
+| `curva.json`, `checkpoints.json` | Runner, al terminar `entrenar` | [`curva.schema.json`](../backend/viaz/esquemas/curva.schema.json) |
+| `monitoreo.jsonl`, `hitos.json` | Orquestador (agente monitor) | [`monitoreo.schema.json`](../backend/viaz/esquemas/monitoreo.schema.json), [`hitos.schema.json`](../backend/viaz/esquemas/hitos.schema.json) |
+| `construccion.mp4` | Entorno RL (`validar_robot --video`) + runner (rótulos y tarjetas por intento) | — |
+| `entrenamiento_rapido.mp4`, `video_info.json` | Runner (`grabar_clips`) | — |
+| `evaluacion.json`, `video.mp4`, `politica.pt` | Entorno RL (`evaluar`) | [`evaluacion.schema.json`](../backend/viaz/esquemas/evaluacion.schema.json) |
+| `resultado.json` | Runner + orquestador | `resultado.schema.json`, con `evaluacion` y `entrenamiento` |

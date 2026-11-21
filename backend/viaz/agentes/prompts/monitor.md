@@ -24,7 +24,7 @@ Un chequeo con `estado`, `evidencia`, `recomendacion`, `detalle`, `hito` y `chec
 - `revisar`: no llegaron métricas nuevas, o los números no tienen sentido.
 
 ## Hitos y checkpoint
-- Marca `primer_exito` la primera vez que `tasa_exito` sea mayor a 0.
+- Marca `primer_exito` la primera vez que `tasa_exito` llegue a 0,05 (un acierto aislado por azar no cuenta).
 - Marca `exito_50` la primera vez que `tasa_exito` llegue a 0,5.
 - Marca `mejor_recompensa` cuando la recompensa media supere su máximo anterior en más de 10 %.
 - Marca `umbral_alcanzado` cuando la tasa de éxito llegue a 0,9.

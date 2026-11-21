@@ -25,8 +25,10 @@ Aplica estos criterios en orden. Un robot que falla un criterio obligatorio qued
 | 5 | Ritmo | No | Mayor `velocidad_base_m_s` ayuda a cumplir `objetivo.ciclo_s` |
 | 6 | Margen | No | Entre dos robots válidos, elige el de mayor margen de carga y alcance |
 | 7 | Real sobre ficticio | No | Prefiere robots con `ficticio: false` |
+| 8 | Specs publicadas | No | Prefiere robots sin `estimados`. Un dato en `estimados` no lo publica el fabricante |
 
 - **Si ningún robot cumple los obligatorios:** elige el que falla menos y dilo en la primera oración de la justificación. Nombra el criterio que no cumple.
+- **Si el robot elegido tiene `estimados`:** nombra cada dato estimado en la justificación. Ejemplo: "el fabricante no publica la carga útil; estimamos 35 kg".
 - **Si el robot elegido es ficticio:** dilo en la justificación: "Es un robot de referencia ficticio".
 
 ## Cómo escribir la justificación

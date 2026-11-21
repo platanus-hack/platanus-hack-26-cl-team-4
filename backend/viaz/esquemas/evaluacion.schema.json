@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "evaluacion.json",
+  "description": "Salida del comando evaluar del entorno RL.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "checkpoint",
+    "episodios",
+    "tolerancias",
+    "ciclo_promedio_s",
+    "colisiones",
+    "fuente"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "checkpoint": {
+      "type": "string"
+    },
+    "episodios": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "tolerancias": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pos_m",
+          "ang_grados",
+          "exitos",
+          "tasa_exito"
+        ],
+        "properties": {
+          "pos_m": {
+            "type": "number",
+            "minimum": 0
+          },
+          "ang_grados": {
+            "type": "number",
+            "minimum": 0
+          },
+          "exitos": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tasa_exito": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      },
+      "description": "La primera es la de entrenamiento (5 cm, 5°)"
+    },
+    "ciclo_promedio_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "colisiones": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "fuente": {
+      "enum": [
+        "isaac",
+        "simulado"
+      ]
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "monitoreo.jsonl (una línea)",
+  "description": "Un chequeo del agente monitor.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "t",
+    "iteracion",
+    "estado",
+    "evidencia",
+    "recomendacion",
+    "detalle",
+    "hito",
+    "checkpoint_recomendado"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "t": {
+      "type": "string"
+    },
+    "iteracion": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "estado": {
+      "enum": [
+        "mejorando",
+        "estancado",
+        "divergiendo",
+        "terminado"
+      ]
+    },
+    "evidencia": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recompensa_media",
+        "tasa_exito",
+        "tendencia_recompensa",
+        "tiempo_usado_h",
+        "tiempo_restante_h"
+      ],
+      "properties": {
+        "recompensa_media": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "tasa_exito": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "tendencia_recompensa": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "tiempo_usado_h": {
+          "type": "number"
+        },
+        "tiempo_restante_h": {
+          "type": "number"
+        }
+      }
+    },
+    "recomendacion": {
+      "enum": [
+        "seguir",
+        "ajustar",
+        "detener",
+        "revisar"
+      ]
+    },
+    "detalle": {
+      "type": "string"
+    },
+    "hito": {
+      "enum": [
+        null,
+        "primer_exito",
+        "exito_50",
+        "mejor_recompensa",
+        "umbral_alcanzado",
+        "fin"
+      ]
+    },
+    "checkpoint_recomendado": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

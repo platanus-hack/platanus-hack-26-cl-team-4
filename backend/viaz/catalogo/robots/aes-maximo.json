@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "aes-maximo",
+  "nombre": "Maximo",
+  "fabricante": "AES (EE. UU.)",
+  "tipo": "vehiculo_con_brazo",
+  "ficticio": false,
+  "carga_util_kg": 32,
+  "alcance_m": 2.5,
+  "velocidad_base_m_s": 0.5,
+  "efector": "ventosa",
+  "fuente": {
+    "url": "https://www.aes.com/about-us/innovation/maximo",
+    "consultado": "2026-11-21"
+  },
+  "estimados": {
+    "carga_util_kg": "No publicada. La prensa describe módulos de más de 60 lb (27 kg); estimamos 32 kg.",
+    "alcance_m": "No publicado; estimamos 2,5 m para alcanzar la estructura desde el pasillo.",
+    "velocidad_base_m_s": "No publicada; estimamos 0,5 m/s para un vehículo de orugas en obra.",
+    "efector": "AES lo muestra con ventosas en sus imágenes; no es una spec publicada."
+  }
+}

@@ -5,7 +5,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from sqlalchemy import JSON, Column, DateTime, MetaData, String, Table, Text, create_engine, select, update
+from sqlalchemy import (JSON, Boolean, Column, DateTime, Integer, MetaData, String, Table, Text, create_engine, func,
+                        inspect, select, text, update)
 from sqlalchemy.engine import Engine
 
 meta = MetaData()
@@ -28,7 +29,7 @@ proyectos = Table(
     Column("creado", DateTime(timezone=True), nullable=False, default=ahora),
 )
 
-# estado: en_cola | analizando_entorno | eligiendo_robot | clonando | simulando | listo | error
+# estado: en_cola | analizando_entorno | eligiendo_robot | clonando | simulando | entrenando | evaluando | listo | error
 corridas = Table(
     "corridas", meta,
     Column("id", String(32), primary_key=True),
@@ -40,7 +41,7 @@ corridas = Table(
     Column("actualizado", DateTime(timezone=True), nullable=False, default=ahora),
 )
 
-# tipo: generar_escena | validar_clon | ejecutar_tarea | entrenar_subtarea
+# tipo: generar_escena | validar_clon | validar_robot | ejecutar_tarea | entrenar | evaluar | grabar_clips
 # estado: pendiente | tomado | ok | error
 trabajos = Table(
     "trabajos", meta,
@@ -52,8 +53,27 @@ trabajos = Table(
     Column("salidas", JSON, nullable=False, default=list),   # archivos de la corrida que escribe
     Column("error", Text),
     Column("tomado_en", DateTime(timezone=True)),
+    Column("latido_en", DateTime(timezone=True)),             # último latido de un trabajo largo (RF-API-06)
+    Column("detener", Boolean, nullable=False, default=False),  # el próximo latido responde "detener"
+    Column("parametros", JSON, nullable=False, default=dict),   # argumentos del trabajo (horas, checkpoint, episodios…)
     Column("creado", DateTime(timezone=True), nullable=False, default=ahora),
 )
+
+# Métricas del entrenamiento: una fila por iteración, llegan con cada latido (RF-GPU-06).
+metricas = Table(
+    "metricas", meta,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("trabajo_id", String(32), nullable=False, index=True),
+    Column("corrida_id", String(32), nullable=False, index=True),
+    Column("iteracion", Integer, nullable=False),
+    Column("datos", JSON, nullable=False),
+    Column("creado", DateTime(timezone=True), nullable=False, default=ahora),
+)
+
+# Columnas agregadas después de la primera versión: create_all no las agrega a tablas que ya existen.
+_COLUMNAS_NUEVAS = {
+    "trabajos": {"latido_en": "TIMESTAMP", "detener": "BOOLEAN NOT NULL DEFAULT FALSE", "parametros": "JSON"},
+}
 
 ETAPAS = ["entorno", "tarea", "robot", "clon", "inteligencia"]
 
@@ -65,7 +85,23 @@ def motor(url: str) -> Engine:
     else:
         eng = create_engine(url, pool_pre_ping=True)
     meta.create_all(eng)
+    _migrar(eng)
     return eng
+
+
+def _migrar(eng: Engine) -> None:
+    """Agrega columnas nuevas a bases existentes (SQLite local o Postgres de Render)."""
+    insp = inspect(eng)
+    for tabla, columnas in _COLUMNAS_NUEVAS.items():
+        existentes = {c["name"] for c in insp.get_columns(tabla)}
+        with eng.begin() as cx:
+            for nombre, tipo in columnas.items():
+                if nombre not in existentes:
+                    if eng.dialect.name == "sqlite":
+                        tipo = tipo.replace("FALSE", "0")
+                    cx.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {nombre} {tipo}"))
+            if "parametros" in columnas and "parametros" not in existentes:
+                cx.execute(text(f"UPDATE {tabla} SET parametros = '{{}}' WHERE parametros IS NULL"))
 
 
 def tomar_con_lock(eng: Engine, tabla: Table, condicion, cambios: dict):
@@ -83,10 +119,12 @@ def tomar_con_lock(eng: Engine, tabla: Table, condicion, cambios: dict):
 
 
 def devolver_trabajos_vencidos(eng: Engine, minutos: int = 30) -> int:
-    """Un trabajo tomado sin `fin` en `minutos` vuelve a la cola (el pod pudo caerse)."""
+    """Un trabajo tomado sin `fin` ni latido en `minutos` vuelve a la cola (el pod pudo caerse).
+    Un entrenamiento de horas sigue tomado mientras mande latidos (RF-API-05, RF-API-06)."""
     limite = ahora() - timedelta(minutes=minutos)
+    ultimo = func.coalesce(trabajos.c.latido_en, trabajos.c.tomado_en)
     with eng.begin() as cx:
         r = cx.execute(update(trabajos)
-                       .where(trabajos.c.estado == "tomado", trabajos.c.tomado_en < limite)
-                       .values(estado="pendiente", tomado_en=None))
+                       .where(trabajos.c.estado == "tomado", ultimo < limite)
+                       .values(estado="pendiente", tomado_en=None, latido_en=None))
         return r.rowcount or 0

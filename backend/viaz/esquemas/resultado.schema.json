@@ -3,24 +3,159 @@
   "title": "resultado.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "metodo", "fuente", "politica", "metricas", "video", "notas"],
+  "required": [
+    "version",
+    "metodo",
+    "fuente",
+    "politica",
+    "metricas",
+    "video",
+    "notas"
+  ],
   "properties": {
-    "version": { "const": 1 },
-    "metodo": { "enum": ["planificador", "rl", "planificador_rl"] },
-    "fuente": { "enum": ["isaac", "simulado"], "description": "simulado = trayectoria sintética sin física (modo de desarrollo)" },
-    "politica": { "type": ["string", "null"] },
+    "version": {
+      "const": 1
+    },
+    "metodo": {
+      "enum": [
+        "planificador",
+        "rl",
+        "planificador_rl"
+      ]
+    },
+    "fuente": {
+      "enum": [
+        "isaac",
+        "simulado"
+      ],
+      "description": "simulado = trayectoria sintética sin física (modo de desarrollo)"
+    },
+    "politica": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "metricas": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["paneles_instalados", "intentos", "tasa_exito", "ciclo_promedio_s"],
+      "required": [
+        "paneles_instalados",
+        "intentos",
+        "tasa_exito",
+        "ciclo_promedio_s"
+      ],
       "properties": {
-        "paneles_instalados": { "type": "integer", "minimum": 0 },
-        "intentos": { "type": "integer", "minimum": 0 },
-        "tasa_exito": { "type": "number", "minimum": 0, "maximum": 1 },
-        "ciclo_promedio_s": { "type": "number", "minimum": 0 }
+        "paneles_instalados": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "intentos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tasa_exito": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "ciclo_promedio_s": {
+          "type": "number",
+          "minimum": 0
+        }
       }
     },
-    "video": { "type": ["string", "null"] },
-    "notas": { "type": "string" }
+    "video": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notas": {
+      "type": "string"
+    },
+    "evaluacion": {
+      "description": "Solo con metodo rl: resultado de evaluar la política.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "episodios",
+        "tolerancias",
+        "checkpoint"
+      ],
+      "properties": {
+        "episodios": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tolerancias": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pos_m",
+              "ang_grados",
+              "exitos",
+              "tasa_exito"
+            ],
+            "properties": {
+              "pos_m": {
+                "type": "number",
+                "minimum": 0
+              },
+              "ang_grados": {
+                "type": "number",
+                "minimum": 0
+              },
+              "exitos": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "tasa_exito": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "type": "string"
+        }
+      }
+    },
+    "entrenamiento": {
+      "description": "Solo con metodo rl: datos del entrenamiento para rotular el video acelerado (RF-WEB-15).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "horas",
+        "iteraciones",
+        "pasos",
+        "factor_video"
+      ],
+      "properties": {
+        "horas": {
+          "type": "number",
+          "minimum": 0
+        },
+        "iteraciones": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pasos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "factor_video": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Cuántas veces más rápido que el tiempo real es entrenamiento_rapido.mp4"
+        }
+      }
+    }
   }
 }

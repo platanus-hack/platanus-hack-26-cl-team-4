@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "curva.json",
+  "description": "Curva de entrenamiento resumida para la web (RF-INT-16).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "puntos"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "puntos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "iteracion",
+          "tiempo_s",
+          "recompensa_media",
+          "tasa_exito"
+        ],
+        "properties": {
+          "iteracion": {
+            "type": "integer"
+          },
+          "tiempo_s": {
+            "type": "number"
+          },
+          "recompensa_media": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "tasa_exito": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

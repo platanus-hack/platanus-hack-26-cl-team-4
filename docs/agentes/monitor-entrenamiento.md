@@ -129,7 +129,7 @@ Responde en el canal antes de aplicar el cambio.
 
 - **Curvas sintéticas:** una creciente, una plana y una que cae. El monitor debe dar `mejorando`, `estancado` y `divergiendo`.
 - **NaN:** una métrica NaN hace que el siguiente latido reciba `detener`.
-- **Hitos:** el primer `tasa_exito > 0` produce `primer_exito`.
+- **Hitos:** el primer `tasa_exito ≥ 0,05` produce `primer_exito`. Los hitos los calcula el código (`monitor.hitos()`), no el LLM: los clips dependen de ellos.
 
 ## 8. Pendiente
 
