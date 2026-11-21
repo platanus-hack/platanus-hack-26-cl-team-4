@@ -32,7 +32,7 @@ class Constructor:
         return len(self.g.bufferViews) - 1
 
     def acceso(self, arr: np.ndarray, tipo: str, objetivo=None, minmax=False) -> int:
-        comp = {np.dtype("f4"): gl.FLOAT, np.dtype("u4"): gl.UNSIGNED_INT}[arr.dtype]
+        comp = {np.dtype("f4"): gl.FLOAT, np.dtype("u2"): gl.UNSIGNED_SHORT, np.dtype("u4"): gl.UNSIGNED_INT}[arr.dtype]
         v = self._vista(arr.tobytes(), objetivo)
         a = gl.Accessor(bufferView=v, componentType=comp, count=len(arr), type=tipo)
         if minmax:
@@ -75,11 +75,18 @@ class Constructor:
             if not m.pos:
                 continue
             p, n, uv, i = m.arrays()
+            if len(p) <= 65_536:
+                i = i.astype("u2")
+            atributos = gl.Attributes(
+                POSITION=self.acceso(p, "VEC3", gl.ARRAY_BUFFER, True),
+                NORMAL=self.acceso(n, "VEC3", gl.ARRAY_BUFFER),
+            )
+            if "textura" in E.MATERIALES[nombre]:
+                atributos.TEXCOORD_0 = self.acceso(uv, "VEC2", gl.ARRAY_BUFFER)
             prims.append(gl.Primitive(
-                attributes=gl.Attributes(POSITION=self.acceso(p, "VEC3", gl.ARRAY_BUFFER, True),
-                                         NORMAL=self.acceso(n, "VEC3", gl.ARRAY_BUFFER),
-                                         TEXCOORD_0=self.acceso(uv, "VEC2", gl.ARRAY_BUFFER)),
-                indices=self.acceso(i, "SCALAR", gl.ELEMENT_ARRAY_BUFFER), material=self.material(nombre)))
+                attributes=atributos, indices=self.acceso(i, "SCALAR", gl.ELEMENT_ARRAY_BUFFER),
+                material=self.material(nombre),
+            ))
         self.g.meshes.append(gl.Mesh(primitives=prims))
         return len(self.g.meshes) - 1
 

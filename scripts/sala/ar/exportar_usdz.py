@@ -70,7 +70,8 @@ def mallas(stage, ruta: str, grupos: dict, cache: dict):
             g.CreateDoubleSidedAttr(True)
         api = UsdGeom.PrimvarsAPI(g)
         api.CreatePrimvar("normals", Sdf.ValueTypeNames.Normal3fArray, UsdGeom.Tokens.vertex).Set(Vt.Vec3fArray.FromNumpy(n))
-        api.CreatePrimvar("st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.vertex).Set(Vt.Vec2fArray.FromNumpy(uv))
+        if "textura" in E.MATERIALES[nombre]:
+            api.CreatePrimvar("st", Sdf.ValueTypeNames.TexCoord2fArray, UsdGeom.Tokens.vertex).Set(Vt.Vec2fArray.FromNumpy(uv))
         g.CreateExtentAttr(Vt.Vec3fArray([Gf.Vec3f(*p.min(0).tolist()), Gf.Vec3f(*p.max(0).tolist())]))
         UsdShade.MaterialBindingAPI.Apply(g.GetPrim()).Bind(material(stage, nombre, cache))
 
@@ -106,8 +107,8 @@ def nodo(stage, padre: str, n: E.Nodo, cache: dict, cuadros: int):
 def exportar(variante: str, salida: Path, texturas: Path) -> Path:
     raiz, fin = E.construir(variante)
     tmp = Path(tempfile.mkdtemp())
-    for f in texturas.iterdir():
-        shutil.copy(f, tmp / f.name)
+    for nombre in sorted({m["textura"] for m in E.MATERIALES.values() if "textura" in m}):
+        shutil.copyfile(texturas / nombre, tmp / nombre)
     capa = tmp / f"{variante}.usdc"
     stage = Usd.Stage.CreateNew(str(capa))
     UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)

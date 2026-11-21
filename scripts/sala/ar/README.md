@@ -11,10 +11,14 @@ flowchart LR
 
 Secuencia (en bucle; 23 s a tamaño real, 45 s en la maqueta): **5 robots en fila** (brazo industrial, cuadrúpedo, servicio, dron, humanoide) → **un muro de números estilo Matrix de dos capas recorre el lugar en 7 s**, dejando **una grilla verde encendida en el piso** y **una caja verde de análisis** alrededor de cada robot → **un anillo verde marca al elegido** (el de servicio) → **los otros 4 desaparecen** → **el elegido reparte el café** → los otros reaparecen y el bucle reinicia. El cuadro 0 muestra los 5 robots completos: AR Quick Look y Scene Viewer lo usan para medir el objeto y ponerlo en el piso. Todo va dentro del archivo 3D, porque AR Quick Look (iPhone) solo reproduce la animación guardada.
 
+Los cinco modelos usan carcasas biseladas, articulaciones separadas y materiales
+propios. El robot de servicio conserva el pivote del brazo que lleva la bandeja.
+Las cajas de análisis se ajustan a la silueta de cada robot.
+
 | Variante | Qué es | Escala |
 |---|---|---|
 | `maqueta` | La sala en miniatura (piso, muros bajos, mural, gradas, ~100 sillas) con el robot recorriendo el pasillo central | 1:20 (≈ 0,5 m sobre una mesa) |
-| `robot` | Solo el robot, que avanza 3 m hacia quien mira y le ofrece el café | 1:1 |
+| `robot` | Los cinco robots a tamaño real. El de servicio avanza hacia quien mira y ofrece el café | 1:1 |
 
 ```bash
 pip install usd-core pygltflib numpy pillow

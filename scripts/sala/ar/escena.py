@@ -30,6 +30,11 @@ MATERIALES = {
     "naranja": {"color": (0.95, 0.45, 0.08), "rugosidad": 0.45, "metal": 0.1},
     "azul": {"color": (0.15, 0.35, 0.75), "rugosidad": 0.4, "metal": 0.1},
     "gris_claro": {"color": (0.62, 0.65, 0.70), "rugosidad": 0.5, "metal": 0.3},
+    "metal_mecanizado": {"color": (0.48, 0.51, 0.54), "rugosidad": 0.32, "metal": 0.72},
+    "goma": {"color": (0.018, 0.021, 0.024), "rugosidad": 0.86, "metal": 0.0},
+    "petroleo": {"color": (0.055, 0.28, 0.31), "rugosidad": 0.36, "metal": 0.22},
+    "vidrio": {"color": (0.024, 0.060, 0.081), "rugosidad": 0.16, "metal": 0.40},
+    "estado": {"color": (0.12, 0.72, 0.53), "rugosidad": 0.32, "metal": 0.0, "emision": (0.07, 0.43, 0.32)},
     "helice": {"color": (0.45, 0.48, 0.52), "rugosidad": 0.3, "metal": 0.5},
     # escaneo estilo Matrix: textura de números con transparencia, que brilla
     "matrix": {"color": (1.0, 1.0, 1.0), "rugosidad": 1.0, "metal": 0.0, "textura": "matrix.png",
@@ -83,15 +88,17 @@ def caja(m: Malla, centro, tam):
 def cilindro(m: Malla, centro, radio, alto, lados=24, radio_arriba=None, eje="y"):
     ra = radio if radio_arriba is None else radio_arriba
     p, n, uv, i = [], [], [], []
+    pendiente = (radio - ra) / alto
+    norma = math.hypot(1, pendiente)
     for k in range(lados + 1):
         a = 2 * math.pi * k / lados
         ca, sa = math.cos(a), math.sin(a)
         p += [(radio * ca, -alto / 2, radio * sa), (ra * ca, alto / 2, ra * sa)]
-        n += [(ca, 0, sa)] * 2
+        n += [(ca / norma, pendiente / norma, sa / norma)] * 2
         uv += [(k / lados, 0), (k / lados, 1)]
     for k in range(lados):
         a, b = 2 * k, 2 * k + 2
-        i += [a, b, a + 1, a + 1, b, b + 1]
+        i += [a, a + 1, b, a + 1, b + 1, b]
     for y, r, ny in ((alto / 2, ra, 1), (-alto / 2, radio, -1)):
         c = len(p)
         p.append((0, y, 0)); n.append((0, ny, 0)); uv.append((0.5, 0.5))
@@ -117,12 +124,99 @@ def esfera(m: Malla, centro, radio, seg=20, anillos=14, escala=(1, 1, 1)):
         for b in range(seg + 1):
             ph = 2 * math.pi * b / seg
             v = (math.sin(th) * math.cos(ph), math.cos(th), math.sin(th) * math.sin(ph))
-            p.append(tuple(radio * v[k] * escala[k] for k in range(3))); n.append(v); uv.append((b / seg, a / anillos))
+            p.append(tuple(radio * v[k] * escala[k] for k in range(3)))
+            normal = np.asarray(v) / escala
+            n.append(normal / np.linalg.norm(normal))
+            uv.append((b / seg, a / anillos))
     for a in range(anillos):
         for b in range(seg):
             q = a * (seg + 1) + b
-            i += [q, q + 1, q + seg + 1, q + 1, q + seg + 2, q + seg + 1]
+            if a > 0:
+                i += [q, q + 1, q + seg + 1]
+            if a < anillos - 1:
+                i += [q + 1, q + seg + 2, q + seg + 1]
     m.agregar(np.array(p) + np.array(centro), n, uv, i)
+
+
+
+def carcasa(m: Malla, centro, tam, borde, giro=0.0):
+    """Carcasa mecanizada con cantos biselados y esquinas redondeadas."""
+    sx, sy, sz = (v / 2 for v in tam)
+    borde = min(borde, sx * .8, sy * .8, sz * .8)
+    radio = min(2 * borde, sx * .88, sz * .88)
+    c, s = math.cos(giro), math.sin(giro)
+    rot = np.array(((c, 0, s), (0, 1, 0), (-s, 0, c)))
+    centro = np.asarray(centro)
+
+    def perfil(y, recorte):
+        puntos = []
+        for esquina in range(4):
+            a = esquina * math.pi / 2
+            x = math.copysign(sx - radio, math.cos(a + math.pi / 4))
+            z = math.copysign(sz - radio, math.sin(a + math.pi / 4))
+            r = radio - recorte
+            for paso in range(4):
+                theta = a + paso * math.pi / 6
+                puntos.append(centro + rot @ (x + r * math.cos(theta), y, z + r * math.sin(theta)))
+        return puntos
+
+    def cara(puntos, direccion):
+        normal = np.cross(puntos[1] - puntos[0], puntos[2] - puntos[0])
+        if np.dot(normal, direccion) < 0:
+            puntos = puntos[::-1]
+            normal = -normal
+        normal /= np.linalg.norm(normal)
+        n = len(puntos)
+        indices = [k for i in range(1, n - 1) for k in (0, i, i + 1)]
+        m.agregar(puntos, [normal] * n, [(0, 0)] * n, indices)
+
+    anillos = [perfil(-sy, borde), perfil(-sy + borde, 0), perfil(sy - borde, 0), perfil(sy, borde)]
+    cara(anillos[0], (0, -1, 0))
+    cara(anillos[-1], (0, 1, 0))
+    for bajo, alto in zip(anillos, anillos[1:]):
+        for i in range(len(bajo)):
+            j = (i + 1) % len(bajo)
+            cara([bajo[i], bajo[j], alto[j], alto[i]], (bajo[i] + alto[j]) / 2 - centro)
+
+
+def tramo(m: Malla, desde, hasta, radio, radio_final=None, lados=12):
+    """Cilindro o tronco de cono alineado a una articulación."""
+    origen, destino = np.asarray(desde), np.asarray(hasta)
+    vector = destino - origen
+    largo = np.linalg.norm(vector)
+    eje = vector / largo
+    referencia = (0, 0, 1) if abs(eje[2]) < .9 else (1, 0, 0)
+    lateral = np.cross(eje, referencia)
+    lateral /= np.linalg.norm(lateral)
+    rot = np.column_stack((lateral, eje, np.cross(lateral, eje)))
+    segmento = Malla()
+    cilindro(segmento, (0, 0, 0), radio, largo, lados=lados, radio_arriba=radio_final)
+    p, n, uv, indices = segmento.arrays()
+    m.agregar(p @ rot.T + (origen + destino) / 2, n @ rot.T, uv, indices)
+
+
+def aro(m: Malla, centro, radio, tubo, eje="y", lados=20):
+    """Aro cerrado con una sección circular ligera."""
+    p, n, uv, indices = [], [], [], []
+    centro = np.asarray(centro)
+    for i in range(lados):
+        a = i * math.tau / lados
+        for j in range(6):
+            b = j * math.tau / 6
+            direccion = (math.cos(a) * math.cos(b), math.sin(b), math.sin(a) * math.cos(b))
+            normal = np.asarray(direccion)
+            posicion = np.array((radio * math.cos(a), 0, radio * math.sin(a))) + tubo * normal
+            if eje == "z":
+                posicion = posicion[[0, 2, 1]] * (1, -1, 1)
+                normal = normal[[0, 2, 1]] * (1, -1, 1)
+            p.append(centro + posicion)
+            n.append(normal)
+            uv.append((i / lados, j / 6))
+            q = i * 6 + j
+            sig_i = ((i + 1) % lados) * 6
+            sig_j = (j + 1) % 6
+            indices += [q, q - j + sig_j, sig_i + j, q - j + sig_j, sig_i + sig_j, sig_i + j]
+    m.agregar(p, n, uv, indices)
 
 
 def plano(m: Malla, centro, ancho, alto, normal_z=1, du=0.0):
@@ -167,20 +261,33 @@ def sala() -> dict[str, Malla]:
     return g
 
 
-# ---------------- el robot ----------------
+# ---------------- robots ----------------
 def robot_cuerpo() -> dict[str, Malla]:
-    g = {k: Malla() for k in ("robot_blanco", "robot_gris", "negro", "ojos", "acento")}
-    cilindro(g["robot_gris"], (0, 0.12, 0), 0.28, 0.2, radio_arriba=0.26)
-    for l in (-1, 1):
-        cilindro(g["negro"], (0.27 * l, 0.07, 0), 0.07, 0.04, eje="x")
-    cilindro(g["robot_blanco"], (0, 0.62, 0), 0.2, 0.55)
-    esfera(g["robot_blanco"], (0, 0.345, 0), 0.2)
-    esfera(g["robot_blanco"], (0, 0.895, 0), 0.2)
-    caja(g["acento"], (0, 0.62, 0.2), (0.16, 0.05, 0.02))
-    esfera(g["robot_blanco"], (0, 1.1, 0), 0.17)
-    caja(g["negro"], (0, 1.1, 0.1), (0.22, 0.12, 0.08))
-    for l in (-1, 1):
-        esfera(g["ojos"], (0.05 * l, 1.105, 0.145), 0.018, seg=10, anillos=8)
+    """Robot de servicio con base autónoma, mástil y pantalla de estado."""
+    g = {k: Malla() for k in ("robot_blanco", "robot_gris", "negro", "ojos", "acento", "goma", "vidrio", "estado")}
+    cilindro(g["goma"], (0, .075, 0), .272, .15, lados=28)
+    cilindro(g["robot_gris"], (0, .154, 0), .282, .035, lados=28)
+    cilindro(g["robot_blanco"], (0, .228, 0), .263, .118, lados=28, radio_arriba=.205)
+    aro(g["acento"], (0, .169, 0), .265, .006, lados=30)
+    for lado in (-1, 1):
+        cilindro(g["goma"], (lado * .271, .075, 0), .075, .047, lados=16, eje="x")
+        cilindro(g["robot_gris"], (lado * .296, .075, 0), .040, .007, lados=14, eje="x")
+    carcasa(g["robot_gris"], (0, .247, .218), (.23, .045, .052), .012)
+    for x in (-.068, 0, .068):
+        cilindro(g["vidrio"], (x, .247, .246), .012, .008, lados=12, eje="z")
+    cilindro(g["robot_gris"], (0, .53, -.025), .096, .49, radio_arriba=.115, lados=18)
+    carcasa(g["robot_blanco"], (0, .605, 0), (.325, .46, .30), .055)
+    carcasa(g["negro"], (0, .66, .151), (.20, .12, .035), .013)
+    carcasa(g["vidrio"], (0, .661, .171), (.172, .093, .018), .008)
+    caja(g["estado"], (0, .641, .181), (.100, .008, .002))
+    for x in (-.103, 0, .103):
+        caja(g["robot_gris"], (x, .465, -.148), (.025, .075, .013))
+    cilindro(g["robot_gris"], (0, .894, -.017), .073, .15, lados=16)
+    esfera(g["robot_blanco"], (0, 1.07, 0), .157, seg=20, anillos=12, escala=(1.10, .83, .96))
+    carcasa(g["negro"], (0, 1.067, .130), (.245, .118, .089), .027)
+    carcasa(g["vidrio"], (0, 1.069, .176), (.221, .092, .018), .008)
+    for x in (-.054, .054):
+        carcasa(g["ojos"], (x, 1.077, .187), (.025, .030, .006), .002)
     return g
 
 
@@ -188,81 +295,143 @@ BRAZO_PIVOTE = (0.0, 0.78, 0.18)
 
 
 def robot_brazo() -> dict[str, Malla]:
-    """Coordenadas relativas al pivote del hombro."""
-    g = {k: Malla() for k in ("robot_gris", "bandeja", "taza", "cafe")}
-    cilindro(g["robot_gris"], (0, 0, 0.12), 0.025, 0.26, eje="z")
-    cilindro(g["bandeja"], (0, 0.02, 0.3), 0.15, 0.015, lados=32)
-    cilindro(g["taza"], (0, 0.065, 0.3), 0.032, 0.075, radio_arriba=0.04)
-    cilindro(g["cafe"], (0, 0.101, 0.3), 0.036, 0.004)
-    caja(g["taza"], (0.048, 0.065, 0.3), (0.012, 0.04, 0.008))  # asa
+    """El conjunto móvil conserva el pivote y la posición de la taza."""
+    g = {k: Malla() for k in ("robot_gris", "robot_blanco", "metal_mecanizado", "bandeja", "taza", "cafe", "goma")}
+    cilindro(g["robot_gris"], (0, 0, .023), .056, .055, lados=16, eje="z")
+    tramo(g["metal_mecanizado"], (0, 0, .04), (0, 0, .25), .027, .019)
+    carcasa(g["robot_blanco"], (0, .001, .14), (.075, .063, .145), .014)
+    cilindro(g["robot_gris"], (0, 0, .294), .047, .031, lados=16)
+    cilindro(g["bandeja"], (0, .023, .300), .151, .016, lados=30)
+    aro(g["metal_mecanizado"], (0, .034, .30), .143, .006, lados=28)
+    cilindro(g["goma"], (0, .033, .300), .077, .004, lados=16)
+    cilindro(g["taza"], (0, .065, .300), .028, .065, lados=20, radio_arriba=.039)
+    cilindro(g["cafe"], (0, .099, .300), .034, .005, lados=20)
+    aro(g["taza"], (0, .102, .30), .037, .004, lados=20)
+    aro(g["taza"], (.042, .070, .300), .019, .005, eje="z", lados=14)
     return g
 
 
-# ---------------- otros 4 robots (diseños propios, simples) ----------------
 def robot_industrial() -> dict[str, Malla]:
-    """Brazo industrial sobre una base con ruedas."""
-    g = {k: Malla() for k in ("robot_gris", "naranja", "negro", "acento")}
-    caja(g["robot_gris"], (0, 0.17, 0), (0.6, 0.22, 0.5))
-    for x in (-0.25, 0.25):
-        for z in (-0.18, 0.18):
-            cilindro(g["negro"], (x + (0.04 if x > 0 else -0.04), 0.07, z), 0.07, 0.05, eje="x")
-    cilindro(g["naranja"], (0, 0.55, 0), 0.08, 0.55)
-    esfera(g["naranja"], (0, 0.85, 0), 0.11)
-    caja(g["naranja"], (0, 0.85, 0.24), (0.1, 0.1, 0.46))
-    esfera(g["naranja"], (0, 0.85, 0.47), 0.07)
-    caja(g["naranja"], (0, 0.70, 0.47), (0.08, 0.28, 0.08))
-    for x in (-0.04, 0.04):
-        caja(g["robot_gris"], (x, 0.53, 0.47), (0.02, 0.08, 0.05))
-    caja(g["acento"], (0, 0.29, 0.251), (0.3, 0.04, 0.01))
+    """Brazo de seis ejes con pinza, montado en una plataforma industrial."""
+    g = {k: Malla() for k in ("robot_gris", "naranja", "negro", "acento", "metal_mecanizado", "goma", "estado")}
+    carcasa(g["robot_gris"], (0, .166, 0), (.63, .19, .56), .045)
+    carcasa(g["negro"], (0, .26, 0), (.58, .053, .49), .018)
+    for lado in (-1, 1):
+        for z in (-.192, .192):
+            cilindro(g["goma"], (lado * .289, .076, z), .076, .083, lados=16, eje="x")
+            cilindro(g["metal_mecanizado"], (lado * .333, .076, z), .037, .012, lados=12, eje="x")
+        caja(g["acento"], (lado * .307, .193, .236), (.014, .034, .035))
+    carcasa(g["negro"], (0, .173, .279), (.27, .051, .035), .015)
+    caja(g["estado"], (0, .176, .300), (.19, .010, .004))
+    cilindro(g["metal_mecanizado"], (0, .295, -.105), .145, .042, lados=24)
+    cilindro(g["robot_gris"], (0, .344, -.105), .129, .059, lados=20)
+    hombro, codo, muneca = (0, .455, -.11), (0, .945, -.195), (0, .806, .331)
+    carcasa(g["naranja"], (0, .438, -.11), (.252, .185, .225), .040)
+    tramo(g["naranja"], hombro, codo, .107, .079, lados=10)
+    tramo(g["naranja"], codo, muneca, .091, .056, lados=10)
+    for y, z, radio in ((.455, -.11, .112), (.945, -.195, .084), (.806, .331, .062)):
+        cilindro(g["robot_gris"], (0, y, z), radio, radio * 2.03, lados=18, eje="x")
+        for lado in (-1, 1):
+            cilindro(g["metal_mecanizado"], (lado * radio * 1.05, y, z), radio * .57, .016, lados=16, eje="x")
+    cable = [(-.092, .47, -.18), (-.107, .73, -.29), (-.083, 1.009, -.24), (-.061, .98, .081), (-.040, .844, .305)]
+    for a, b in zip(cable, cable[1:]):
+        tramo(g["goma"], a, b, .011, lados=8)
+    tramo(g["metal_mecanizado"], muneca, (0, .722, .395), .047, .042)
+    carcasa(g["negro"], (0, .695, .406), (.143, .063, .088), .011)
+    for x in (-.057, .057):
+        carcasa(g["metal_mecanizado"], (x, .628, .42), (.025, .101, .056), .006)
+        caja(g["goma"], (x * .81, .588, .425), (.021, .024, .057))
     return g
 
 
 def robot_cuadrupedo() -> dict[str, Malla]:
-    """Robot de cuatro patas."""
-    g = {k: Malla() for k in ("gris_claro", "negro", "ojos", "acento")}
-    caja(g["gris_claro"], (0, 0.55, 0), (0.34, 0.2, 0.72))
-    caja(g["gris_claro"], (0, 0.66, 0.44), (0.24, 0.17, 0.2))
-    caja(g["negro"], (0, 0.67, 0.545), (0.18, 0.07, 0.01))
-    for l in (-1, 1):
-        esfera(g["ojos"], (0.045 * l, 0.67, 0.552), 0.015, seg=10, anillos=8)
-    for x in (-0.15, 0.15):
-        for z in (-0.26, 0.26):
-            cilindro(g["negro"], (x, 0.24, z), 0.04, 0.46)
-            esfera(g["negro"], (x, 0.02, z), 0.05)
-    caja(g["acento"], (0, 0.651, 0), (0.2, 0.01, 0.3))
+    """Cuadrúpedo de inspección con patas articuladas y cámara frontal."""
+    g = {k: Malla() for k in ("gris_claro", "robot_gris", "negro", "vidrio", "petroleo", "metal_mecanizado", "ojos", "goma")}
+    carcasa(g["robot_gris"], (0, .53, 0), (.42, .15, .70), .037)
+    carcasa(g["petroleo"], (0, .625, .015), (.407, .13, .655), .031)
+    carcasa(g["gris_claro"], (0, .705, -.054), (.265, .048, .42), .015)
+    carcasa(g["negro"], (0, .555, .33), (.32, .114, .151), .022)
+    carcasa(g["vidrio"], (0, .563, .409), (.267, .073, .026), .011)
+    for x in (-.082, .082):
+        cilindro(g["metal_mecanizado"], (x, .567, .425), .027, .014, lados=12, eje="z")
+        cilindro(g["ojos"], (x, .567, .435), .012, .008, lados=12, eje="z")
+    cilindro(g["negro"], (0, .756, .215), .055, .057, lados=16)
+    cilindro(g["vidrio"], (0, .773, .215), .057, .024, lados=16)
+    for lado in (-1, 1):
+        for signo in (-1, 1):
+            z = signo * .245
+            cadera = (lado * .209, .512, z)
+            rodilla = (lado * .278, .277, z - signo * .123)
+            pie = (lado * .286, .064, z + signo * .124)
+            cilindro(g["negro"], cadera, .078, .099, lados=16, eje="x")
+            cilindro(g["metal_mecanizado"], (lado * .264, .512, z), .055, .015, lados=14, eje="x")
+            tramo(g["gris_claro"], cadera, rodilla, .050, .033, lados=10)
+            esfera(g["negro"], rodilla, .048, seg=12, anillos=8)
+            tramo(g["robot_gris"], rodilla, pie, .031, .021, lados=10)
+            carcasa(g["goma"], (pie[0], .036, pie[2]), (.099, .072, .126), .014)
     return g
 
 
 def robot_dron() -> dict[str, Malla]:
-    """Dron de inspección, flotando."""
-    g = {k: Malla() for k in ("negro", "helice", "ojos", "acento", "robot_gris")}
-    caja(g["negro"], (0, 1.0, 0), (0.34, 0.12, 0.34))
-    caja(g["robot_gris"], (0, 1.0, 0), (0.95, 0.04, 0.05))
-    caja(g["robot_gris"], (0, 1.0, 0), (0.05, 0.04, 0.95))
-    for x, z in ((0.47, 0), (-0.47, 0), (0, 0.47), (0, -0.47)):
-        cilindro(g["robot_gris"], (x, 1.05, z), 0.03, 0.08)
-        cilindro(g["helice"], (x, 1.1, z), 0.19, 0.01, lados=28)
-    esfera(g["negro"], (0, 0.9, 0.08), 0.07)
-    esfera(g["ojos"], (0, 0.9, 0.145), 0.03, seg=12, anillos=8)
-    caja(g["acento"], (0, 1.065, 0), (0.2, 0.01, 0.2))
+    """Dron de inspección con cuatro rotores, protectores y cámara estabilizada."""
+    g = {k: Malla() for k in ("negro", "helice", "ojos", "acento", "robot_gris", "gris_claro", "goma", "vidrio", "estado")}
+    carcasa(g["gris_claro"], (0, 1.04, 0), (.282, .134, .405), .034)
+    carcasa(g["robot_gris"], (0, .975, -.018), (.250, .059, .352), .021)
+    carcasa(g["negro"], (0, 1.116, -.055), (.157, .038, .195), .012)
+    caja(g["acento"], (0, 1.137, -.054), (.100, .007, .025))
+    for x in (-.307, .307):
+        for z in (-.319, .319):
+            tramo(g["robot_gris"], (x * .33, 1.018, z * .30), (x, 1.051, z), .037, .023)
+            cilindro(g["negro"], (x, 1.064, z), .045, .063, lados=16)
+            cilindro(g["gris_claro"], (x, 1.106, z), .028, .023, lados=14)
+            aro(g["goma"], (x, 1.107, z), .155, .008, lados=20)
+            carcasa(g["helice"], (x, 1.115, z), (.267, .013, .022), .005, giro=.52 * (x / abs(x)))
+            esfera(g["estado"] if z > 0 else g["acento"], (x, 1.057, z + .047), .009, seg=10, anillos=6)
+    for x in (-.065, .065):
+        tramo(g["negro"], (x, .992, .111), (x, .901, .173), .013, lados=10)
+    cilindro(g["robot_gris"], (0, .906, .172), .052, .127, lados=16, eje="x")
+    carcasa(g["negro"], (0, .902, .180), (.105, .084, .094), .014)
+    cilindro(g["vidrio"], (0, .902, .233), .031, .023, lados=16, eje="z")
+    cilindro(g["ojos"], (0, .902, .246), .014, .004, lados=12, eje="z")
     return g
 
 
 def robot_humanoide() -> dict[str, Malla]:
-    """Humanoide simple."""
-    g = {k: Malla() for k in ("azul", "robot_blanco", "negro", "ojos", "acento")}
-    for x in (-0.1, 0.1):
-        caja(g["azul"], (x, 0.27, 0), (0.12, 0.5, 0.15))
-        caja(g["negro"], (x, 0.03, 0.03), (0.13, 0.06, 0.22))
-    caja(g["robot_blanco"], (0, 0.77, 0), (0.4, 0.48, 0.22))
-    caja(g["acento"], (0, 0.85, 0.111), (0.14, 0.05, 0.01))
-    for x in (-0.26, 0.26):
-        caja(g["azul"], (x, 0.74, 0), (0.09, 0.46, 0.1))
-        esfera(g["robot_blanco"], (x, 0.5, 0), 0.055)
-    esfera(g["robot_blanco"], (0, 1.15, 0), 0.14)
-    caja(g["negro"], (0, 1.16, 0.09), (0.2, 0.08, 0.06))
-    for l in (-1, 1):
-        esfera(g["ojos"], (0.045 * l, 1.16, 0.122), 0.015, seg=10, anillos=8)
+    """Humanoide con estructura visible, carcasas segmentadas y pies de apoyo."""
+    g = {k: Malla() for k in ("azul", "robot_blanco", "negro", "vidrio", "ojos", "metal_mecanizado", "goma")}
+    carcasa(g["negro"], (0, .747, 0), (.263, .170, .174), .036)
+    carcasa(g["robot_blanco"], (0, .807, .006), (.229, .104, .169), .026)
+    cilindro(g["metal_mecanizado"], (0, .91, 0), .078, .146, lados=16)
+    carcasa(g["azul"], (0, 1.033, .008), (.293, .213, .187), .049)
+    carcasa(g["robot_blanco"], (0, 1.161, .015), (.367, .250, .223), .049)
+    carcasa(g["vidrio"], (0, 1.151, .127), (.156, .090, .020), .010)
+    caja(g["ojos"], (0, 1.149, .138), (.068, .007, .003))
+    cilindro(g["negro"], (0, 1.313, -.003), .056, .084, lados=14)
+    esfera(g["robot_blanco"], (0, 1.441, .016), .131, seg=18, anillos=12, escala=(.88, 1.02, .92))
+    carcasa(g["negro"], (0, 1.433, .122), (.190, .100, .061), .021)
+    carcasa(g["vidrio"], (0, 1.433, .154), (.165, .079, .015), .006)
+    for lado in (-1, 1):
+        caja(g["ojos"], (lado * .039, 1.438, .163), (.026, .008, .004))
+        cadera = (lado * .098, .724, -.009)
+        rodilla = (lado * .113, .408, .024)
+        tobillo = (lado * .113, .110, -.018)
+        hombro = (lado * .216, 1.205, .010)
+        codo = (lado * .248, .951, .035)
+        muneca = (lado * .241, .753, .075)
+        for centro, radio, ancho in ((cadera, .070, .084), (rodilla, .056, .083), (tobillo, .040, .068),
+                                     (hombro, .061, .075), (codo, .044, .065)):
+            cilindro(g["negro"], centro, radio, ancho, lados=14, eje="x")
+        tramo(g["robot_blanco"], cadera, rodilla, .071, .048)
+        tramo(g["robot_blanco"], rodilla, tobillo, .058, .034)
+        tramo(g["azul"], hombro, codo, .052, .033)
+        tramo(g["robot_blanco"], codo, muneca, .046, .026)
+        for cx, cy, cz in (rodilla, codo):
+            cilindro(g["metal_mecanizado"], (cx + lado * .043, cy, cz), .025, .010, lados=12, eje="x")
+        carcasa(g["robot_blanco"], (tobillo[0], .063, .047), (.131, .090, .234), .022)
+        carcasa(g["goma"], (tobillo[0], .014, .047), (.137, .028, .239), .007)
+        carcasa(g["negro"], (muneca[0], .712, .076), (.062, .079, .049), .009)
+        for dedo in (-1, 0, 1):
+            carcasa(g["negro"], (muneca[0] + .018 * dedo, .667, .080), (.012, .042, .018), .004)
     return g
 
 
@@ -286,13 +455,23 @@ def franja_grilla(ancho: float, largo: float) -> dict[str, Malla]:
     return g
 
 
-def caja_analisis() -> dict[str, Malla]:
-    """Caja verde translúcida alrededor de un robot mientras VIAZ lo analiza."""
+def caja_analisis(modelo: dict[str, Malla], brazo: dict[str, Malla] | None = None) -> dict[str, Malla]:
+    """Ajusta la caja de escaneo a la silueta de cada robot."""
+    puntos = np.concatenate([np.asarray(m.pos) for m in modelo.values() if m.pos])
+    if brazo is not None:
+        puntos_brazo = np.concatenate([np.asarray(m.pos) for m in brazo.values() if m.pos])
+        puntos = np.concatenate([puntos, puntos_brazo + BRAZO_PIVOTE])
+    minimo = puntos.min(axis=0) - (.065, 0, .07)
+    maximo = puntos.max(axis=0) + (.065, .075, .07)
+    minimo[1] = 0
+    centro = (minimo + maximo) / 2
+    alto = maximo[1]
+
     g = {"caja_analisis": Malla(), "laser": Malla()}
-    caja(g["caja_analisis"], (0, 0.75, 0), (0.95, 1.5, 0.95))
-    for x in (-0.475, 0.475):                                            # aristas verticales brillantes
-        for z in (-0.475, 0.475):
-            caja(g["laser"], (x, 0.75, z), (0.02, 1.5, 0.02))
+    caja(g["caja_analisis"], centro, maximo - minimo)
+    for x in (minimo[0], maximo[0]):
+        for z in (minimo[2], maximo[2]):
+            caja(g["laser"], (x, centro[1], z), (.012, alto, .012))
     return g
 
 
@@ -427,22 +606,24 @@ def construir(variante: str):
         cuando_pasa = lambda z: e0 + (z - z_desde) / (z_hasta - z_desde) * (e1 - e0)  # noqa: E731
         t_paso = cuando_pasa(cfg["fila_z"])
     for k, (fabrica, x) in enumerate(zip(ROBOTS, cfg["fila_x"])):
+        modelo = robot_cuerpo() if fabrica is None else fabrica()
+        brazo_servicio = robot_brazo() if k == ELEGIDO else None
         extras = []
         if cfg["escaneo"] is not None:   # caja de análisis: se enciende cuando el muro pasa por el robot
-            extras.append(Nodo("analisis", caja_analisis(), pistas={"s": [
+            extras.append(Nodo("analisis", caja_analisis(modelo, brazo_servicio), pistas={"s": [
                 (0.0, MINIMO), (t_paso - 0.05, MINIMO), (t_paso + 0.25, 1.0), (T_ELIGE, 1.0),
                 (T_ELIGE + 0.35, MINIMO), (fin, MINIMO)]}))
         if k == ELEGIDO:
             marca = Nodo("anillo", anillo(), pistas={"s": [(0.0, MINIMO), (T_ELIGE, MINIMO), (T_ELIGE + 0.3, 1.0),
                                                             (T_ENTREGA + 1.0, 1.0), (T_ENTREGA + 1.5, MINIMO), (fin, MINIMO)]})
-            brazo = Nodo("brazo", robot_brazo(), t=BRAZO_PIVOTE, pistas={"rx": br})
-            hijos.append(Nodo("robot_servicio", robot_cuerpo(), hijos=[brazo, marca, *extras], pistas={"t": tr, "ry": rot}))
+            brazo = Nodo("brazo", brazo_servicio, t=BRAZO_PIVOTE, pistas={"rx": br})
+            hijos.append(Nodo("robot_servicio", modelo, hijos=[brazo, marca, *extras], pistas={"t": tr, "ry": rot}))
         else:
             d0, d1 = T_DESAPARECEN
             r0 = fin - REAPARECEN + 0.2 * (k if k < ELEGIDO else k - 1)
             escala = [(0.0, 1.0), (d0 + 0.08 * k, 1.0), (d1 + 0.08 * k, MINIMO),
                       (r0, MINIMO), (r0 + 0.5, 1.0), (fin, 1.0)]
-            hijos.append(Nodo(f"robot_{fabrica.__name__.split('_')[1]}", fabrica(), hijos=extras,
+            hijos.append(Nodo(f"robot_{fabrica.__name__.split('_')[1]}", modelo, hijos=extras,
                               t=(x, 0, cfg["fila_z"]), pistas={"s": escala}))
     if cfg["escaneo"] is None:
         raiz = Nodo("viaz", hijos=hijos, pistas={})

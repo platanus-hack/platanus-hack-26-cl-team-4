@@ -4,7 +4,7 @@
 // (AR Quick Look en iPhone, Scene Viewer en Android), sin model-viewer. Sirve para aislar qué rompe la AR.
 import { useEffect, useState } from "react";
 
-const VERSION = 6;
+const VERSION = 7;
 const PRUEBAS = [
   { n: 1, archivo: "prueba_base", titulo: "Base", que: "El robot solo, la versión que funcionó. Si esta falla, el problema no es el modelo (red, navegador o celular)." },
   { n: 2, archivo: "prueba_sin_escaneo", titulo: "5 robots", que: "Agrega los 5 robots y que aparezcan y desaparezcan (escala animada). Sin el muro de números." },
