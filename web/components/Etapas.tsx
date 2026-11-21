@@ -1,11 +1,11 @@
 import type { Etapa } from "@/lib/tipos";
 
 const NOMBRES: Record<Etapa["nombre"], string> = {
-  entorno: "Entorno de la planta",
+  entorno: "Virtualizar el entorno",
   tarea: "Definir la tarea",
-  robot: "Elegir el robot real",
-  clon: "Construir el robot (Isaac Lab)",
-  inteligencia: "Entrenar con RL (Isaac Lab)",
+  robot: "Elegir el robot",
+  clon: "Clonar el robot",
+  inteligencia: "Clonar su inteligencia (Isaac Lab)",
 };
 
 const ICONOS: Record<Etapa["estado"], string> = { pendiente: "○", en_curso: "◐", listo: "●", error: "✕" };

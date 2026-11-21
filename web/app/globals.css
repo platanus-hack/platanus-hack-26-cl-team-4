@@ -66,22 +66,3 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .tiempo { font-variant-numeric: tabular-nums; color: var(--tenue); }
 .video { width: 100%; border-radius: 12px; background: #000; }
 .espera { display: grid; place-items: center; height: 50vh; background: var(--superficie); border: 1px dashed var(--borde); border-radius: 12px; color: var(--tenue); }
-
-/* Inicio: flujo y demo (RF-WEB-19, RNF-20) */
-.boton { display: inline-block; margin-top: 12px; font-weight: 700; padding: 10px 16px; border-radius: 8px; background: var(--acento); color: var(--acento-texto); text-decoration: none; }
-.subtitulo { margin-top: 32px; font-size: 1.3rem; }
-.pasos { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-.paso { display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 12px 14px; }
-.paso p { margin: 4px 0 0; color: var(--tenue); }
-.paso-n { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--acento); color: var(--acento-texto); font-weight: 800; }
-.paso-produccion { border-style: dashed; }
-.paso-produccion .paso-n { background: var(--borde); color: var(--texto); }
-.aviso { background: var(--superficie); border: 1px solid var(--borde); border-left: 4px solid var(--acento); border-radius: 8px; padding: 10px 12px; }
-.formulario-plegado { margin-top: 24px; }
-.formulario-plegado summary { cursor: pointer; color: var(--tenue); font-weight: 600; }
-
-/* Corrida: videos rotulados (RF-WEB-13, RF-WEB-15, RNF-18) */
-.figura { margin: 0; display: grid; gap: 8px; }
-.figura figcaption { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; }
-.etiqueta-tenue { background: var(--borde); color: var(--texto); }
-.tarjeta details { margin-top: 8px; }
