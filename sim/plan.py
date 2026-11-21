@@ -7,7 +7,8 @@ Lo usan:
 Convenciones (las mismas que sim/generar_escena.py y web/lib/escena.ts):
 - Z arriba, metros. La fila i tiene su tubo de torsión en y = -i * separacion, de x = 0 a x = largo.
 - El robot avanza por el pasillo de la fila 0, en y = +d, mirando hacia +X.
-- Con shoulder_pan = -pi/2 el brazo apunta a -Y, hacia la fila 0. Con pi apunta a la pila, atrás.
+- Con shoulder_pan = -pi/2 el brazo apunta a -Y, hacia la fila 0. Con pi apunta atrás y con 0 adelante:
+  la pila va donde diga la geometría del clon (atrás en el clon genérico, adelante en un robot con gabinete).
 """
 from __future__ import annotations
 
@@ -45,9 +46,13 @@ def _q(pan: float, hombro: float, codo: float) -> list[float]:
     return [pan, hombro, codo, math.pi - hombro - codo, 0.0, 0.0]
 
 
-def distancia_pasillo(entorno: dict) -> float:
+MEDIO_ANCHO_BASE = 0.5  # clon genérico; un robot con ficha física trae su medio_ancho_m en la geometría
+
+
+def distancia_pasillo(entorno: dict, geo: dict | None = None) -> float:
     """Distancia del eje de la fila 0 al centro de la base: medio panel + media base + margen."""
-    return round(entorno["panel"]["largo_m"] / 2 + 0.5 + 0.06, 3)
+    medio_ancho = (geo or {}).get("medio_ancho_m", MEDIO_ANCHO_BASE)
+    return round(entorno["panel"]["largo_m"] / 2 + medio_ancho + 0.06, 3)
 
 
 def slots(entorno: dict, n: int) -> list[list[float]]:
@@ -70,15 +75,16 @@ def poses(entorno: dict, geo: dict) -> dict:
     """Poses clave del brazo. 'tomar' depende de cuántos paneles quedan en la pila."""
     l1, l2, mu = geo["l1_m"], geo["l2_m"], geo["muneca_m"]
     hz = geo["hombro_z_m"]
-    d = distancia_pasillo(entorno)
+    d = distancia_pasillo(entorno, geo)
     # Dejar: la cara de abajo del panel queda sobre el tubo.
     z_muneca = entorno["estructura"]["altura_m"] + TUBO_R + PANEL_ESPESOR + mu
     dejar = _q(-math.pi / 2, *ik_plana(d, z_muneca - hz, l1, l2))
-    d_pila = geo["montaje_x_m"] - geo["pila_x_m"]
+    d_pila = geo["montaje_x_m"] - geo["pila_x_m"]      # positivo: la pila está detrás del brazo
+    giro_pila = math.pi if d_pila >= 0 else 0.0
 
     def tomar(restantes: int) -> list[float]:
         tope = geo["cubierta_z_m"] + restantes * PASO_PILA
-        return _q(math.pi, *ik_plana(d_pila, tope + mu - hz, l1, l2))
+        return _q(giro_pila, *ik_plana(abs(d_pila), tope + mu - hz, l1, l2))
 
     return {"casa": _q(0.0, 0.0, 1.2), "dejar": dejar, "tomar": tomar, "d": d}
 

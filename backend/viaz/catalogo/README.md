@@ -7,6 +7,13 @@ Los archivos que empiezan con `_` no se cargan.
 - Cada dato sale de una fuente con URL y fecha (`fuente`). Si un dato no aparece en la fuente, déjalo fuera del pitch.
 - `viaz-instalador-ficticio` existe solo para desarrollar el flujo. Tiene `"ficticio": true` y la web lo muestra así.
 
+## Física propia del robot (`fisica`)
+
+- **Opcional.** Un robot con el bloque `fisica` usa sus propias medidas en el clon: largo, ancho y masa del vehículo, altura de la cubierta, orugas, gabinete, grosor del brazo, marco de ventosas y remolque de paneles. `urdf.py` las lee de aquí.
+- **Sin el bloque,** el clon usa la base genérica de 1,6 × 1,0 m sobre ruedas.
+- **Lo que el fabricante no publica** va también en `estimados`, con la clave `fisica.<dato>`. Esas claves no cuentan como specs estimadas en la selección.
+- **Hoy lo tiene:** `leapting-mmr` (3,145 × 1,8 m y 4 500 kg publicados; remolque de 2,35 m y 2 300 kg publicado; altura de cubierta, posición del brazo, gabinete, grosor del brazo y marco de ventosas medidos en fotos y videos).
+
 ## Robots cargados (consultados el 2026-11-21)
 
 | id | Fuente | Specs publicadas | Estimadas (`estimados`) |

@@ -135,7 +135,7 @@ def clon(ens: dict, robot: dict, assets: dict, intentos: int) -> dict:
         "version": 1, "robot_id": robot["id"], "usd": None, "urdf": "robot.urdf",
         "piezas": {"base": ens["base"]["asset"], "brazo": ens["brazo"]["asset"], "efector": ens["efector"]["asset"]},
         "escala": {"alcance_m": alc, "carga_util_kg": float(ens["carga_util_kg"])},
-        "geometria": urdf.geometria(alc),
+        "geometria": urdf.geometria(alc, robot.get("fisica")),
         "diferencias_con_real": [*(["el robot de referencia es ficticio"] if robot.get("ficticio") else []),
                                  *ens["diferencias_con_real"], *DIFERENCIAS_FIJAS],
         "validado_en_escena": False,

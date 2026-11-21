@@ -5,8 +5,9 @@ Tú eliges, de un catálogo cerrado de robots reales, el que mejor hace la tarea
 ## Qué recibes
 - `entorno.json`: terreno, filas, estructura y panel del parque, con `confianza` por dato.
 - `tarea.json`: tarea, cantidad de paneles y tiempo objetivo por panel.
-- `alcance_necesario_m`: el alcance mínimo para dejar un panel sobre el tubo desde el pasillo.
 - El catálogo: una lista de robots con `id`, `tipo`, `carga_util_kg`, `alcance_m`, `velocidad_base_m_s`, `efector`, `ficticio` y `fuente`.
+- En cada robot, `alcance_necesario_m`: el alcance mínimo para que ese robot deje un panel sobre el tubo desde el pasillo. Cambia con el ancho y la altura del vehículo.
+- En algunos robots, `fisica`: medidas del vehículo para el clon. Las claves `fisica.*` de `estimados` no cuentan en el criterio 8.
 
 ## Qué devuelves
 - `id`: el id de un robot del catálogo. Solo puedes elegir ids del catálogo.
@@ -20,7 +21,7 @@ Aplica estos criterios en orden. Un robot que falla un criterio obligatorio qued
 |---|---|---|---|
 | 1 | Carga útil | Sí | `carga_util_kg` ≥ `panel.peso_kg` |
 | 2 | Efector | Sí | Para paneles, `ventosa`. `pinza` solo si no hay otro |
-| 3 | Alcance | Sí | `alcance_m` ≥ `alcance_necesario_m`. Te lo damos calculado con la geometría del clon: el brazo va desde la base en el pasillo hasta el tubo de la fila |
+| 3 | Alcance | Sí | `alcance_m` ≥ `alcance_necesario_m` de ese robot. Te lo damos calculado con la geometría del clon: el brazo va desde la base en el pasillo hasta el tubo de la fila |
 | 4 | Tipo vs terreno | Sí | Con `pendiente_grados` > 10, prefiere `vehiculo_con_brazo`. `brazo_fijo` no sirve en parques solares |
 | 5 | Ritmo | No | Mayor `velocidad_base_m_s` ayuda a cumplir `objetivo.ciclo_s` |
 | 6 | Margen | No | Entre dos robots válidos, elige el de mayor margen de carga y alcance |

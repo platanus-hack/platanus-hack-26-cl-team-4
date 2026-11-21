@@ -100,6 +100,10 @@
         },
         "pila_x_m": {
           "type": "number"
+        },
+        "medio_ancho_m": {
+          "type": "number",
+          "description": "Medio ancho del vehículo. Solo en robots con ficha física; sin él, el plan usa 0,5 m."
         }
       }
     },

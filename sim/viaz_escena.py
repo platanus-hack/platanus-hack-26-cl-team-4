@@ -108,7 +108,7 @@ def describir(entorno: dict, n_paneles: int, caida_m: float = 0.0, con_robot: bo
         x0 = (slots[0][0] if slots else plan.INICIO_X) - clon["geometria"]["montaje_x_m"]
         desc["robot"] = {
             "urdf": "robot.urdf",
-            "pos_inicial_m": (round(x0, 4), plan.distancia_pasillo(entorno), 0.0),
+            "pos_inicial_m": (round(x0, 4), plan.distancia_pasillo(entorno, clon["geometria"]), 0.0),
             "q_inicial": dict(zip(["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"],
                                   plan.poses(entorno, clon["geometria"])["casa"])),
             "rigidez": RIGIDEZ, "amortiguamiento": AMORTIGUAMIENTO,

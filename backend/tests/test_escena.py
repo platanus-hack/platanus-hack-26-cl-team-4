@@ -221,11 +221,11 @@ def test_escena_de_entrenamiento_sin_robot_ni_clon(entorno):
 def test_describir_robot_en_el_pasillo(entorno, clon):
     d = viaz_escena.describir(entorno, 1, con_robot=True, clon=clon)
     r = d["robot"]
-    assert r["pos_inicial_m"][1] == plan.distancia_pasillo(entorno)
+    assert r["pos_inicial_m"][1] == plan.distancia_pasillo(entorno, clon["geometria"])
     assert list(r["q_inicial"]) == urdf.ARTICULACIONES
     assert set(r["rigidez"]) == set(urdf.ARTICULACIONES)
     # la base no invade el tubo de la fila 0 (medio panel hacia el pasillo)
-    assert r["pos_inicial_m"][1] - urdf.BASE[1] / 2 > entorno["panel"]["largo_m"] / 2
+    assert r["pos_inicial_m"][1] - clon["geometria"]["medio_ancho_m"] > entorno["panel"]["largo_m"] / 2
 
 
 def test_masas_e_inercias_del_clon():
