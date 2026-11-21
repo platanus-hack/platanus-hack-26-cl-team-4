@@ -23,6 +23,33 @@ flowchart LR
   RUN -.->|"archivo DETENER"| E1
 ```
 
+## 0. Orden: el robot depende del entorno, no al revés
+
+"Entorno" tiene dos significados en estos documentos:
+
+| | 1 · El parque | 2 · El entorno RL `instalar_panel` |
+|---|---|---|
+| Qué es | Suelo, 2 filas, tubos, postes y pila de paneles | Clase de Isaac Lab: observaciones, acciones, recompensa y éxito |
+| Sale de | `entorno.json` → `escena.usd` | `entorno.json` + `tarea.json` + `escena.usd` + **`robot_cfg.py`** |
+| ¿Tiene robot? | **No** | Sí, pero **como parámetro**: lo lee de `PARAMETROS` (§7) |
+
+```mermaid
+flowchart LR
+  P["Parque<br/>entorno.json"] --> T["Tarea"] --> S["Agente elige<br/>el robot"] --> C["Agente lo construye<br/>robot_cfg.py"] --> RL["Entorno RL<br/>instalar_panel"]
+  P --> RL
+```
+
+- **Los dos se construyen ya.** No hay que esperar al agente.
+- **El entorno RL nunca escribe un robot a mano:** articulaciones, alcance, carga, torque y velocidad salen de `PARAMETROS`. Así, cuando el agente elige otro robot, el entorno no cambia.
+- **Para desarrollar, usen [`sim/rl/robot_cfg_ejemplo.py`](../sim/rl/robot_cfg_ejemplo.py).** Es el ensamblaje por defecto (UR10 escalado + ventosa larga + base móvil simple) para el Leapting MMR, el robot que elige el agente con las reglas actuales. Es el mismo que usa el sistema cuando el agente constructor falla. Para otro robot del catálogo:
+
+```bash
+cd backend && .venv/bin/python -m viaz.robot_cfg --robot relu-bison --salida ../sim/rl/robot_cfg_ejemplo.py
+```
+
+- **Prueben con dos robots distintos** (por ejemplo `leapting-mmr` y `relu-bison`). Si el entorno funciona con los dos sin cambios de código, no tiene nada fijo.
+- **Assets en el pod:** `worker-gpu/pod/assets.txt` solo trae Cartpole y el suelo. Agreguen el USD del UR10 (la ruta está en `UR10_CFG` de `isaaclab_assets.robots.universal_robots`) y corran de nuevo `instalar.sh`.
+
 ## 1. Cuatro comandos
 
 El runner lanza cada comando con el Python de Isaac Lab. El comando base sale de una variable de entorno del pod:
@@ -120,7 +147,7 @@ $VIAZ_CMD_VALIDAR_ROBOT --entorno E --tarea T --robot R --escena S --salida DIR/
 
 ## 7. `robot_cfg.py`
 
-Lo genera el sistema desde `ensamblaje.json` ([`backend/viaz/robot_cfg.py`](../backend/viaz/robot_cfg.py)). **La interfaz estable es el diccionario `PARAMETROS`**:
+Lo genera el sistema desde `ensamblaje.json` ([`backend/viaz/robot_cfg.py`](../backend/viaz/robot_cfg.py)). Ejemplo real: [`sim/rl/robot_cfg_ejemplo.py`](../sim/rl/robot_cfg_ejemplo.py) (§0). **La interfaz estable es el diccionario `PARAMETROS`**:
 
 ```python
 PARAMETROS = {

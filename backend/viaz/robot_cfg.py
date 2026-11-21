@@ -141,3 +141,33 @@ def clon(ens: dict, robot: dict, assets: dict, intentos: int) -> dict:
         "validado_en_escena": False,
         "construccion": {"metodo": "agente", "intentos": intentos, "ensamblaje": "ensamblaje.json", "robot_cfg": "robot_cfg.py"},
     }
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Genera un robot_cfg.py de prueba con el ensamblaje por defecto, para construir el entorno RL
+    sin esperar al agente constructor (docs/contrato-entorno-rl.md §0).
+
+    python -m viaz.robot_cfg --robot leapting-mmr --salida sim/rl/robot_cfg_ejemplo.py
+    """
+    import argparse
+
+    from .agentes import alcance_necesario
+
+    p = argparse.ArgumentParser(description=main.__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--robot", default="leapting-mmr", help="id de un robot de catalogo/robots/")
+    p.add_argument("--entorno", type=Path, default=Path(__file__).resolve().parent / "fixtures" / "entorno.json")
+    p.add_argument("--salida", type=Path, required=True)
+    a = p.parse_args(argv)
+    robot = json.loads((Path(__file__).resolve().parent / "catalogo" / "robots" / f"{a.robot}.json").read_text(encoding="utf-8"))
+    assets = cargar_assets()
+    ens = ensamblaje_por_defecto(robot, assets)
+    fallas = problemas(ens, robot, assets, alcance_necesario(json.loads(a.entorno.read_text(encoding="utf-8"))))
+    if fallas:
+        raise SystemExit("el ensamblaje por defecto no pasa las reglas: " + "; ".join(fallas))
+    a.salida.parent.mkdir(parents=True, exist_ok=True)
+    a.salida.write_text(generar(ens, assets), encoding="utf-8")
+    print(f"{a.salida}: {robot['id']}, alcance {alcance_resultante(ens, assets)} m, carga {robot['carga_util_kg']} kg")
+
+
+if __name__ == "__main__":
+    main()
