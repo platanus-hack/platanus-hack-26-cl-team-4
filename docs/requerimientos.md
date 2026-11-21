@@ -1,11 +1,12 @@
 # Especificación de requerimientos de VIAZ
 
-> Estado: **borrador v0.7** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
+> Estado: **borrador v0.8** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
 > Estructura según ISO/IEC/IEEE 29148. Prioridades según el método **MoSCoW**. Calidad según ISO/IEC 25010.
 > **Cambio de v0.4:** el demo usa un entorno escrito a mano y una política entrenada con RL. El mapeo desde video pasa a Could.
 > **Cambio de v0.5:** base móvil con navegación programada y RL en el brazo; meta de 90 % a 5 cm y 5° en 100 episodios; tiempo fijo; avisos por Discord.
 > **Cambio de v0.6:** la web explica el flujo teórico (subir videos → extraer entorno → robot → entrenamiento) sin usarlo en vivo. El pitch muestra los resultados precalculados del parque de referencia.
 > **Cambio de v0.7:** los clips del video acelerado se graban desde checkpoints, no durante el entrenamiento (RF-INT-13, RF-MON-06). La GPU es una RTX en un host con driver 580, no solo una 5090 ([`investigacion-isaac-gpu.md`](investigacion-isaac-gpu.md)).
+> **Cambio de v0.8:** el parque del demo tiene 2 filas en el desierto de Atacama. El entrenamiento usa una escena chica con un tramo de tubo, y el demo usa el parque completo (RF-MAP-06, RF-MAP-12..15). La física del RL agarra con unión fija, usa los límites del robot real y varía masa y fricción (RF-INT-22..25).
 > Lo marcado **[Por definir]** lo decide el equipo. Cada requerimiento tiene un ID: cítalo en issues, PRs y pruebas.
 
 ## Índice
@@ -110,7 +111,7 @@ flowchart LR
 
 | Tipo | Must | Should | Could | Won't |
 |---|---|---|---|---|
-| Funcionales | 48 | 23 | 17 | — |
+| Funcionales | 54 | 24 | 18 | — |
 | No funcionales | 14 | 6 | 0 | — |
 | Fuera del alcance | — | — | — | 11 |
 
@@ -134,7 +135,11 @@ flowchart LR
 |---|---|---|
 | RF-MAP-11 | El equipo escribe a mano el `entorno.json` del parque del demo, con `confianza` 1 en cada dato y la fuente de cada medida | **M** |
 | RF-MAP-05 | El script `generar_escena` crea `escena.usd` desde `entorno.json`: terreno, filas, estructuras y paneles, con colisiones | **M** |
-| RF-MAP-06 | La escena de referencia tiene al menos 3 filas de estructuras | **M** |
+| RF-MAP-06 | La escena del demo tiene 2 filas de tracker de 1 eje, de 30 m cada una y 6 m entre filas, con el tubo horizontal | **M** |
+| RF-MAP-12 | La escena de entrenamiento tiene un tramo de tubo de la fila 0, el robot detenido frente al punto de montaje y su pila de paneles. Isaac Lab la copia en N entornos en paralelo. Sale del mismo `entorno.json` que la escena del demo | **M** |
+| RF-MAP-13 | En la escena del demo, la fila 1 ya tiene sus paneles instalados, solo visuales y sin física. El robot instala en la fila 0 | **M** |
+| RF-MAP-14 | El suelo es plano (`pendiente_grados: 0`), con la fricción de tierra seca de `sim/fisica.py` | **M** |
+| RF-MAP-15 | La escena del demo se ve como el desierto de Atacama: tierra ocre con gravilla, cielo despejado, sol de mediodía y cerros lejanos. Los cerros son solo visuales, sin física | **S** |
 | RF-MAP-07 | La web genera la misma escena en three.js desde `entorno.json`, con las mismas reglas que `generar_escena` | **S** |
 | RF-MAP-09 | El equipo corrige `entorno.json` y vuelve a generar la escena sin repetir otras etapas | **S** |
 | RF-MAP-01 | El orquestador extrae frames de cada video con `ffmpeg` | **C** |
@@ -185,6 +190,10 @@ flowchart LR
 | RF-INT-10 | Existe un entorno de Isaac Lab `instalar_panel`: con la base detenida, el brazo toma un panel y lo deja apoyado sobre el tubo de la estructura | **M** |
 | RF-INT-18 | La base móvil avanza entre puntos de montaje con un controlador programado, sin RL | **M** |
 | RF-INT-19 | En cada episodio, la base se detiene con ruido de ±15 cm y ±5° respecto del punto de montaje | **M** |
+| RF-INT-22 | En el entorno `instalar_panel`, la ventosa agarra el panel con una unión física fija. El brazo carga la masa real del panel | **M** |
+| RF-INT-23 | Las articulaciones del brazo usan los límites de torque y velocidad de `robot.urdf`. Hoy son supuestos de `backend/viaz/urdf.py` (`ESFUERZO_NM`, `VELOCIDAD_RAD_S`). Se reemplazan por los de la ficha del robot elegido cuando exista | **M** |
+| RF-INT-24 | En cada episodio, un evento de Isaac Lab varía la masa del panel ±10 % y la fricción de panel, tubo y ventosa ±20 % | **M** |
+| RF-INT-25 | Un evento de Isaac Lab aplica viento lateral sobre el panel agarrado | **C** |
 | RF-INT-11 | El episodio termina con éxito si el panel queda apoyado, sin chocar con la estructura, a 5 cm o menos y 5° o menos de la pose ideal | **M** |
 | RF-INT-12 | El script entrena la política con PPO en Isaac Lab, con entornos en paralelo en la GPU del pod, sin cámaras, y guarda un checkpoint cada 50 iteraciones sin borrar los anteriores | **M** |
 | RF-INT-13 | Al terminar el entrenamiento, el script carga 4 checkpoints (inicio, `primer_exito`, `exito_50` y `umbral_alcanzado`, o `mejor_recompensa` si no llega al 90 %), graba un clip de ~7 s de cada uno con la cámara lateral 3/4 fija y arma `entrenamiento_rapido.mp4` de ~30 s. Cada clip muestra el tiempo de entrenamiento y una mini curva de éxito. El primer clip abre con 1–2 s de la grilla de entornos. Si no hay `primer_exito`, usa el checkpoint del 25 % | **M** |
@@ -382,7 +391,7 @@ Estas normas aplican a los **robots reales**, no a nuestro software.
 
 ```mermaid
 flowchart TD
-  A1{"entorno.json a mano válido<br/>y escena con ≥ 3 filas"} -->|sí| A2{"Robot del catálogo con<br/>carga útil ≥ peso del panel"}
+  A1{"entorno.json a mano válido<br/>y escena con 2 filas"} -->|sí| A2{"Robot del catálogo con<br/>carga útil ≥ peso del panel"}
   A2 -->|sí| A3{"Robot construido por el agente<br/>y validado en Isaac Lab"}
   A3 -->|sí| A4{"Política: ≥ 90 % de éxito<br/>a 5 cm y 5°, en 100 episodios"}
   A4 -->|sí| A5{"Videos: cámara rápida del<br/>entrenamiento y muestra final"}
@@ -392,7 +401,7 @@ flowchart TD
   A1 & A2 & A3 & A4 & A5 & A6 & A7 -->|no| FIX[Volver a la etapa que falla]
 ```
 
-1. `entorno.json` y `tarea.json` escritos a mano validan contra su esquema, y la escena tiene al menos 3 filas.
+1. `entorno.json` y `tarea.json` escritos a mano validan contra su esquema, y la escena del demo tiene 2 filas.
 2. El robot elegido existe en `data/robots/` y su carga útil es mayor o igual al peso del panel.
 3. El agente constructor entrega un robot con `validado_en_escena: true`, en 3 intentos o menos.
 4. La política entrenada deja el panel apoyado a 5 cm y 5° o menos en al menos el 90 % de 100 episodios de evaluación, con la base detenida con ruido.
@@ -415,9 +424,9 @@ timeline
 
 | Checkpoint | Must | Should / Could (si hay tiempo) |
 |---|---|---|
-| **CP1** (sáb 11:00) | RF-MAP-11, RF-MAP-05..06, RF-TAR-02, RF-TAR-04, RF-ROB-01..04, RF-API-03..06, RF-GPU-01..04, RF-ORQ-01..02, RF-ORQ-05, RNF-01, RNF-12; ejemplo de RL de Isaac Lab en el pod; webhook de Discord creado | RF-MAP-07, RF-ROB-05..06, RF-ORQ-06 |
-| **CP2** (sáb 23:00) | RF-CLO-01..06, RF-INT-10..13, RF-INT-18..19, RF-GPU-06, RF-MON-01..04, RF-MON-08 | RF-CLO-07, RF-INT-16, RF-MON-05..06, RF-MON-09..10 |
-| **Freeze** (dom 05:00) | RF-INT-14..15, RF-WEB-06..09, RF-WEB-13, RF-WEB-15..16, RF-WEB-19, RNF-20, RNF-07, RNF-18..19, criterios de §8 | RF-INT-01, RF-INT-17, RF-INT-20..21, RF-MON-07, RF-WEB-04..05, RF-WEB-14 |
+| **CP1** (sáb 11:00) | RF-MAP-11, RF-MAP-05..06, RF-MAP-12..14, RF-TAR-02, RF-TAR-04, RF-ROB-01..04, RF-API-03..06, RF-GPU-01..04, RF-ORQ-01..02, RF-ORQ-05, RNF-01, RNF-12; ejemplo de RL de Isaac Lab en el pod; webhook de Discord creado | RF-MAP-07, RF-ROB-05..06, RF-ORQ-06 |
+| **CP2** (sáb 23:00) | RF-CLO-01..06, RF-INT-10..13, RF-INT-18..19, RF-INT-22..24, RF-GPU-06, RF-MON-01..04, RF-MON-08 | RF-CLO-07, RF-INT-16, RF-MON-05..06, RF-MON-09..10 |
+| **Freeze** (dom 05:00) | RF-INT-14..15, RF-WEB-06..09, RF-WEB-13, RF-WEB-15..16, RF-WEB-19, RNF-20, RNF-07, RNF-18..19, criterios de §8 | RF-INT-01, RF-INT-17, RF-INT-20..21, RF-MAP-15, RF-MON-07, RF-WEB-04..05, RF-WEB-14 |
 
 ## 10. Supuestos y dependencias
 
