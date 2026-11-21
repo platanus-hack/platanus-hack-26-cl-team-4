@@ -74,7 +74,12 @@ def test_fixtures_de_seleccion_v3_son_coherentes_con_el_catalogo():
     assert {f["id"]: f["alcance_min_m"] for f in req["por_robot"]} == {
         i: agentes.alcance_necesario(e, r) for i, r in robots.items()}
     candidatos = [f["id"] for f in sel["finalistas"]] + [a["id"] for a in sel["alternativas"]]
-    assert sorted(candidatos) == sorted(robots)
+    assert sorted(candidatos + [d["id"] for d in sel["descartados"]]) == sorted(robots)
+    assert {d["id"]: d["fallas"] for d in sel["descartados"]} == {
+        i: agentes._fallas(r, e) for i, r in robots.items() if agentes._fallas(r, e)}
+    # §4 regla 4: cada finalista tiene el núcleo de fisica
+    nucleo = {"largo_m", "ancho_m", "masa_kg", "altura_cubierta_m", "traccion"}
+    assert all(nucleo <= set(robots[f["id"]].get("fisica", {})) for f in sel["finalistas"])
     assert comp["ganador"] == sel["finalistas"][0]["id"]
     assert {f["id"] for f in comp["ranking"]} == {f["id"] for f in sel["finalistas"]}
 
