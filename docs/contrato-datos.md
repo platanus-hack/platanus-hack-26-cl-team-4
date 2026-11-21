@@ -9,7 +9,7 @@ flowchart LR
   T[2. Tarea] --> TJ[tarea.json]
   EJ & TJ --> R[3. Robot] --> RJ[robot.json]
   RJ --> C[4. Clon] --> CJ[clon.json<br/>robot.usd]
-  EJ & TJ & CJ --> I[5. Inteligencia] --> IJ[resultado.json<br/>video.mp4]
+  EJ & TJ & CJ --> I[5. Inteligencia] --> IJ[resultado.json<br/>trayectoria.json<br/>video.mp4]
 ```
 
 ## Reglas comunes
@@ -94,6 +94,7 @@ flowchart LR
 
 - `piezas`: nombres de assets de Isaac Lab. **[Por definir]** la lista final.
 - `validado_en_escena`: `true` si el runner cargó el clon en `escena.usd` sin errores.
+- `urdf`: lo usa el visor 3D de la web. Debe tener los mismos joints que `robot.usd`.
 
 ## `resultado.json` (etapa 5)
 
@@ -115,3 +116,48 @@ flowchart LR
 
 - `metodo`: `planificador` | `rl` | `planificador_rl`.
 - `politica`: ruta al checkpoint entrenado, o `null` si no hay RL.
+
+## `trayectoria.json` (etapa 5, para el visor 3D)
+
+```json
+{
+  "version": 1,
+  "fps": 30,
+  "articulaciones": ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"],
+  "frames": [
+    {
+      "t_s": 0.0,
+      "base": { "pos_m": [0, 0, 0], "yaw_grados": 0 },
+      "q": [0, -1.57, 1.57, 0, 0, 0],
+      "paneles": [{ "id": 0, "pos_m": [2, -3, 0.1], "quat": [1, 0, 0, 0], "instalado": false }]
+    }
+  ]
+}
+```
+
+- `articulaciones`: nombres iguales a los joints de `robot.urdf`. `q` va en radianes, en el mismo orden.
+- `paneles`: solo los paneles que se mueven en ese frame. `quat` va en orden `w, x, y, z`.
+- El sim runner guarda máximo 30 fps para que el archivo no pase de unos MB.
+
+## API (Render)
+
+Para la web:
+
+| Método | Ruta | Body | Respuesta |
+|---|---|---|---|
+| `POST` | `/proyectos` | `{"nombre", "descripcion"}` | `201 {"id", "subida": [{"archivo", "url_firmada"}]}` |
+| `POST` | `/proyectos/{id}/corridas` | — | `201 {"corrida_id"}` |
+| `GET` | `/corridas/{id}` | — | `200 {"estado", "etapas": [{"nombre", "estado", "artefactos": {"<archivo>": "<url>"}}], "error"}` |
+| `GET` | `/corridas/demo` | — | La corrida de respaldo del parque solar |
+
+- `estado`: `subiendo` | `analizando_entorno` | `eligiendo_robot` | `clonando` | `simulando` | `listo` | `error`.
+
+Para el sim runner (header `Authorization: Bearer <WORKER_TOKEN>`):
+
+| Método | Ruta | Body | Respuesta |
+|---|---|---|---|
+| `POST` | `/worker/trabajos/tomar` | — | `200 {"trabajo_id", "tipo", "corrida_id", "entradas": {"<archivo>": "<url>"}, "subidas": {"<archivo>": "<url_firmada>"}}` · `204` si no hay trabajos |
+| `POST` | `/worker/trabajos/{id}/fin` | `{"ok": true}` o `{"ok": false, "error": "..."}` | `200` |
+
+- `tipo`: `generar_escena` | `validar_clon` | `ejecutar_tarea` | `entrenar_subtarea`.
+- Un trabajo tomado y sin `fin` en 30 min vuelve a la cola.
