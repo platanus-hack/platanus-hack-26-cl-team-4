@@ -76,6 +76,7 @@ sequenceDiagram
 | `robot.usd` | Pod, en `validar_clon` | Robot listo para Isaac |
 | `clon.json` | Sistema | Contrato actual, con `validado_en_escena` y `diferencias_con_real` |
 | `robot.urdf` | Pod (Could, RF-CLO-08) | Visor web |
+| `construccion.mp4` | Pod + runner (RF-CLO-09) | Video de la construcción: un clip por intento validado en Isaac y una tarjeta por intento rechazado por reglas |
 
 ## 4. Reglas que verifica el código
 

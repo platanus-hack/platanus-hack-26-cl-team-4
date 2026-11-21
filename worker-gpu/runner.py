@@ -273,7 +273,29 @@ def grabar_clips(ctx: Contexto, d: Path) -> None:
 
 
 def validar_robot(ctx: Contexto, d: Path) -> None:
-    _correr_rl("validar_robot", ctx, d, "--salida", str(d / "validacion.json"), timeout=1800)
+    """Valida el robot y graba su construcción (RF-CLO-09). Cada intento queda en <corrida>/construccion/
+    con su rótulo; el video acumulado de todos los intentos se sube como construccion.mp4."""
+    import video
+    p = ctx.parametros
+    crudo = d / "construccion_crudo.mp4"
+    _correr_rl("validar_robot", ctx, d, "--salida", str(d / "validacion.json"), "--video", str(crudo), timeout=1800)
+    v = _leer(d, "validacion.json")
+    dir_c = ctx.dir_pod / ctx.corrida_id / "construccion"
+    dir_c.mkdir(parents=True, exist_ok=True)
+    # Intentos que las reglas rechazaron antes de llegar al pod: una tarjeta de texto cada uno.
+    for r in p.get("rechazados", []):
+        destino = dir_c / f"intento_{int(r['intento']):02d}.mp4"
+        if not destino.exists():
+            video.tarjeta(r.get("titulo", f"Intento {r['intento']}"), r.get("lineas", []), destino, segundos=3.5)
+    intento = int(p.get("intento", 1))
+    if crudo.exists():
+        estado = "robot válido en la escena" if v.get("ok") else "no pasa: " + (v.get("problemas") or ["sin detalle"])[0][:90]
+        capa = video.rotulo(p.get("etiqueta", f"Intento {intento}"), " · ".join(x for x in (p.get("pieza"), estado) if x))
+        video.superponer(crudo, capa, dir_c / f"intento_{intento:02d}.mp4")
+        crudo.unlink(missing_ok=True)
+    clips = sorted(dir_c.glob("intento_*.mp4"))
+    if clips:
+        video.unir(clips, d / "construccion.mp4")
 
 
 # ---------- despacho ----------

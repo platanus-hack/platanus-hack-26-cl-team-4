@@ -136,6 +136,58 @@ def _render(salida: Path, segundos: float, precision: float, titulo: str, grilla
         video.frames_a_mp4(Path(tmp), salida, fps=fps)
 
 
+def _cuadro_construccion(t: float, alcanza: bool):
+    """Construcción del robot: escena vacía → base → brazo → ventosa → prueba de alcance (RF-CLO-09)."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (video.ANCHO, video.ALTO), (24, 28, 36))
+    d = ImageDraw.Draw(img)
+    suelo, tubo_y = 600, 380
+    d.rectangle([0, suelo, video.ANCHO, video.ALTO], fill=(58, 52, 44))
+    for px in range(560, 1280, 260):
+        d.rectangle([px, tubo_y, px + 10, suelo], fill=(140, 145, 155))
+    d.rectangle([520, tubo_y - 8, 1280, tubo_y + 8], fill=(170, 175, 185))
+    bx = 330
+    if t >= 1.0:  # base
+        d.rectangle([bx - 90, suelo - 110, bx + 90, suelo - 30], fill=(224, 161, 6))
+        for rx in (bx - 60, bx + 60):
+            d.ellipse([rx - 28, suelo - 56, rx + 28, suelo], fill=(20, 20, 20))
+        for k in range(4):  # pila de paneles atrás
+            d.rectangle([bx - 85, suelo - 118 - k * 9, bx + 5, suelo - 112 - k * 9], fill=(40, 70, 140))
+    hombro = (bx + 40, suelo - 150)
+    if t < 2.0:
+        return img
+    # brazo: reposo, luego prueba de alcance hacia la pila y hacia el tubo
+    reposo = (hombro[0] + 30, hombro[1] - 150)
+    pila = (bx - 40, suelo - 160)
+    tubo = (560, tubo_y - 18) if alcanza else (hombro[0] + (560 - hombro[0]) * 0.72, tubo_y - 60)
+    if t < 4.0:
+        ef = reposo
+    else:
+        f = min(1.0, (t - 4.0) / 3.0)
+        a, b, u = (reposo, pila, f / 0.4) if f < 0.4 else (pila, tubo, (f - 0.4) / 0.6)
+        u = u * u * (3 - 2 * u)
+        ef = (a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u)
+    codo = ((hombro[0] + ef[0]) / 2 - 30, min(hombro[1], ef[1]) - 80)
+    d.line([hombro, codo, ef], fill=(210, 212, 218), width=14)
+    d.ellipse([hombro[0] - 14, hombro[1] - 14, hombro[0] + 14, hombro[1] + 14], fill=(90, 95, 105))
+    if t >= 3.0:  # ventosa
+        d.rectangle([ef[0] - 22, ef[1] - 4, ef[0] + 22, ef[1] + 10], fill=(30, 30, 30))
+    if t >= 6.8 and not alcanza:
+        d.line([ef[0] + 30, ef[1] - 20, ef[0] + 60, ef[1] + 10], fill=(230, 80, 70), width=6)
+        d.line([ef[0] + 60, ef[1] - 20, ef[0] + 30, ef[1] + 10], fill=(230, 80, 70), width=6)
+    return img
+
+
+def _render_construccion(salida: Path, alcanza: bool, segundos: float = 7.5) -> None:
+    tope = os.getenv("VIAZ_SIM_SEGUNDOS_CLIP")
+    fps = 15 if tope else video.FPS
+    pasos = max(1, int(segundos * fps))
+    with tempfile.TemporaryDirectory() as tmp:
+        for k in range(0, pasos, 1 if not tope else max(1, pasos // max(1, int(float(tope) * fps)))):
+            _cuadro_construccion(k / fps, alcanza).save(Path(tmp) / f"f_{len(list(Path(tmp).glob('f_*.png'))):04d}.png")
+        video.frames_a_mp4(Path(tmp), salida, fps=fps)
+
+
 # ---------- evaluar, grabar_clip, validar_robot ----------
 
 def evaluar(a) -> None:
@@ -178,6 +230,8 @@ def validar_robot(a) -> None:
     salida = {"ok": not v["problemas"], "problemas": v["problemas"], "fuente": "simulado",
               "paneles_planificados": v.get("paneles_planificados", 0)}
     Path(a.salida).write_text(json.dumps(salida, ensure_ascii=False, indent=2), encoding="utf-8")
+    if a.video:
+        _render_construccion(Path(a.video), alcanza=not any("alcance" in x for x in v["problemas"]))
 
 
 def main() -> None:

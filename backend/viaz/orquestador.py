@@ -222,15 +222,25 @@ def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: 
     assets = rc.cargar_assets()
     necesario = agentes.alcance_necesario(entorno)
     previo, problemas = None, []
-    candidatos = [("agente", i) for i in range(1, cfg.intentos_constructor + 1)] + [("determinista", 0)]
+    rechazados: list[dict] = []   # intentos que no llegan al pod: van como tarjetas en construccion.mp4
+    total = cfg.intentos_constructor
+    candidatos = [("agente", i) for i in range(1, total + 1)] + [("determinista", total + 1)]
     for metodo, intento in candidatos:
+        titulo = (f"Intento {intento} de {total} del agente constructor" if metodo == "agente"
+                  else "Respaldo: ensamblaje por defecto, sin LLM")
         try:
             ens = (agentes.constructor(cfg.agentes, cfg.modelo, robot, entorno, tarea, assets, intento, problemas, previo)
                    if metodo == "agente" else validar("ensamblaje", rc.ensamblaje_por_defecto(robot, assets)))
         except agentes.ErrorAgente as e:
             problemas, previo = [f"respuesta inválida del agente: {e}"], None
+            rechazados.append({"intento": intento, "titulo": titulo, "lineas": ["Respuesta inválida del agente.", str(e)[:90]]})
             continue
         problemas = rc.problemas(ens, robot, assets, necesario)
+        pieza = (f"{ens['brazo']['asset'].upper()} ×{ens['brazo']['escala_alcance']:.2f} + "
+                 f"{ens['efector']['asset'].replace('_', ' ')} sobre {ens['base']['asset'].replace('_', ' ')}")
+        if problemas:
+            rechazados.append({"intento": intento, "titulo": titulo,
+                               "lineas": [pieza, "Rechazado por las reglas antes de ir a Isaac:", *[x[:95] for x in problemas[:3]]]})
         if not problemas:
             clon = rc.clon(ens, robot, assets, intento)
             if metodo == "determinista":
@@ -241,13 +251,15 @@ def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: 
             c.escribir("clon.json", validar("clon", clon))
             c.escribir("robot.urdf", urdf.generar(robot["id"], clon["escala"]["alcance_m"]))
             c.trabajo_gpu("validar_robot", ["entorno.json", "tarea.json", "escena.usd", "robot_cfg.py", "clon.json"],
-                          ["validacion.json"])
+                          ["validacion.json", "construccion.mp4"],
+                          {"intento": intento, "etiqueta": titulo, "pieza": pieza, "rechazados": rechazados})
             v = c.leer_json("validacion.json")
             if v.get("ok"):
                 clon["validado_en_escena"] = True
                 c.escribir("clon.json", validar("clon", clon))
                 log.info("corrida %s: robot construido (%s, intento %s)", c.id, metodo, intento)
-                return ["ensamblaje.json", "robot_cfg.py", "clon.json", "robot.urdf", "validacion.json"]
+                return ["ensamblaje.json", "robot_cfg.py", "clon.json", "robot.urdf", "validacion.json"] + \
+                    (["construccion.mp4"] if c.existe("construccion.mp4") else [])
             problemas = v.get("problemas") or ["validar_robot falló sin detalle"]
         log.info("corrida %s: constructor %s intento %s con problemas: %s", c.id, metodo, intento, problemas)
         previo = ens

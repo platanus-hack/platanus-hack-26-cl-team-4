@@ -90,9 +90,16 @@ def rotulo(texto_grande: str, texto_chico: str, curva=None, aviso: str = "Simula
     from PIL import Image, ImageDraw
     capa = Image.new("RGBA", (ANCHO, ALTO), (0, 0, 0, 0))
     d = ImageDraw.Draw(capa)
-    d.rounded_rectangle([24, 24, 24 + 620, 24 + 92], radius=10, fill=(15, 18, 23, 200))
-    d.text((40, 34), texto_grande, font=_fuente(34), fill=(255, 255, 255, 255))
-    d.text((40, 78), texto_chico, font=_fuente(20), fill=(200, 205, 215, 255))
+    maximo = ANCHO - 24 - 150 - 24 - 32 - 24   # sin tapar la etiqueta "Simulación"
+    tam_g, tam_c = 34, 20
+    while tam_g > 18 and d.textlength(texto_grande, font=_fuente(tam_g)) > maximo:
+        tam_g -= 2
+    while tam_c > 12 and d.textlength(texto_chico, font=_fuente(tam_c)) > maximo:
+        tam_c -= 1
+    ancho = max(d.textlength(texto_grande, font=_fuente(tam_g)), d.textlength(texto_chico, font=_fuente(tam_c)), 300) + 32
+    d.rounded_rectangle([24, 24, 24 + ancho, 24 + 92], radius=10, fill=(15, 18, 23, 200))
+    d.text((40, 34 + (34 - tam_g) // 2), texto_grande, font=_fuente(tam_g), fill=(255, 255, 255, 255))
+    d.text((40, 78), texto_chico, font=_fuente(tam_c), fill=(200, 205, 215, 255))
     d.rounded_rectangle([ANCHO - 24 - 150, 24, ANCHO - 24, 24 + 36], radius=8, fill=(224, 161, 6, 230))
     d.text((ANCHO - 24 - 140, 31), aviso, font=_fuente(20), fill=(26, 19, 0, 255))
     if curva is not None:
@@ -123,3 +130,22 @@ def unir(clips: list[Path], salida: Path) -> Path:
 def texto_tiempo(segundos: float) -> str:
     h, m = int(segundos // 3600), int(segundos % 3600 // 60)
     return f"{h} h {m:02d} min" if h else f"{m} min"
+
+
+def tarjeta(titulo: str, lineas: list[str], salida: Path, segundos: float = 3.0, aviso: str = "Simulación") -> Path:
+    """Clip de texto fijo (por ejemplo, un intento del agente rechazado por reglas antes de ir al pod)."""
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (ANCHO, ALTO), (24, 28, 36))
+    d = ImageDraw.Draw(img)
+    d.text((80, 200), titulo, font=_fuente(44), fill=(255, 255, 255))
+    for k, linea in enumerate(lineas[:6]):
+        d.text((80, 290 + k * 46), linea, font=_fuente(28), fill=(205, 210, 220))
+    d.rounded_rectangle([ANCHO - 24 - 150, 24, ANCHO - 24, 24 + 36], radius=8, fill=(224, 161, 6))
+    d.text((ANCHO - 24 - 140, 31), aviso, font=_fuente(20), fill=(26, 19, 0))
+    with tempfile.TemporaryDirectory() as tmp:
+        png = Path(tmp) / "t.png"
+        img.save(png)
+        _correr(["-loop", "1", "-framerate", str(FPS), "-i", str(png), "-t", str(segundos),
+                 "-vf", f"scale={ANCHO}:{ALTO}", "-c:v", "libx264", "-pix_fmt", "yuv420p", str(salida)])
+    return salida
+

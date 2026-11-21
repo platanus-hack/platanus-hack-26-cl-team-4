@@ -189,6 +189,7 @@ Para el sim runner (header `Authorization: Bearer <WORKER_TOKEN>`):
 | `metricas.jsonl` | Entorno RL (en el pod); llega a la API por latido | [`metricas.schema.json`](../backend/viaz/esquemas/metricas.schema.json) |
 | `curva.json`, `checkpoints.json` | Runner, al terminar `entrenar` | [`curva.schema.json`](../backend/viaz/esquemas/curva.schema.json) |
 | `monitoreo.jsonl`, `hitos.json` | Orquestador (agente monitor) | [`monitoreo.schema.json`](../backend/viaz/esquemas/monitoreo.schema.json), [`hitos.schema.json`](../backend/viaz/esquemas/hitos.schema.json) |
+| `construccion.mp4` | Entorno RL (`validar_robot --video`) + runner (rótulos y tarjetas por intento) | — |
 | `entrenamiento_rapido.mp4`, `video_info.json` | Runner (`grabar_clips`) | — |
 | `evaluacion.json`, `video.mp4`, `politica.pt` | Entorno RL (`evaluar`) | [`evaluacion.schema.json`](../backend/viaz/esquemas/evaluacion.schema.json) |
 | `resultado.json` | Runner + orquestador | `resultado.schema.json`, con `evaluacion` y `entrenamiento` |

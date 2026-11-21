@@ -102,7 +102,7 @@ def test_flujo_rl_completo(sistema):
     assert r["evaluacion"]["episodios"] == 100 and len(r["evaluacion"]["tolerancias"]) == 2
     assert r["metricas"]["tasa_exito"] >= 0.9
     assert r["entrenamiento"]["factor_video"] and r["entrenamiento"]["iteraciones"] > 0
-    for v in ("entrenamiento_rapido.mp4", "video.mp4"):
+    for v in ("construccion.mp4", "entrenamiento_rapido.mp4", "video.mp4"):
         assert requests.get(a[v], timeout=10).content[4:8] == b"ftyp", v  # es un mp4
     chequeos = [json.loads(x) for x in requests.get(a["monitoreo.jsonl"], timeout=5).text.splitlines()]
     assert chequeos and chequeos[-1]["hito"] == "fin"
@@ -227,3 +227,8 @@ def test_constructor_reintenta_y_usa_respaldo(sistema, monkeypatch):
     clon = json.loads(store.leer(alm.clave_corrida(c["id"], "clon.json")))
     assert clon["construccion"]["metodo"] == "determinista"
     assert len(vistos) == 3 and vistos[0] == [] and any("carga_util_kg" in p for p in vistos[1])
+    # construccion.mp4: 3 tarjetas de intentos rechazados (3,5 s c/u) + el clip del respaldo
+    sys.path.insert(0, str(RAIZ / "sim"))
+    import video
+    destino = Path(store.raiz) / alm.clave_corrida(c["id"], "construccion.mp4")
+    assert video.duracion_s(destino) > 3 * 3.5

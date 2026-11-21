@@ -19,7 +19,7 @@ flowchart LR
   E1 -->|"metricas.jsonl<br/>checkpoints/model_N.pt"| RUN
   E2 -->|"evaluacion.json<br/>video.mp4"| RUN
   E3 -->|"clip.mp4"| RUN
-  E4 -->|"validacion.json"| RUN
+  E4 -->|"validacion.json<br/>clip de construcción"| RUN
   RUN -.->|"archivo DETENER"| E1
 ```
 
@@ -107,11 +107,16 @@ $VIAZ_CMD_CLIP --entorno E --tarea T --robot R --escena S --checkpoint C --segun
 ## 6. `validar_robot`
 
 ```text
-$VIAZ_CMD_VALIDAR_ROBOT --entorno E --tarea T --robot R --escena S --salida DIR/validacion.json
+$VIAZ_CMD_VALIDAR_ROBOT --entorno E --tarea T --robot R --escena S --salida DIR/validacion.json [--video DIR/construccion.mp4]
 ```
 
 - Carga el robot de `robot_cfg.py` en la escena, revisa que no choque al inicio, que la ventosa alcance el panel y el tubo, y que soporte `panel.peso_kg`.
 - Escribe `{"ok": bool, "problemas": ["..."], "fuente": "isaac"}`. Cada problema en una oración con números: el agente constructor los lee para corregir (RF-CLO-05).
+- **Con `--video`: graba la construcción (RF-CLO-09).** 6 a 10 s, cámara lateral 3/4 fija, 1280 × 720, sin texto encima:
+  1. La escena vacía (1 s).
+  2. Aparece la base, después el brazo y al final la ventosa (≈ 1 s cada pieza).
+  3. Movimiento de prueba: el brazo va hacia la pila y hacia el tubo. Si no alcanza, que se vea dónde se queda.
+- El runner agrega el rótulo de cada intento ("Intento 2 de 3 · UR10 ×1,65 + ventosa larga · ✓ válido") y une los intentos en `construccion.mp4`.
 
 ## 7. `robot_cfg.py`
 
