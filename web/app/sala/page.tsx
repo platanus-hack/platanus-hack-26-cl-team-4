@@ -7,7 +7,7 @@ import Script from "next/script";
 import { createElement, useEffect, useRef, useState } from "react";
 
 // Sube este número al regenerar los modelos: obliga al celular a bajar los archivos nuevos y no usar los guardados.
-const VERSION = 3;
+const VERSION = 4;
 
 const MODELOS = {
   maqueta: {

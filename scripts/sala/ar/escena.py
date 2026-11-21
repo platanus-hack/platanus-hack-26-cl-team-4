@@ -350,6 +350,8 @@ VARIANTES = {
     "robot": {"sala": False, "escala": 1.0, "fila_z": -1.0, "fila_x": [-1.9, -0.95, 0.0, 0.95, 1.9],
               "z_fin": 1.3, "escaneo": (5.2, 2.2, 0.0, -2.2, 1.9)},
 }
+# Diagnóstico (/sala/prueba): la misma escena sin el muro de números, para aislar qué rompe la AR del iPhone.
+VARIANTES["prueba_sin_escaneo"] = {**VARIANTES["robot"], "escaneo": None}
 
 
 def construir(variante: str):
@@ -372,6 +374,10 @@ def construir(variante: str):
                       (r0, MINIMO), (r0 + 0.5, 1.0), (fin, 1.0)]
             hijos.append(Nodo(f"robot_{fabrica.__name__.split('_')[1]}", fabrica(), t=(x, 0, cfg["fila_z"]),
                               pistas={"s": escala}))
+    if cfg["escaneo"] is None:
+        raiz = Nodo("viaz", hijos=hijos, pistas={})
+        _tiempos_crecientes(raiz)
+        return raiz, fin
     ancho, alto, cx, z_desde, z_hasta = cfg["escaneo"]
     e0, e1 = T_ESCANEO
     hijos.append(Nodo("escaneo", escaneo(ancho, alto), pistas={
