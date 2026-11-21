@@ -88,7 +88,7 @@ flowchart LR
 
 - **Del agente:** el agente devuelve solo `id`, `justificacion` y `alternativas`. El `id` es un `enum` con los ids del catálogo.
 - **Specs:** todas las specs salen de [`backend/viaz/catalogo/robots/`](../backend/viaz/catalogo/robots/), nunca del modelo.
-- **Campos opcionales nuevos (contrato v3):** `origen` (`catalogo` | `busqueda`; sin el campo, `catalogo`) y `capacidades` (tareas que el robot hace según su fuente). Ningún código los lee todavía.
+- **Campos opcionales nuevos (contrato v3):** `origen` vale `catalogo` o `busqueda`, y sin el campo vale `catalogo`. `capacidades` lista las tareas que el robot hace según su fuente. Ningún código los lee todavía.
 
 ## Selección v3: `requisitos.json`, `seleccion.json`, `comparacion.json`
 

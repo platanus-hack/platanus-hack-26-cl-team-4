@@ -117,7 +117,7 @@ flowchart TD
 - El chequeo en la escena corre siempre, porque el alcance y los choques dependen del lugar.
 - La política entrenada no se reusa entre tareas ni entre lugares.
 - **Costo:** con un pod, 3 finalistas tardan 3 veces lo que tarda uno.
-- **Llega en:** PR 4 (modelo comprobado) y PR 5 (corridas hijas).
+- **Llega en:** PR 4 para el modelo comprobado y PR 5 para las corridas hijas.
 
 ## 6. Las reglas eligen al ganador
 
@@ -177,4 +177,4 @@ stateDiagram-v2
 | 3 | Agente de búsqueda | 3 |
 | 4 | Registro de modelos comprobados | 5 |
 | 5 | Corridas hijas y comparación | 5 y 6 |
-| 6 | Web | — |
+| 6 | Web | Ninguno |

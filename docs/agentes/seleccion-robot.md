@@ -57,12 +57,12 @@ flowchart TD
 | `entorno.json`, `tarea.json` | Escritos a mano por el equipo (demo) o agentes de mapeo y tarea |
 | `requisitos.json` | Perfil de dominio (código), desde `entorno.json` y `tarea.json` |
 | Catálogo | `catalogo/robots/*.json`, validado contra `robot.schema.json` al cargar |
-| Fichas encontradas | Paso de búsqueda, validadas contra `robot.schema.json`; se guardan en el almacén de la corrida |
+| Fichas encontradas | Paso de búsqueda, validadas contra `robot.schema.json`. Se guardan en el almacén de la corrida |
 | Modelos comprobados | `sim/assets_aprobados/<id>/` (receta) + `robot.usd` en el almacén |
 
 ### Paso 1: perfil de dominio
 
-- **Qué hace:** traduce el dominio a requisitos neutros. La selección lee `requisitos.json`; no lee "panel" ni "tubo".
+- **Qué hace:** traduce el dominio a requisitos neutros. La selección lee `requisitos.json`. No lee "panel" ni "tubo".
 - **Perfil `solar`:** contiene las reglas de hoy (`_fallas()`, `alcance_necesario()`). Otro dominio agrega su propio perfil.
 
 | Campo de `requisitos.json` | Perfil `solar` |
@@ -70,7 +70,7 @@ flowchart TD
 | `objeto` | `entorno.panel` (largo, ancho, peso) |
 | `carga_min_kg` | `panel.peso_kg` |
 | `efectores_aceptados` | `["ventosa"]` |
-| `movilidad`, `tipos_aceptados` | `movil`; pendiente > 10° → solo `vehiculo_con_brazo`; nunca `brazo_fijo` |
+| `movilidad`, `tipos_aceptados` | `movil`. Con pendiente mayor a 10°, solo `vehiculo_con_brazo`. Nunca `brazo_fijo` |
 | `por_robot[].alcance_min_m` | `alcance_necesario(entorno, ficha)` |
 | `preferencias` | Velocidad de base, margen de carga y alcance, real sobre ficticio, menos specs estimadas |
 | `advertencias` | Cada dato de `entorno.confianza` menor a 1 |
@@ -84,14 +84,14 @@ flowchart LR
 
 - **Fórmula:** `√(d² + dz²) + muñeca + 0,05 m de margen`, con `dz = altura + 0,09 + muñeca − hombro_z`. La muñeca mide 0,30 m.
 - **Depende del robot:** un vehículo más ancho queda más lejos del tubo. Uno más alto sube el hombro. Por eso hay una fila por robot.
-- **Ejemplo (fixture):** tracker de 1,5 m y panel de 2,38 m → **2,28 m** con la base genérica y **2,53 m** para `leapting-mmr` (1,8 m de ancho).
+- **Ejemplo (fixture):** tracker de 1,5 m y panel de 2,38 m dan **2,28 m** con la base genérica y **2,53 m** para `leapting-mmr` (1,8 m de ancho).
 - **Verificado:** para alturas de 0,8 a 4 m y paneles de 1,7 a 2,8 m, un clon con ese alcance pasa `plan.validar()`.
 
 ### Paso 2: búsqueda web
 
 - **Qué hace:** busca robots reales que hagan la tarea y no estén en el catálogo. Devuelve fichas con el formato del catálogo.
 - **Cada ficha encontrada:** `origen: "busqueda"`, `fuente.url`, `fuente.consultado`. Cada valor que la fuente no publica va en `estimados` con su motivo.
-- **Validación:** el código valida cada ficha contra el esquema. Las inválidas van a `seleccion.busqueda.invalidas` y al log. Nunca se botan en silencio.
+- **Validación:** el código valida cada ficha contra el esquema. Las inválidas van a `seleccion.busqueda.invalidas` y al log. Cada ficha rechazada queda registrada.
 - **Límites:** máximo de robots y de tiempo, por configuración. Al llegar al límite, `busqueda.estado` es `cortada`.
 - **Falla:** no hace fallar la corrida. `busqueda.estado` queda `fallida` y la selección sigue con el catálogo.
 - **Promoción:** una persona pasa una ficha encontrada a `catalogo/robots/` con un PR.
@@ -110,7 +110,7 @@ flowchart LR
 | `busqueda` | Código | `estado` (`completa`, `cortada`, `fallida`, `omitida`), `detalle`, `invalidas` |
 | `encontrados` | Código | Ids de las fichas válidas de la búsqueda |
 | `descartados` | Código | `{id, fallas}` del paso 3 |
-| `finalistas` | Agente | 1 a 3 `{id, puesto, justificacion}`. Tope fijo 3; `VIAZ_MAX_FINALISTAS` (por defecto 3) puede bajarlo |
+| `finalistas` | Agente | 1 a 3 `{id, puesto, justificacion}`. El tope fijo es 3. `VIAZ_MAX_FINALISTAS` puede bajarlo y vale 3 por defecto |
 | `alternativas` | Agente | Candidatos válidos no finalistas, con `por_que_no` |
 
 ### `robot.json` (uno por finalista)
@@ -126,9 +126,9 @@ flowchart LR
 | `ganador`, `regla`, `ranking` | Código | Primero `tasa_exito` (tolerancia de entrenamiento), luego menor `ciclo_s` |
 | `condiciones` | Código | Misma escena, mismas horas, mismas semillas y tolerancias para todos |
 | `ranking[].fidelidad` | Código | Copia de `clon.json → fidelidad` |
-| `advertencias` | Código | Niveles de fidelidad distintos; corrida hija que falló |
+| `advertencias` | Código | Niveles de fidelidad distintos y corridas hijas que fallaron |
 | `que_compara`, `que_no_compara` | Código | Texto fijo (ver abajo) |
-| `explicacion` | Agente | Explica la regla; no la cambia |
+| `explicacion` | Agente | Explica la regla. No la cambia |
 
 - **Qué compara la simulación:** alcance, tamaño, masa, carga útil y velocidad de la base.
 - **Qué no compara:** los motores y el control reales. Todos los clones usan un brazo de Isaac Lab escalado (`ur10` o `franka_panda`).
@@ -189,10 +189,10 @@ Ejemplo de ranking con dos finalistas (hipotético; hoy solo `leapting-mmr` pued
 
 | Caso | Resultado |
 |---|---|
-| Id de finalista o alternativa fuera de los candidatos | `ErrorAgente` → corrida en `error` |
-| Catálogo vacío o inválido | `ValueError` al cargar → corrida en `error` |
-| Búsqueda falla o se pasa del tiempo | `busqueda.estado` = `fallida` o `cortada`; la selección sigue con el catálogo |
-| Ficha encontrada inválida | Va a `busqueda.invalidas` y al log; no entra a los candidatos |
+| Id de finalista o alternativa fuera de los candidatos | `ErrorAgente`. La corrida pasa a `error` |
+| Catálogo vacío o inválido | `ValueError` al cargar. La corrida pasa a `error` |
+| Búsqueda falla o se pasa del tiempo | `busqueda.estado` queda en `fallida` o `cortada`. La selección sigue con el catálogo |
+| Ficha encontrada inválida | Va a `busqueda.invalidas` y al log. No entra a los candidatos |
 | Una corrida hija falla | Queda fuera del ranking, con aviso en `comparacion.advertencias` |
 | Todas las corridas hijas fallan | Corrida padre en `error` |
 
@@ -201,7 +201,7 @@ Ejemplo de ranking con dos finalistas (hipotético; hoy solo `leapting-mmr` pued
 - **Hoy:** cada ficha del catálogo valida y su `id` coincide con el archivo. Los 3 fixtures v3 validan contra su esquema.
 - **Hoy:** `requisitos.json → por_robot` coincide con `alcance_necesario()` para cada ficha (`test_esquemas.py`).
 - **Regla de alcance:** `alcance_necesario()` vs `sim/plan.py` → `validar()` (ver §2).
-- **Por hacer:** descarte por reglas con fichas que fallan cada requisito; tope de finalistas; regla de la comparación con empates.
+- **Por hacer:** descarte por reglas con fichas que fallan cada requisito, tope de finalistas y regla de la comparación con empates.
 - **Con Claude:** revisar a mano 3 corridas. La justificación debe citar carga, alcance y terreno.
 
 ## Decisiones abiertas
