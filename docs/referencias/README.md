@@ -8,4 +8,4 @@
 
 Estándar: [`docs/calidad-virtualizacion.md`](../calidad-virtualizacion.md).
 
-**Pendiente:** subir aquí las capturas del intento 6 (aprobado) y de los intentos 1 a 5 (rechazados) de la escena del demo.
+**Ya están** las capturas aprobadas y rechazadas de la escena del demo, y la [especificación perceptual](especificacion-perceptual.md) que sale de compararlas.
