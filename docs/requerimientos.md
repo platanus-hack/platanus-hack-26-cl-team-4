@@ -432,7 +432,7 @@ timeline
 
 ## 10. Supuestos y dependencias
 
-- Hay un pod con GPU RTX y driver 580 (Vast.ai, ver [`infraestructura.md`](infraestructura.md) §2) que aprobó la prueba de humo de [`infraestructura.md`](infraestructura.md) §5, incluido un ejemplo de RL de Isaac Lab.
+- Hay un pod con GPU RTX y driver 580 (Vast.ai, ver [`infraestructura.md`](infraestructura.md) §2) que aprobó la prueba de humo de [`infraestructura.md`](infraestructura.md) §6, incluido un ejemplo de RL de Isaac Lab.
 - Hay horas de pod suficientes para entrenar (RNF-17) y para repetir el entrenamiento 1 vez si falla.
 - El equipo tiene un canal de Discord y crea un webhook para el monitor.
 - Hay crédito en Render (US$50) y una cuenta de Cloudflare R2.
