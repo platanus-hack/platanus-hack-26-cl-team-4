@@ -33,6 +33,7 @@ MATERIALES = {
     "acero":   {"estatica": 0.3, "dinamica": 0.3, "restitucion": 0.0},   # tubo de torsión y postes galvanizados
     "panel":   {"estatica": 0.4, "dinamica": 0.4, "restitucion": 0.0},   # marco de aluminio anodizado
     "ventosa": {"estatica": 1.0, "dinamica": 1.0, "restitucion": 0.0},   # goma de la ventosa
+    "objeto":  {"estatica": 0.5, "dinamica": 0.5, "restitucion": 0.0},   # muebles y objetos de espacios genéricos (supuesto)
 }
 # Coeficiente por tipo de suelo (terreno.suelo de entorno.json). Si entorno.json trae terreno.friccion, manda ese valor.
 SUELOS = {"desierto_atacama": 0.6, "tierra_compactada": 0.6, "ripio": 0.6, "arena": 0.5, "pasto": 0.4}
