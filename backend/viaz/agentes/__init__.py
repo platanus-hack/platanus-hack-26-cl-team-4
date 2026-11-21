@@ -83,19 +83,27 @@ def tarea(modo: str, modelo: str, proyecto: dict, entorno_json: dict, frames: li
 SISTEMA_ROBOT = _prompt("robot")
 
 
-def alcance_necesario(entorno_json: dict) -> float:
+def alcance_necesario(entorno_json: dict, robot_json: dict | None = None) -> float:
     """Alcance mínimo (m) para dejar un panel sobre el tubo de la fila 0 desde el pasillo.
-    Misma geometría que urdf.py y sim/plan.py: hombro sobre la base, muñeca de largo fijo."""
-    hombro_z = urdf.CUBIERTA_Z + urdf.HOMBRO_ALTO
+    Misma geometría que urdf.py y sim/plan.py: hombro sobre la base, muñeca de largo fijo.
+    Depende del robot: un vehículo más ancho queda más lejos del tubo y uno más alto sube el hombro."""
+    v = urdf.vehiculo((robot_json or {}).get("fisica"))
+    hombro_z = v.cubierta_z + urdf.HOMBRO_ALTO
     muneca = sum(urdf.MUNECA)
-    d = entorno_json["panel"]["largo_m"] / 2 + 0.56          # sim/plan.py: distancia_pasillo
+    d = entorno_json["panel"]["largo_m"] / 2 + v.ancho / 2 + 0.06   # sim/plan.py: distancia_pasillo
     dz = entorno_json["estructura"]["altura_m"] + 0.05 + 0.04 + muneca - hombro_z  # tubo + panel + muñeca
     return round(math.ceil((math.hypot(d, dz) + muneca) * 100) / 100 + 0.05, 2)  # +5 cm de margen: justo en el límite, la IK falla
 
 
-def _fallas(r: dict, entorno_json: dict, necesario: float) -> list[str]:
+def _specs_estimadas(r: dict) -> list[str]:
+    """Specs de selección que el fabricante no publica. Las medidas `fisica.*` son del clon, no de la selección."""
+    return [k for k in r.get("estimados", {}) if not k.startswith("fisica.")]
+
+
+def _fallas(r: dict, entorno_json: dict) -> list[str]:
     """Criterios obligatorios del prompt de selección (prompts/robot.md)."""
     f = []
+    necesario = alcance_necesario(entorno_json, r)
     if r["carga_util_kg"] < entorno_json["panel"]["peso_kg"]:
         f.append(f"carga útil de {r['carga_util_kg']} kg menor que el panel ({entorno_json['panel']['peso_kg']} kg)")
     if r["efector"] != "ventosa":
@@ -111,27 +119,26 @@ def _fallas(r: dict, entorno_json: dict, necesario: float) -> list[str]:
 
 def eleccion_por_reglas(entorno_json: dict, catalogo: dict[str, dict]) -> dict:
     """Modo fijo (sin LLM): mismos criterios del prompt, en el mismo orden. Determinista."""
-    necesario = alcance_necesario(entorno_json)
     def clave(r):
-        return (len(_fallas(r, entorno_json, necesario)), r["ficticio"], len(r.get("estimados", {})),
+        return (len(_fallas(r, entorno_json)), r["ficticio"], len(_specs_estimadas(r)),
                 -min(r["carga_util_kg"] / entorno_json["panel"]["peso_kg"], 3), -r["alcance_m"])
     orden = sorted(catalogo.values(), key=clave)
     r = orden[0]
-    fallas = _fallas(r, entorno_json, necesario)
+    fallas, necesario = _fallas(r, entorno_json), alcance_necesario(entorno_json, r)
     partes = [f"{r['nombre']} carga {r['carga_util_kg']} kg y el panel pesa {entorno_json['panel']['peso_kg']} kg",
               f"su alcance de {r['alcance_m']} m cubre los {necesario} m necesarios para dejar el panel sobre el tubo"
               if r["alcance_m"] >= necesario else f"su alcance de {r['alcance_m']} m no cubre los {necesario} m necesarios"]
     texto = ("No hay un robot que cumpla todo: " + "; ".join(fallas) + ". " if fallas else "") + \
         ("Lo elegimos porque " + " y ".join(partes) + ".")
-    if r.get("estimados"):
-        texto += f" Ojo: el fabricante no publica {', '.join(r['estimados'])}; esos valores son estimaciones."
+    if _specs_estimadas(r):
+        texto += f" Ojo: el fabricante no publica {', '.join(_specs_estimadas(r))}; esos valores son estimaciones."
     if r["ficticio"]:
         texto += " Es un robot de referencia ficticio."
     alternativas = []
     for o in orden[1:]:
-        f = _fallas(o, entorno_json, necesario)
+        f = _fallas(o, entorno_json)
         motivo = ("; ".join(f) if f else "ficticio" if o["ficticio"] else
-                  f"specs estimadas ({', '.join(o['estimados'])})" if o.get("estimados") else "menor margen de carga y alcance")
+                  f"specs estimadas ({', '.join(_specs_estimadas(o))})" if _specs_estimadas(o) else "menor margen de carga y alcance")
         alternativas.append({"id": o["id"], "por_que_no": motivo})
     return {"id": r["id"], "justificacion": texto + " (Elección por reglas, sin LLM.)", "alternativas": alternativas}
 
@@ -151,8 +158,7 @@ def robot(modo: str, modelo: str, entorno_json: dict, tarea_json: dict, catalogo
         }
         texto = (f"entorno.json:\n{json.dumps(entorno_json, ensure_ascii=False)}\n\n"
                  f"tarea.json:\n{json.dumps(tarea_json, ensure_ascii=False)}\n\n"
-                 f"alcance_necesario_m: {alcance_necesario(entorno_json)}\n\n"
-                 f"Catálogo:\n{json.dumps(list(catalogo.values()), ensure_ascii=False)}")
+                 f"Catálogo:\n{json.dumps([{**r, 'alcance_necesario_m': alcance_necesario(entorno_json, r)} for r in catalogo.values()], ensure_ascii=False)}")
         eleccion = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=esq,
                               contenido=[{"type": "text", "text": texto}])
     if eleccion["id"] not in catalogo:
@@ -170,7 +176,8 @@ def clon(robot_json: dict) -> tuple[dict, str]:
     if robot_json["tipo"] != "base_movil_brazo":
         raise ErrorAgente(f"todavía no hay clon para robots tipo {robot_json['tipo']}")
     diferencias = ["geometría primitiva (cajas y cilindros), sin mallas del fabricante",
-                   "base con 4 ruedas fijas; se mueve sin simular tracción",
+                   "vehículo con las medidas y la masa del fabricante; las orugas no giran y se mueve sin simular tracción"
+                   if robot_json.get("fisica") else "base con 4 ruedas fijas; se mueve sin simular tracción",
                    "brazo genérico de 6 ejes escalado al alcance del robot real"]
     if robot_json["ficticio"]:
         diferencias.insert(0, "el robot de referencia es ficticio")
@@ -178,11 +185,11 @@ def clon(robot_json: dict) -> tuple[dict, str]:
         "version": 1, "robot_id": robot_json["id"], "usd": None, "urdf": "robot.urdf",
         "piezas": {"base": "caja_4_ruedas", "brazo": "brazo_6_ejes", "efector": robot_json["efector"]},
         "escala": {"alcance_m": robot_json["alcance_m"], "carga_util_kg": robot_json["carga_util_kg"]},
-        "geometria": urdf.geometria(robot_json["alcance_m"]),
+        "geometria": urdf.geometria(robot_json["alcance_m"], robot_json.get("fisica")),
         "diferencias_con_real": diferencias,
         "validado_en_escena": False,
     }
-    return validado("clon", datos), urdf.generar(robot_json["id"], robot_json["alcance_m"])
+    return validado("clon", datos), urdf.generar(robot_json["id"], robot_json["alcance_m"], robot_json.get("fisica"))
 
 
 # ---------- 4b. Constructor del robot en Isaac Lab ----------

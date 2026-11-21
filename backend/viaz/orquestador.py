@@ -220,7 +220,7 @@ def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: 
     """Agente constructor con hasta N intentos (RF-CLO-05). Si no logra un robot válido, usa el ensamblaje
     por defecto, sin LLM (RF-CLO-07). Devuelve los artefactos de la etapa."""
     assets = rc.cargar_assets()
-    necesario = agentes.alcance_necesario(entorno)
+    necesario = agentes.alcance_necesario(entorno, robot)
     previo, problemas = None, []
     rechazados: list[dict] = []   # intentos que no llegan al pod: van como tarjetas en construccion.mp4
     total = cfg.intentos_constructor
@@ -249,7 +249,7 @@ def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: 
             c.escribir("ensamblaje.json", ens)
             c.escribir("robot_cfg.py", rc.generar(ens, assets))
             c.escribir("clon.json", validar("clon", clon))
-            c.escribir("robot.urdf", urdf.generar(robot["id"], clon["escala"]["alcance_m"]))
+            c.escribir("robot.urdf", urdf.generar(robot["id"], clon["escala"]["alcance_m"], robot.get("fisica")))
             c.trabajo_gpu("validar_robot", ["entorno.json", "tarea.json", "escena.usd", "robot_cfg.py", "clon.json"],
                           ["validacion.json", "construccion.mp4"],
                           {"intento": intento, "etiqueta": titulo, "pieza": pieza, "rechazados": rechazados})
