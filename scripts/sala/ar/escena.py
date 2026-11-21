@@ -348,7 +348,7 @@ VARIANTES = {
     "maqueta": {"sala": True, "escala": 0.05, "fila_z": -8.7, "fila_x": [-2.6, -1.25, PASILLO_X, 1.55, 2.9],
                 "z_fin": 1.2, "escaneo": (X1 - X0 + 0.4, 3.0, (X0 + X1) / 2, Z0 + 0.4, Z1)},
     "robot": {"sala": False, "escala": 1.0, "fila_z": -1.0, "fila_x": [-1.9, -0.95, 0.0, 0.95, 1.9],
-              "z_fin": 1.3, "escaneo": (5.2, 2.2, 0.0, -2.2, 1.9)},
+              "z_fin": 1.3, "escaneo": (6.5, 2.6, 0.0, -4.0, 2.5)},   # cubre el espacio real alrededor
 }
 # Diagnóstico (/sala/prueba): la misma escena sin el muro de números, para aislar qué rompe la AR del iPhone.
 VARIANTES["prueba_sin_escaneo"] = {**VARIANTES["robot"], "escaneo": None}

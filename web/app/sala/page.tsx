@@ -7,29 +7,32 @@ import Script from "next/script";
 import { createElement, useEffect, useRef, useState } from "react";
 
 // Sube este número al regenerar los modelos: obliga al celular a bajar los archivos nuevos y no usar los guardados.
-const VERSION = 4;
+const VERSION = 5;
 
+// Primero va el modo principal: los robots a tamaño real en el lugar donde está la persona.
 const MODELOS = {
-  maqueta: {
-    titulo: "Maqueta de la sala",
-    detalle: "Ponla sobre una mesa: aparecen 5 robots, VIAZ escanea la sala, elige el adecuado y este reparte café por el pasillo.",
-    glb: `/ar/maqueta.glb?v=${VERSION}`,
-    usdz: `/ar/maqueta.usdz?v=${VERSION}`,
-    orbita: "35deg 60deg auto",
-  },
   robot: {
-    titulo: "Robot a tamaño real",
-    detalle: "Apunta al piso: aparecen 5 robots en tu espacio, VIAZ escanea el lugar, elige uno y te trae el café.",
+    titulo: "En tu espacio",
+    detalle: "Apunta al piso: aparecen 5 robots de verdad en este lugar, VIAZ escanea el espacio, elige uno y te trae el café.",
     glb: `/ar/robot.glb?v=${VERSION}`,
     usdz: `/ar/robot.usdz?v=${VERSION}`,
     orbita: "10deg 72deg auto",
+    escalaFija: true,   // 1:1 con la sala real: no se agranda ni se achica con los dedos
+  },
+  maqueta: {
+    titulo: "Maqueta de la sala",
+    detalle: "La sala virtualizada en miniatura, para ver sobre una mesa: los 5 robots, el escaneo y la entrega del café.",
+    glb: `/ar/maqueta.glb?v=${VERSION}`,
+    usdz: `/ar/maqueta.usdz?v=${VERSION}`,
+    orbita: "35deg 60deg auto",
+    escalaFija: false,
   },
 } as const;
 
 type Clave = keyof typeof MODELOS;
 
 export default function PaginaSala() {
-  const [modo, setModo] = useState<Clave>("maqueta");
+  const [modo, setModo] = useState<Clave>("robot");
   const [puedeAR, setPuedeAR] = useState<boolean | null>(null);
   const visor = useRef<HTMLElement & { canActivateAR?: boolean; activateAR?: () => void }>(null);
   const m = MODELOS[modo];
@@ -50,7 +53,7 @@ export default function PaginaSala() {
       <Script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" />
       <header>
         <h2>Experimenten el cambio</h2>
-        <p className="tenue">Virtualizamos esta sala con un video de celular. Ahora véanla con un robot trabajando, en su propio espacio.</p>
+        <p className="tenue">Abran la cámara y miren este mismo lugar con robots trabajando en él.</p>
       </header>
 
       <div className="ar-modos" role="tablist">
@@ -84,6 +87,7 @@ export default function PaginaSala() {
           ar: true,
           "ar-modes": "webxr scene-viewer quick-look",
           "ar-placement": "floor",
+          "ar-scale": m.escalaFija ? "fixed" : "auto",
           "camera-controls": true,
           "touch-action": "pan-y",
           autoplay: true,
