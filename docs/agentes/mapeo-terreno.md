@@ -82,3 +82,7 @@ flowchart LR
 - **Esquema:** `pytest` valida el fixture contra el esquema ([`test_esquemas.py`](../../backend/tests/test_esquemas.py)).
 - **Coherencia de escenas (RNF-16):** `escena.usd` y la escena web salen del mismo `entorno.json` con las reglas de [`contrato-datos.md`](../contrato-datos.md).
 - **Con video real (CP2):** comparar `filas.separacion_m` y `panel.*` contra la ficha técnica del parque. Error aceptable: ±20 %.
+
+## Calidad visual
+
+Todo lo que este agente construya en Isaac (escena, objetos o robot) cumple [`docs/calidad-virtualizacion.md`](../calidad-virtualizacion.md): reusar assets aprobados, 4 vistas fijas, rúbrica con todo ≥ 4 y máximo 3 intentos antes de pedir revisión humana.
