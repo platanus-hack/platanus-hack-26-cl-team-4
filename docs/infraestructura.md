@@ -33,7 +33,7 @@
 - **Si Vast.ai falla:** una VM con L40S en Brev o AWS g6e, donde instalas tú el driver 580.
 - **Vulkan en Vast.ai:** pon `-e NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics` en las opciones de Docker del template. Exportarlo después no sirve.
 - Detalle, precios y fuentes en [`investigacion-isaac-gpu.md`](investigacion-isaac-gpu.md).
-- **Que el proveedor controle el driver:** en muchas nubes el driver lo fija el host. Revisar con `nvidia-smi` **antes** de instalar nada. Si es de la rama 595, suelta esa máquina y toma otra con 580; el plan B es el último recurso.
+- **Que el proveedor controle el driver:** en muchas nubes el driver lo fija el host. `instalar.sh` lo revisa con `nvidia-smi` **antes** de instalar nada. Si es de la rama 595, suelta esa máquina y toma otra con 580; el plan B es el último recurso.
 
 ## 3. Cómo se conecta con el pipeline
 
@@ -59,17 +59,48 @@ WORKER_TOKEN=...                     # mismo valor que en Render
 
 El pod las lee del gestor de secretos del proveedor o de un `.env` fuera de git. Ver [`requerimientos.md`](requerimientos.md) §7.3.
 
-## 5. Prueba de humo (primera hora)
+## 5. Montar el pod en un comando
+
+Probado el 2026-11-21 en una RTX 5090 de Vast.ai con driver 580.178.04, en un host en China.
+
+1. Arrienda la máquina con el template **NVIDIA CUDA** de Vast.ai, `-e NVIDIA_DRIVER_CAPABILITIES=all` en las opciones de Docker y 200 GB de disco. Filtra por driver 580.
+2. Entra por SSH y clona el repo en `/workspace/viaz`.
+3. Corre el instalador y después la prueba de humo:
+
+```bash
+cd /workspace/viaz
+bash worker-gpu/pod/instalar.sh            # ~15 min en un pod nuevo (estimado); 2,5 min si ya está instalado (medido)
+source /workspace/pod.env
+bash worker-gpu/pod/humo.sh                # Cartpole PPO: 60 s, ~150 000 pasos/s, recompensa ~4,9 (medido)
+```
+
+- **Idempotente:** si algo falla, corrige y corre `instalar.sh` de nuevo. Salta lo que ya está hecho.
+- **Detener, no destruir.** `/workspace` no es un volumen persistente en Vast.ai. Detener la instancia conserva todo. Destruirla borra la instalación, los checkpoints y los videos.
+- **Modelos de Isaac Lab:** cada modelo que use `sim/` o el agente constructor va en [`worker-gpu/pod/assets.txt`](../worker-gpu/pod/assets.txt). Después corre `instalar.sh` de nuevo.
+
+### Lecciones del primer pod
+
+| Problema | Causa | Lo que hace `instalar.sh` |
+|---|---|---|
+| Isaac Sim 5.1 se cae al iniciar | Driver de la rama 595 | Revisa el driver antes de instalar y aborta si no es 580 |
+| Error 429 al bajar paquetes | El host está en China y trae el espejo de USTC, que limita las descargas | Usa el espejo de Aliyun (15 MB/s) y 8 descargas en paralelo |
+| PyTorch a 1,2 MB/s | `download.pytorch.org` está fuera de China | Baja `torch 2.7.0+cu128` del espejo de Aliyun (21 MB/s) **antes** de Isaac Lab |
+| `isaaclab.sh` se detiene | `tput` no reconoce el terminal de la sesión SSH | `TERM=xterm` |
+| `flatdict` no compila | `setuptools` 80 o más no trae `pkg_resources` | Instala `setuptools<80` y `flatdict` sin aislamiento |
+| Los modelos de Omniverse no abren | Isaac no logra bajar desde S3 en China, aunque `curl` sí | Copia cada modelo de `assets.txt` con [`espejo_assets.py`](../worker-gpu/pod/espejo_assets.py) y apunta los `.kit` de Isaac Lab a esa copia |
+| `isaacsim==5.1.0` no instala | La imagen trae Python 3.12 y el paquete exige 3.11 | Crea `/venv/isaac` con Python 3.11 usando `uv` |
+
+## 6. Prueba de humo (primera hora)
 
 1. `nvidia-smi` muestra la GPU arrendada y un driver de la rama 580. Si muestra 595, cambia de máquina (§2). `vulkaninfo --summary` también ve la GPU.
 2. Isaac Sim arranca headless y cierra sin errores.
-3. Isaac Lab corre un ejemplo incluido (ej.: entorno de cartpole) en modo headless.
+3. Isaac Lab corre un ejemplo incluido en modo headless: `bash worker-gpu/pod/humo.sh` (§5).
 4. cuRobo planifica una trayectoria de ejemplo.
 5. Se graba un video corto de una escena y se sube a R2 con una URL firmada.
 
 Si los 5 pasos pasan, la versión queda fijada: se anota en la tabla de §1 y en la bitácora de [`ciclo-desarrollo.md`](ciclo-desarrollo.md).
 
-## 6. Costo y operación
+## 7. Costo y operación
 
 - Apagar la instancia cuando no se usa; dejar el disco persistente.
 - Una persona es dueña de la máquina **[Por definir]**: la prende, la apaga y vigila el gasto.

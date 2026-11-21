@@ -40,7 +40,7 @@ flowchart LR
 
 ### Iteración 0 — Preparación (ahora → antes de CP1)
 - [ ] Revisar y aprobar `requerimientos.md` v0.4 (los 3 integrantes).
-- [ ] Arrendar el pod RTX 5090 y pasar la prueba de humo, incluido un ejemplo de RL de Isaac Lab ([`infraestructura.md`](infraestructura.md) §5).
+- [ ] Arrendar el pod RTX 5090 y pasar la prueba de humo, incluido un ejemplo de RL de Isaac Lab ([`infraestructura.md`](infraestructura.md) §6).
 - [ ] Elegir el parque real y escribir `entorno.json` y `tarea.json` a mano (RF-MAP-11, RF-TAR-04).
 - [x] Decidir base, umbral y canal de avisos: base móvil con RL en el brazo, 90 % a 5 cm y 5° en 100 episodios, Discord.
 - [ ] Crear el canal `#entrenamiento` en Discord y su webhook; guardar la URL en Render.
