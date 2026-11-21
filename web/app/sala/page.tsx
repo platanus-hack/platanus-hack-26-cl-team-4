@@ -9,14 +9,14 @@ import { createElement, useEffect, useRef, useState } from "react";
 const MODELOS = {
   maqueta: {
     titulo: "Maqueta de la sala",
-    detalle: "Ponla sobre una mesa: la sala en miniatura con el robot recorriendo el pasillo con el café.",
+    detalle: "Ponla sobre una mesa: aparecen 5 robots, VIAZ escanea la sala, elige el adecuado y este reparte café por el pasillo.",
     glb: "/ar/maqueta.glb",
     usdz: "/ar/maqueta.usdz",
     orbita: "35deg 60deg 1.1m",
   },
   robot: {
     titulo: "Robot a tamaño real",
-    detalle: "Apunta al piso: el robot aparece en tu espacio y te trae el café.",
+    detalle: "Apunta al piso: aparecen 5 robots en tu espacio, VIAZ escanea el lugar, elige uno y te trae el café.",
     glb: "/ar/robot.glb",
     usdz: "/ar/robot.usdz",
     orbita: "20deg 75deg 4m",
@@ -94,8 +94,8 @@ export default function PaginaSala() {
       )}
 
       <p className="aviso">
-        <strong>Concepto.</strong> La sala está modelada de forma simple a partir del video (medidas aproximadas). El robot está
-        animado a mano: no está entrenado ni sale de la simulación de VIAZ.
+        <strong>Concepto.</strong> La sala está modelada de forma simple a partir del video (medidas aproximadas). Los robots y la
+        elección están animados a mano: no están entrenados ni salen de la simulación de VIAZ.
       </p>
       <p className="tenue">
         Funciona en iPhone (Safari) y en Android con ARCore (Chrome). En computador se ve en 3D, sin realidad aumentada.

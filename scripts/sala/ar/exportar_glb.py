@@ -1,6 +1,8 @@
 """Escena → GLB con animación (Android Scene Viewer, WebXR y el visor web).
 
-    python exportar_glb.py <carpeta_salida> <mural.jpg>
+    python exportar_glb.py <carpeta_salida> <carpeta_texturas>
+
+<carpeta_texturas> tiene mural.jpg y matrix.png.
 """
 from __future__ import annotations
 
@@ -15,10 +17,11 @@ import escena as E  # noqa: E402
 
 
 class Constructor:
-    def __init__(self):
+    def __init__(self, texturas: Path):
         self.bin = bytearray()
         self.g = gl.GLTF2(asset=gl.Asset(generator="VIAZ scripts/sala/ar"), scene=0, scenes=[gl.Scene(nodes=[])])
         self.mats: dict[str, int] = {}
+        self.texturas = texturas
 
     def _vista(self, datos: bytes, objetivo=None) -> int:
         while len(self.bin) % 4:
@@ -37,23 +40,35 @@ class Constructor:
         self.g.accessors.append(a)
         return len(self.g.accessors) - 1
 
-    def material(self, nombre: str, mural: Path) -> int:
+    def textura(self, archivo: str) -> int:
+        f = self.texturas / archivo
+        v = self._vista(f.read_bytes())
+        self.g.images.append(gl.Image(bufferView=v, mimeType="image/png" if f.suffix == ".png" else "image/jpeg"))
+        self.g.samplers.append(gl.Sampler(magFilter=gl.LINEAR, minFilter=gl.LINEAR_MIPMAP_LINEAR))
+        self.g.textures.append(gl.Texture(source=len(self.g.images) - 1, sampler=len(self.g.samplers) - 1))
+        return len(self.g.textures) - 1
+
+    def material(self, nombre: str) -> int:
         if nombre in self.mats:
             return self.mats[nombre]
         d = E.MATERIALES[nombre]
         pbr = gl.PbrMetallicRoughness(baseColorFactor=[*d["color"], 1.0], metallicFactor=d["metal"], roughnessFactor=d["rugosidad"])
-        if "textura" in d:
-            v = self._vista(mural.read_bytes())
-            self.g.images.append(gl.Image(bufferView=v, mimeType="image/jpeg"))
-            self.g.samplers.append(gl.Sampler(magFilter=gl.LINEAR, minFilter=gl.LINEAR_MIPMAP_LINEAR))
-            self.g.textures.append(gl.Texture(source=len(self.g.images) - 1, sampler=len(self.g.samplers) - 1))
-            pbr.baseColorTexture = gl.TextureInfo(index=len(self.g.textures) - 1)
         m = gl.Material(name=nombre, pbrMetallicRoughness=pbr, emissiveFactor=list(d.get("emision", (0, 0, 0))))
+        if "textura" in d:
+            tex = self.textura(d["textura"])
+            pbr.baseColorTexture = gl.TextureInfo(index=tex)
+            if d.get("emision_textura"):
+                m.emissiveTexture = gl.TextureInfo(index=tex)
+                m.emissiveFactor = [1.0, 1.0, 1.0]
+        if d.get("transparente"):
+            m.alphaMode = gl.BLEND
+        if d.get("doble_cara"):
+            m.doubleSided = True
         self.g.materials.append(m)
         self.mats[nombre] = len(self.g.materials) - 1
         return self.mats[nombre]
 
-    def malla(self, grupos: dict[str, E.Malla], mural: Path) -> int:
+    def malla(self, grupos: dict[str, E.Malla]) -> int:
         prims = []
         for nombre, m in grupos.items():
             if not m.pos:
@@ -63,40 +78,44 @@ class Constructor:
                 attributes=gl.Attributes(POSITION=self.acceso(p, "VEC3", gl.ARRAY_BUFFER, True),
                                          NORMAL=self.acceso(n, "VEC3", gl.ARRAY_BUFFER),
                                          TEXCOORD_0=self.acceso(uv, "VEC2", gl.ARRAY_BUFFER)),
-                indices=self.acceso(i, "SCALAR", gl.ELEMENT_ARRAY_BUFFER), material=self.material(nombre, mural)))
+                indices=self.acceso(i, "SCALAR", gl.ELEMENT_ARRAY_BUFFER), material=self.material(nombre)))
         self.g.meshes.append(gl.Mesh(primitives=prims))
         return len(self.g.meshes) - 1
 
-    def nodo(self, **kw) -> int:
+    def nodo(self, n: E.Nodo, canales: list, muestras: list) -> int:
+        hijos = [self.nodo(h, canales, muestras) for h in n.hijos]
+        kw = {"name": n.nombre}
+        if n.mallas:
+            kw["mesh"] = self.malla(n.mallas)
+        if hijos:
+            kw["children"] = hijos
+        if "t" not in n.pistas and any(n.t):
+            kw["translation"] = list(n.t)
         self.g.nodes.append(gl.Node(**kw))
-        return len(self.g.nodes) - 1
+        idx = len(self.g.nodes) - 1
+        for clave, claves in n.pistas.items():
+            ruta, tipo, conv = {
+                "t": ("translation", "VEC3", lambda v: v),
+                "ry": ("rotation", "VEC4", E.quat_y),
+                "rx": ("rotation", "VEC4", E.quat_x),
+                "s": ("scale", "VEC3", lambda v: (v, v, v)),
+            }[clave]
+            t = np.array([k[0] for k in claves], "f4")
+            v = np.array([conv(k[1]) for k in claves], "f4")
+            muestras.append(gl.AnimationSampler(input=self.acceso(t, "SCALAR", minmax=True), output=self.acceso(v, tipo),
+                                                interpolation="LINEAR"))
+            canales.append(gl.AnimationChannel(sampler=len(muestras) - 1, target=gl.AnimationChannelTarget(node=idx, path=ruta)))
+        return idx
 
 
-def exportar(variante: str, salida: Path, mural: Path) -> Path:
-    cfg = E.VARIANTES[variante]
-    c = Constructor()
-    hijos = []
-    if cfg["sala"]:
-        hijos.append(c.nodo(name="sala", mesh=c.malla(E.sala(), mural)))
-    brazo = c.nodo(name="brazo", mesh=c.malla(E.robot_brazo(), mural), translation=list(E.BRAZO_PIVOTE))
-    robot = c.nodo(name="robot", mesh=c.malla(E.robot_cuerpo(), mural), children=[brazo])
-    hijos.append(robot)
-    raiz = c.nodo(name="viaz", children=hijos, scale=[cfg["escala"]] * 3)
-    c.g.scenes[0].nodes = [raiz]
-
-    tr, rot, br = E.animacion(cfg["z_ini"], cfg["z_fin"], cfg.get("x", E.PASILLO_X))
+def exportar(variante: str, salida: Path, texturas: Path) -> Path:
+    raiz, _ = E.construir(variante)
+    c = Constructor(texturas)
     canales, muestras = [], []
-    for claves, nodo, ruta, conv, tipo in (
-        (tr, robot, "translation", lambda v: v, "VEC3"),
-        (rot, robot, "rotation", E.quat_y, "VEC4"),
-        (br, brazo, "rotation", E.quat_x, "VEC4"),
-    ):
-        t = np.array([k[0] for k in claves], "f4")
-        v = np.array([conv(k[1]) for k in claves], "f4")
-        muestras.append(gl.AnimationSampler(input=c.acceso(t, "SCALAR", minmax=True), output=c.acceso(v, tipo), interpolation="LINEAR"))
-        canales.append(gl.AnimationChannel(sampler=len(muestras) - 1, target=gl.AnimationChannelTarget(node=nodo, path=ruta)))
+    idx = c.nodo(raiz, canales, muestras)
+    c.g.nodes[idx].scale = [E.VARIANTES[variante]["escala"]] * 3
+    c.g.scenes[0].nodes = [idx]
     c.g.animations.append(gl.Animation(name="entrega_cafe", samplers=muestras, channels=canales))
-
     c.g.buffers.append(gl.Buffer(byteLength=len(c.bin)))
     c.g.set_binary_blob(bytes(c.bin))
     destino = salida / f"{variante}.glb"
@@ -105,8 +124,8 @@ def exportar(variante: str, salida: Path, mural: Path) -> Path:
 
 
 if __name__ == "__main__":
-    out, mural = Path(sys.argv[1]), Path(sys.argv[2])
+    out, tex = Path(sys.argv[1]), Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
     for v in E.VARIANTES:
-        f = exportar(v, out, mural)
+        f = exportar(v, out, tex)
         print(f, f.stat().st_size // 1024, "KB")
