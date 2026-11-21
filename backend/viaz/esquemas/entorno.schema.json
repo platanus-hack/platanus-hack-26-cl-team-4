@@ -50,6 +50,31 @@
     },
     "escena_usd": { "type": "string" },
     "fondo_reconstruido_usd": { "type": ["string", "null"] },
-    "confianza": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 } }
+    "confianza": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 } },
+    "mediciones": {
+      "description": "Opcional. De dónde sale cada dato: medido en los videos (medidas_entorno.json) o estimado por el agente.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fuente", "medidos", "ajustes"],
+      "properties": {
+        "fuente": { "type": "string" },
+        "medidos": { "type": "array", "items": { "type": "string" } },
+        "ajustes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["campo", "medido", "final", "razon"],
+            "properties": {
+              "campo": { "type": "string" },
+              "medido": { "type": ["number", "string"] },
+              "final": { "type": ["number", "string"] },
+              "razon": { "type": "string" }
+            }
+          }
+        },
+        "avisos": { "type": "array", "items": { "type": "string" } }
+      }
+    }
   }
 }

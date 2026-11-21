@@ -5,6 +5,7 @@ Modo `claude`: llaman a la Claude API.
 """
 from __future__ import annotations
 
+import base64
 import copy
 import json
 import math
@@ -30,33 +31,108 @@ def _fixture(nombre: str) -> dict:
 # ---------- 1. Entorno ----------
 
 SISTEMA_ENTORNO = _prompt("entorno")
+# Campos de entorno.json que sim/medir_entorno.py puede medir en los videos (medidas_entorno.json).
+CAMPOS_MEDIBLES = ("filas.cantidad", "filas.separacion_m", "filas.largo_m", "estructura.tipo", "estructura.altura_m",
+                   "estructura.inclinacion_grados", "panel.largo_m", "panel.ancho_m", "terreno.pendiente_grados")
+CONFIANZA_MIN_MEDIDA = 0.4      # bajo esto la medida no manda: el agente decide (y lo anota)
+CONFIANZA_MAX_ESTIMADA = 0.7    # un dato que nadie midió no pasa de esta confianza
 
 
 def esquema_agente_entorno() -> dict:
-    """Lo que devuelve el modelo: entorno.json sin los campos del orquestador.
+    """Lo que devuelve el modelo: entorno.json sin los campos del orquestador, más sus ajustes a las medidas.
     `confianza` va como lista porque structured outputs no acepta objetos con claves libres."""
-    esq = sin_campos(esquema("entorno"), ["version", "videos", "escena_usd", "fondo_reconstruido_usd"])
+    esq = sin_campos(esquema("entorno"), ["version", "videos", "escena_usd", "fondo_reconstruido_usd", "mediciones"])
     # La fricción del suelo no se ve en un video: la escribe el equipo o sale del tipo de suelo (sim/fisica.py).
     esq["properties"]["terreno"]["properties"].pop("friccion", None)
     esq["properties"]["confianza"] = {"type": "array", "items": {
         "type": "object", "additionalProperties": False, "required": ["campo", "valor"],
         "properties": {"campo": {"type": "string"}, "valor": {"type": "number"}}}}
+    # Cada dato que el agente deja distinto de lo medido lleva su razón. Sin razón, el código vuelve a lo medido.
+    esq["properties"]["ajustes"] = {"type": "array", "items": {
+        "type": "object", "additionalProperties": False, "required": ["campo", "razon"],
+        "properties": {"campo": {"enum": list(CAMPOS_MEDIBLES)}, "razon": {"type": "string"}}}}
+    esq["required"] = [*esq["required"], "ajustes"]
     return esq
 
 
-def texto_entorno(proyecto: dict) -> str:
-    return f"Planta: {proyecto['nombre']}\nDescripción del cliente: {proyecto['descripcion'] or '(sin descripción)'}"
+def texto_entorno(proyecto: dict, medidas: dict | None = None) -> str:
+    texto = f"Planta: {proyecto['nombre']}\nDescripción del cliente: {proyecto['descripcion'] or '(sin descripción)'}"
+    if medidas and medidas.get("disponible"):
+        texto += ("\n\nmedidas_entorno.json (medido en los videos con una reconstrucción 3D métrica; "
+                  "la imagen cenital muestra la nube y las filas encontradas):\n" + json.dumps(medidas, ensure_ascii=False))
+    elif medidas:
+        texto += f"\n\nLa medición 3D falló: {medidas.get('error', 'sin detalle')}. Estima todo desde los frames."
+    return texto
 
 
-def entorno(modo: str, modelo: str, proyecto: dict, frames: list[dict] | None) -> dict:
+def _leer(datos: dict, campo: str):
+    a, b = campo.split(".")
+    return datos[a][b]
+
+
+def _poner(datos: dict, campo: str, valor) -> None:
+    a, b = campo.split(".")
+    datos[a][b] = int(valor) if campo == "filas.cantidad" else valor
+
+
+def _distinto(campo: str, final, medida: dict) -> bool:
+    if isinstance(medida["valor"], str) or campo == "filas.cantidad":
+        return final != medida["valor"]
+    return abs(float(final) - float(medida["valor"])) > max(float(medida["error"]), 1e-6)
+
+
+def aplicar_medidas(datos: dict, medidas: dict | None, ajustes: list[dict] | None = None) -> dict:
+    """Las medidas mandan sobre lo que estimó el agente, salvo los ajustes con razón. Calcula la confianza.
+
+    datos: entorno.json del agente (o el fixture en modo fijo), con `confianza` como objeto.
+    Devuelve datos con `mediciones` (qué se midió y qué se ajustó). Sin medidas, solo limita la confianza.
+    """
+    confianza = dict(datos.get("confianza") or {})
+    if not medidas or not medidas.get("disponible"):
+        datos["confianza"] = {k: min(v, CONFIANZA_MAX_ESTIMADA) for k, v in confianza.items()}
+        return datos
+    razones = {a["campo"]: a["razon"].strip() for a in (ajustes or []) if a.get("razon", "").strip()}
+    medidos, aplicados, avisos = [], [], list(medidas.get("avisos", []))
+    for campo, m in medidas["campos"].items():
+        if campo not in CAMPOS_MEDIBLES or m.get("confianza", 0) < CONFIANZA_MIN_MEDIDA:
+            continue
+        final = _leer(datos, campo)
+        if _distinto(campo, final, m):
+            if campo in razones:
+                aplicados.append({"campo": campo, "medido": m["valor"], "final": final, "razon": razones[campo]})
+                confianza[campo] = min(confianza.get(campo, 0.5), CONFIANZA_MAX_ESTIMADA)
+                continue
+            if ajustes is not None:   # el agente lo cambió sin decir por qué
+                avisos.append(f"{campo}: el agente propuso {final} sin razón; se usa lo medido ({m['valor']})")
+        _poner(datos, campo, m["valor"])
+        medidos.append(campo)
+        confianza[campo] = m["confianza"]
+    for campo, v in confianza.items():
+        if campo not in medidos:
+            confianza[campo] = min(v, CONFIANZA_MAX_ESTIMADA)
+    datos["confianza"] = confianza
+    datos["mediciones"] = {"fuente": medidas["fuente"], "medidos": medidos, "ajustes": aplicados, "avisos": avisos}
+    return datos
+
+
+def entorno(modo: str, modelo: str, proyecto: dict, frames: list[dict] | None,
+            medidas: dict | None = None, vista_png: bytes | None = None) -> dict:
+    """entorno.json del proyecto. Con medidas (sim/medir_entorno.py), los datos medidos mandan: el agente revisa,
+    completa lo que no se pudo medir y solo cambia una medida si da una razón visible en los frames."""
     if modo == "fijo":
-        datos = _fixture("entorno")
+        datos = aplicar_medidas(_fixture("entorno"), medidas)
     else:
         if not frames:
             raise ErrorAgente("el agente Entorno necesita al menos un video")
-        datos = pedir_json(modelo=modelo, sistema=SISTEMA_ENTORNO, esquema=esquema_agente_entorno(),
-                           contenido=[*frames, {"type": "text", "text": texto_entorno(proyecto)}])
+        contenido = list(frames)
+        if vista_png:
+            contenido.append({"type": "image", "source": {"type": "base64", "media_type": "image/png",
+                                                          "data": base64.b64encode(vista_png).decode()}})
+        contenido.append({"type": "text", "text": texto_entorno(proyecto, medidas)})
+        datos = pedir_json(modelo=modelo, sistema=SISTEMA_ENTORNO, esquema=esquema_agente_entorno(), contenido=contenido)
         datos["confianza"] = {c["campo"]: c["valor"] for c in datos["confianza"]}
+        ajustes = datos.pop("ajustes", [])
+        datos = aplicar_medidas(datos, medidas, ajustes)
     datos.update(version=1, videos=[v.rsplit("/", 1)[1] for v in proyecto["videos"]],
                  escena_usd="escena.usd", fondo_reconstruido_usd=None)
     return validado("entorno", datos)
