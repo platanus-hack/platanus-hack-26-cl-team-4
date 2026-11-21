@@ -34,6 +34,10 @@ MATERIALES = {
     # escaneo estilo Matrix: textura de números con transparencia, que brilla
     "matrix": {"color": (1.0, 1.0, 1.0), "rugosidad": 1.0, "metal": 0.0, "textura": "matrix.png",
                "transparente": True, "emision_textura": True, "doble_cara": True},
+    "grilla": {"color": (1.0, 1.0, 1.0), "rugosidad": 1.0, "metal": 0.0, "textura": "grilla.png",
+               "transparente": True, "emision_textura": True, "doble_cara": True},
+    "caja_analisis": {"color": (0.3, 1.0, 0.55), "rugosidad": 1.0, "metal": 0.0, "emision": (0.12, 0.45, 0.22),
+                      "opacidad": 0.2, "transparente": True, "doble_cara": True},
     "laser": {"color": (0.3, 1.0, 0.55), "rugosidad": 1.0, "metal": 0.0, "emision": (0.3, 1.0, 0.55)},
     "anillo": {"color": (0.3, 1.0, 0.55), "rugosidad": 1.0, "metal": 0.0, "emision": (0.3, 1.0, 0.55)},
 }
@@ -121,11 +125,19 @@ def esfera(m: Malla, centro, radio, seg=20, anillos=14, escala=(1, 1, 1)):
     m.agregar(np.array(p) + np.array(centro), n, uv, i)
 
 
-def plano(m: Malla, centro, ancho, alto, normal_z=1):
+def plano(m: Malla, centro, ancho, alto, normal_z=1, du=0.0):
     cx, cy, cz = centro
     w, h = ancho / 2, alto / 2
     p = [(cx - w, cy - h, cz), (cx + w, cy - h, cz), (cx + w, cy + h, cz), (cx - w, cy + h, cz)]
-    m.agregar(p, [(0, 0, normal_z)] * 4, [(0, 0), (1, 0), (1, 1), (0, 1)], [0, 1, 2, 0, 2, 3])
+    m.agregar(p, [(0, 0, normal_z)] * 4, [(du, 0), (1 + du, 0), (1 + du, 1), (du, 1)], [0, 1, 2, 0, 2, 3])
+
+
+def plano_piso(m: Malla, centro, ancho, largo):
+    """Rectángulo horizontal (normal hacia arriba)."""
+    cx, cy, cz = centro
+    w, l = ancho / 2, largo / 2
+    p = [(cx - w, cy, cz + l), (cx + w, cy, cz + l), (cx + w, cy, cz - l), (cx - w, cy, cz - l)]
+    m.agregar(p, [(0, 1, 0)] * 4, [(0, 0), (1, 0), (1, 1), (0, 1)], [0, 1, 2, 0, 2, 3])
 
 
 # ---------------- la sala ----------------
@@ -255,10 +267,32 @@ def robot_humanoide() -> dict[str, Malla]:
 
 
 def escaneo(ancho: float, alto: float) -> dict[str, Malla]:
-    """Muro de números estilo Matrix que recorre el lugar, con una línea láser en el piso."""
+    """Muro de números estilo Matrix que recorre el lugar: dos capas con profundidad y un marco de láser."""
     g = {k: Malla() for k in ("matrix", "laser")}
     plano(g["matrix"], (0, alto / 2, 0), ancho, alto)
-    caja(g["laser"], (0, 0.01, 0), (ancho, 0.02, 0.03))
+    plano(g["matrix"], (0, alto / 2, -0.35), ancho, alto, du=0.43)       # segunda capa, desfasada
+    grosor = 0.045
+    caja(g["laser"], (0, grosor / 2, 0), (ancho, grosor, 0.05))          # línea en el piso
+    caja(g["laser"], (0, alto, 0), (ancho, grosor, 0.05))                # línea arriba
+    for x in (-ancho / 2, ancho / 2):                                    # bordes verticales
+        caja(g["laser"], (x, alto / 2, 0), (grosor, alto, 0.05))
+    return g
+
+
+def franja_grilla(ancho: float, largo: float) -> dict[str, Malla]:
+    """Franja de grilla verde en el piso: se enciende cuando el muro pasa por encima (zona ya escaneada)."""
+    g = {"grilla": Malla()}
+    plano_piso(g["grilla"], (0, 0.006, 0), ancho, largo)
+    return g
+
+
+def caja_analisis() -> dict[str, Malla]:
+    """Caja verde translúcida alrededor de un robot mientras VIAZ lo analiza."""
+    g = {"caja_analisis": Malla(), "laser": Malla()}
+    caja(g["caja_analisis"], (0, 0.75, 0), (0.95, 1.5, 0.95))
+    for x in (-0.475, 0.475):                                            # aristas verticales brillantes
+        for z in (-0.475, 0.475):
+            caja(g["laser"], (x, 0.75, z), (0.02, 1.5, 0.02))
     return g
 
 
@@ -269,34 +303,60 @@ def anillo() -> dict[str, Malla]:
     return g
 
 
+def _fuente(tam: int):
+    from PIL import ImageFont
+    try:
+        return ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", tam)
+    except OSError:
+        return ImageFont.load_default()
+
+
 def textura_matrix(destino, ancho=1024, alto=512, semilla=7):
-    """PNG con columnas de números verdes sobre fondo transparente (estilo Matrix)."""
+    """PNG con columnas densas de números verdes sobre fondo transparente (estilo Matrix)."""
     import random
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
     random.seed(semilla)
     img = Image.new("RGBA", (ancho, alto), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    try:
-        fnt = ImageFont.truetype("/System/Library/Fonts/Menlo.ttc", 30)
-    except OSError:
-        fnt = ImageFont.load_default()
-    paso_x, paso_y = 22, 30
-    for x in range(4, ancho, paso_x):
-        largo = random.randint(6, alto // paso_y)
-        inicio = random.randint(-largo // 2, alto // paso_y)
-        for k in range(largo):
-            y = (inicio + k) * paso_y
-            if not 0 <= y < alto:
-                continue
-            brillo = (k + 1) / largo
-            cabeza = k == largo - 1
-            color = (210, 255, 225, 255) if cabeza else (60, 255, 140, int(130 + 125 * brillo))
-            d.text((x, y), random.choice("0123456789"), font=fnt, fill=color)
-    # bordes arriba y abajo que se desvanecen
+    fnt = _fuente(34)
+    paso_x, paso_y = 21, 33
+    for x in range(2, ancho, paso_x):
+        for _ in range(2):                                   # dos estelas por columna: más densidad
+            largo = random.randint(8, alto // paso_y + 4)
+            inicio = random.randint(-largo // 2, alto // paso_y)
+            for k in range(largo):
+                y = (inicio + k) * paso_y
+                if not 0 <= y < alto:
+                    continue
+                brillo = (k + 1) / largo
+                cabeza = k == largo - 1
+                color = (225, 255, 235, 255) if cabeza else (70, 255, 150, int(150 + 105 * brillo))
+                d.text((x, y), random.choice("0123456789"), font=fnt, fill=color)
     a = np.array(img).astype("f4")
     filas = np.linspace(0, 1, alto)
-    a[:, :, 3] *= np.clip(np.minimum(filas, 1 - filas) * 6, 0, 1)[:, None]
+    a[:, :, 3] *= np.clip(np.minimum(filas, 1 - filas) * 8, 0, 1)[:, None]
     Image.fromarray(a.astype("u1"), "RGBA").save(destino)
+
+
+def textura_grilla(destino, celdas=16, alto=128, semilla=11):
+    """PNG de una franja de grilla verde (celdas cuadradas, bordes brillantes y algunos números)."""
+    import random
+    from PIL import Image, ImageDraw
+    random.seed(semilla)
+    ancho = celdas * alto
+    img = Image.new("RGBA", (ancho, alto), (40, 255, 130, 38))
+    d = ImageDraw.Draw(img)
+    for k in range(celdas + 1):
+        d.line([(k * alto, 0), (k * alto, alto)], fill=(80, 255, 160, 255), width=6)
+    d.line([(0, 0), (ancho, 0)], fill=(80, 255, 160, 255), width=6)
+    d.line([(0, alto - 1), (ancho, alto - 1)], fill=(80, 255, 160, 255), width=6)
+    for k in range(celdas):
+        d.line([(k * alto + alto // 2, 0), (k * alto + alto // 2, alto)], fill=(80, 255, 160, 110), width=2)
+        d.line([(k * alto, alto // 2), (k * alto + alto, alto // 2)], fill=(80, 255, 160, 110), width=2)
+        if random.random() < 0.6:
+            d.text((k * alto + 12, 10), "".join(random.choice("01") for _ in range(4)), font=_fuente(26),
+                   fill=(150, 255, 190, 230))
+    img.save(destino)
 
 
 # ---------------- línea de tiempo ----------------
@@ -304,10 +364,10 @@ VEL = 0.7          # m/s, como un robot de servicio real
 # El cuadro 0 es la "pose de reposo": los 5 robots visibles y completos. AR Quick Look (iPhone) y Scene Viewer
 # (Android) usan ese cuadro para medir el objeto, ponerlo sobre el piso, calcular la sombra y moverlo con los dedos.
 # Si algo empieza encogido a cero, el objeto queda "plano" y la AR se comporta mal.
-T_ESCANEO = (1.2, 4.7)
-T_ELIGE = 4.9      # aparece el anillo bajo el elegido
-T_DESAPARECEN = (5.4, 6.1)
-T_ENTREGA = 6.6    # el elegido parte a repartir el café
+T_ESCANEO = (1.0, 8.0)   # 7 s: el muro recorre el espacio despacio, para que se note
+T_ELIGE = 8.6      # aparece el anillo bajo el elegido y se apagan las cajas de análisis
+T_DESAPARECEN = (9.3, 10.0)
+T_ENTREGA = 10.6   # el elegido parte a repartir el café
 REAPARECEN = 1.6   # segundos antes del final: los otros 4 vuelven a aparecer para reiniciar el bucle igual que empezó
 MINIMO = 0.001     # escala de "escondido" (0 exacto rompe algunas normales)
 
@@ -346,9 +406,9 @@ ELEGIDO = 2
 # Todo centrado en el punto donde se coloca el objeto: la fila queda adelante (z < 0) y el elegido viene hacia quien mira.
 VARIANTES = {
     "maqueta": {"sala": True, "escala": 0.05, "fila_z": -8.7, "fila_x": [-2.6, -1.25, PASILLO_X, 1.55, 2.9],
-                "z_fin": 1.2, "escaneo": (X1 - X0 + 0.4, 3.0, (X0 + X1) / 2, Z0 + 0.4, Z1)},
+                "z_fin": 1.2, "escaneo": (X1 - X0 + 0.4, 3.0, (X0 + X1) / 2, Z0 + 0.4, Z1), "franja": 0.9},
     "robot": {"sala": False, "escala": 1.0, "fila_z": -1.0, "fila_x": [-1.9, -0.95, 0.0, 0.95, 1.9],
-              "z_fin": 1.3, "escaneo": (6.5, 2.6, 0.0, -4.0, 2.5)},   # cubre el espacio real alrededor
+              "z_fin": 1.3, "escaneo": (6.5, 3.0, 0.0, -4.0, 2.5), "franja": 0.5},   # cubre el espacio real
 }
 # Diagnóstico (/sala/prueba): la misma escena sin el muro de números, para aislar qué rompe la AR del iPhone.
 VARIANTES["prueba_sin_escaneo"] = {**VARIANTES["robot"], "escaneo": None}
@@ -361,25 +421,43 @@ def construir(variante: str):
     if cfg["sala"]:
         hijos.append(Nodo("sala", sala()))
     tr, rot, br, fin = entrega(cfg["fila_z"], cfg["z_fin"], cfg["fila_x"][ELEGIDO], T_ENTREGA)
+    e0, e1 = T_ESCANEO
+    if cfg["escaneo"] is not None:
+        _, _, _, z_desde, z_hasta = cfg["escaneo"]
+        cuando_pasa = lambda z: e0 + (z - z_desde) / (z_hasta - z_desde) * (e1 - e0)  # noqa: E731
+        t_paso = cuando_pasa(cfg["fila_z"])
     for k, (fabrica, x) in enumerate(zip(ROBOTS, cfg["fila_x"])):
+        extras = []
+        if cfg["escaneo"] is not None:   # caja de análisis: se enciende cuando el muro pasa por el robot
+            extras.append(Nodo("analisis", caja_analisis(), pistas={"s": [
+                (0.0, MINIMO), (t_paso - 0.05, MINIMO), (t_paso + 0.25, 1.0), (T_ELIGE, 1.0),
+                (T_ELIGE + 0.35, MINIMO), (fin, MINIMO)]}))
         if k == ELEGIDO:
             marca = Nodo("anillo", anillo(), pistas={"s": [(0.0, MINIMO), (T_ELIGE, MINIMO), (T_ELIGE + 0.3, 1.0),
                                                             (T_ENTREGA + 1.0, 1.0), (T_ENTREGA + 1.5, MINIMO), (fin, MINIMO)]})
             brazo = Nodo("brazo", robot_brazo(), t=BRAZO_PIVOTE, pistas={"rx": br})
-            hijos.append(Nodo("robot_servicio", robot_cuerpo(), hijos=[brazo, marca], pistas={"t": tr, "ry": rot}))
+            hijos.append(Nodo("robot_servicio", robot_cuerpo(), hijos=[brazo, marca, *extras], pistas={"t": tr, "ry": rot}))
         else:
             d0, d1 = T_DESAPARECEN
             r0 = fin - REAPARECEN + 0.2 * (k if k < ELEGIDO else k - 1)
             escala = [(0.0, 1.0), (d0 + 0.08 * k, 1.0), (d1 + 0.08 * k, MINIMO),
                       (r0, MINIMO), (r0 + 0.5, 1.0), (fin, 1.0)]
-            hijos.append(Nodo(f"robot_{fabrica.__name__.split('_')[1]}", fabrica(), t=(x, 0, cfg["fila_z"]),
-                              pistas={"s": escala}))
+            hijos.append(Nodo(f"robot_{fabrica.__name__.split('_')[1]}", fabrica(), hijos=extras,
+                              t=(x, 0, cfg["fila_z"]), pistas={"s": escala}))
     if cfg["escaneo"] is None:
         raiz = Nodo("viaz", hijos=hijos, pistas={})
         _tiempos_crecientes(raiz)
         return raiz, fin
     ancho, alto, cx, z_desde, z_hasta = cfg["escaneo"]
-    e0, e1 = T_ESCANEO
+    # rastro en el piso: franjas de grilla que se encienden cuando el muro pasa por encima
+    paso = cfg["franja"]
+    n = int(math.ceil((z_hasta - z_desde) / paso))
+    for k in range(n):
+        zc = z_desde + (k + 0.5) * paso
+        tk = cuando_pasa(zc)
+        apaga = T_ELIGE + 0.3 + 0.04 * k
+        hijos.append(Nodo(f"rastro_{k:02d}", franja_grilla(ancho, paso * 0.96), t=(cx, 0, zc), pistas={"s": [
+            (0.0, MINIMO), (tk - 0.05, MINIMO), (tk + 0.2, 1.0), (apaga, 1.0), (apaga + 0.4, MINIMO), (fin, MINIMO)]}))
     hijos.append(Nodo("escaneo", escaneo(ancho, alto), pistas={
         "t": [(0.0, (cx, 0, z_desde)), (e0, (cx, 0, z_desde)), (e1, (cx, 0, z_hasta)), (fin, (cx, 0, z_hasta))],
         "s": [(0.0, MINIMO), (e0 - 0.01, MINIMO), (e0, 1.0), (e1, 1.0), (e1 + 0.01, MINIMO), (fin, MINIMO)]}))

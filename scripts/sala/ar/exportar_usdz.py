@@ -31,6 +31,8 @@ def material(stage, nombre: str, cache: dict) -> UsdShade.Material:
     s.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(d["metal"])
     if "emision" in d:
         s.CreateInput("emissiveColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*d["emision"]))
+    if "opacidad" in d:
+        s.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(d["opacidad"])
     if "textura" in d:
         st = UsdShade.Shader.Define(stage, f"{base}/LectorST")
         st.CreateIdAttr("UsdPrimvarReader_float2")

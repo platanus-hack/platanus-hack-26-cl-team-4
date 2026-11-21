@@ -52,7 +52,8 @@ class Constructor:
         if nombre in self.mats:
             return self.mats[nombre]
         d = E.MATERIALES[nombre]
-        pbr = gl.PbrMetallicRoughness(baseColorFactor=[*d["color"], 1.0], metallicFactor=d["metal"], roughnessFactor=d["rugosidad"])
+        pbr = gl.PbrMetallicRoughness(baseColorFactor=[*d["color"], d.get("opacidad", 1.0)], metallicFactor=d["metal"],
+                                      roughnessFactor=d["rugosidad"])
         m = gl.Material(name=nombre, pbrMetallicRoughness=pbr, emissiveFactor=list(d.get("emision", (0, 0, 0))))
         if "textura" in d:
             tex = self.textura(d["textura"])

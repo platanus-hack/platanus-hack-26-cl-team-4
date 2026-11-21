@@ -9,7 +9,7 @@ flowchart LR
   G & U --> W["web/app/sala/page.tsx<br/>model-viewer"]
 ```
 
-Secuencia (se repite en bucle, unos 42 s): **aparecen 5 robots** (brazo industrial, cuadrúpedo, servicio, dron, humanoide) → **un muro de números estilo Matrix escanea el lugar** → **un anillo verde marca al elegido** (el de servicio) → **los otros 4 desaparecen** → **el elegido reparte el café**. Todo va dentro del archivo 3D, porque AR Quick Look (iPhone) solo reproduce la animación guardada.
+Secuencia (en bucle; 23 s a tamaño real, 45 s en la maqueta): **5 robots en fila** (brazo industrial, cuadrúpedo, servicio, dron, humanoide) → **un muro de números estilo Matrix de dos capas recorre el lugar en 7 s**, dejando **una grilla verde encendida en el piso** y **una caja verde de análisis** alrededor de cada robot → **un anillo verde marca al elegido** (el de servicio) → **los otros 4 desaparecen** → **el elegido reparte el café** → los otros reaparecen y el bucle reinicia. El cuadro 0 muestra los 5 robots completos: AR Quick Look y Scene Viewer lo usan para medir el objeto y ponerlo en el piso. Todo va dentro del archivo 3D, porque AR Quick Look (iPhone) solo reproduce la animación guardada.
 
 | Variante | Qué es | Escala |
 |---|---|---|
@@ -18,7 +18,7 @@ Secuencia (se repite en bucle, unos 42 s): **aparecen 5 robots** (brazo industri
 
 ```bash
 pip install usd-core pygltflib numpy pillow
-python -c "import escena as E; E.textura_matrix('matrix.png')"   # números del escaneo
+python -c "import escena as E; E.textura_matrix('matrix.png'); E.textura_grilla('grilla.png')"   # texturas del escaneo
 python exportar_glb.py ../../../web/public/ar .
 python exportar_usdz.py ../../../web/public/ar .
 ```
