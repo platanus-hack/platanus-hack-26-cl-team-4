@@ -122,8 +122,8 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-  [*] --> subiendo
-  subiendo --> analizando_entorno
+  [*] --> en_cola
+  en_cola --> analizando_entorno
   analizando_entorno --> eligiendo_robot
   eligiendo_robot --> clonando
   clonando --> simulando
@@ -138,10 +138,12 @@ stateDiagram-v2
 ## 4. Agentes
 
 - **Un agente por etapa:** cada uno tiene su prompt, sus herramientas y su archivo de salida. Solo leen archivos del contrato.
-- **Modelos:** Claude Opus para el orquestador y la elección del robot. Claude Sonnet para analizar frames de video. Los ids van en una variable de entorno.
-- **Videos a frames:** el orquestador extrae 1 frame cada 2 s con `ffmpeg` y le manda a Claude una muestra.
-- **Validación:** cada salida se valida contra su JSON Schema en `esquemas/`. Si falla, la etapa se reintenta 1 vez y después la corrida pasa a `error`.
-- **Herramientas del agente Clon:** puede encolar `validar_clon` y leer el error del runner. Tiene como máximo 3 intentos.
+- **Modelo:** Claude Opus 5.5 (`VIAZ_MODELO`). Las respuestas usan structured outputs (`output_config.format`) con el JSON Schema de la etapa, y `fallbacks: "default"` por si el modelo rechaza la consulta.
+- **Modo `fijo`:** `VIAZ_AGENTES=fijo` devuelve fixtures, para desarrollar el flujo sin gastar API.
+- **Videos a frames:** el orquestador extrae 1 frame cada 3 s (máx. 8) con `ffmpeg` y se los manda a los agentes Entorno y Tarea.
+- **Robot:** el agente elige un `id` del catálogo y justifica. Las specs se copian del catálogo, nunca del modelo.
+- **Clon:** es código determinista, sin LLM ([`backend/viaz/urdf.py`](../backend/viaz/urdf.py)). Después el trabajo `validar_clon` lo revisa en la escena.
+- **Validación:** cada salida se valida contra su JSON Schema. Si falla, la corrida pasa a `error` con el motivo. **[Por hacer]** reintentar la etapa 1 vez.
 - **Re-ejecución:** cada etapa lee solo archivos. Así se puede repetir una etapa sin correr las anteriores.
 
 ## 5. Simulación en la 5090
@@ -152,10 +154,14 @@ stateDiagram-v2
 - **Un trabajo a la vez.** Isaac Sim usa casi toda la GPU.
 
 ### Qué hace cada script
-- **`generar_escena`:** crea `escena.usd` desde `entorno.json`: terreno, filas de estructuras y pila de paneles, todo con colisiones.
-- **`validar_clon`:** carga `robot.usd` en la escena, revisa que no choque al inicio y que alcance la pila y la estructura.
-- **`ejecutar_tarea`:** un planificador (cuRobo o RMPflow) mueve el robot. Graba `video.mp4` con una cámara y `trayectoria.json` con la pose por frame.
-- **`entrenar_subtarea`:** RL con PPO en Isaac Lab para una sub-tarea, por ejemplo alinear el panel. Es opcional.
+- **`generar_escena`** ([`sim/generar_escena.py`](../sim/generar_escena.py)): crea `escena.usd` (USDA) desde `entorno.json`, con suelo, tubos y postes, todo con colisión. Es Python puro.
+- **`validar_clon`** ([`sim/validar_clon.py`](../sim/validar_clon.py)): importa `robot.urdf` en la escena. Revisa las 6 articulaciones y que el plan alcance la pila y la estructura.
+- **`ejecutar_tarea`** ([`sim/ejecutar_tarea.py`](../sim/ejecutar_tarea.py)):
+  - **v0:** reproduce el plan de [`sim/plan.py`](../sim/plan.py) con física, mide dónde quedó cada panel y graba `video.mp4`.
+  - **Siguiente versión:** planificador (cuRobo o RMPflow) en vez del plan fijo.
+- **`entrenar_subtarea`:** RL con PPO en Isaac Lab para una sub-tarea, por ejemplo alinear el panel. Es opcional y **[Por hacer]**.
+- **Modo `simulado`:** el runner hace la validación y la trayectoria solo con `sim/plan.py`, sin Isaac. Sirve para desarrollar en un Mac.
+- **Sin probar:** los scripts de Isaac **no se han probado en Isaac**. Probarlos en el pod es lo primero.
 
 ### Puesta en marcha del pod (primera hora del hack)
 1. Arrendar la 5090 con un **volumen persistente**. Ahí quedan el caché de shaders de Isaac y los assets.
@@ -176,17 +182,21 @@ stateDiagram-v2
 ## 7. Estructura del repo
 
 ```
-docs/                 arquitectura, contrato de datos, decisiones
-web/                  Next.js en Vercel: subida, progreso y visor 3D
-api/                  FastAPI en Render: proyectos, corridas, cola y URLs firmadas
-orquestador/          Background Worker en Render: corre los agentes
-agentes/<etapa>/      prompt + herramientas de cada agente
-worker-gpu/           sim runner: toma trabajos y ejecuta scripts de sim/
-sim/                  scripts de Isaac Sim/Lab: escena, clon, tarea, grabación, RL
-esquemas/             JSON Schema de cada archivo del contrato
-data/robots/          catálogo de robots reales (un JSON por robot)
-render.yaml           blueprint de Render: API, worker y Postgres
+docs/                         arquitectura, contrato de datos, desarrollo y deploy
+backend/viaz/api.py           FastAPI en Render: proyectos, corridas, cola y URLs firmadas
+backend/viaz/orquestador.py   Background Worker en Render: corre los agentes en orden
+backend/viaz/agentes/         prompt y lógica de cada agente (Entorno, Tarea, Robot, Clon)
+backend/viaz/esquemas/        JSON Schema de cada archivo del contrato
+backend/viaz/catalogo/robots/ catálogo de robots reales (un JSON por robot)
+backend/viaz/urdf.py          clon paramétrico del robot
+backend/tests/                flujo de punta a punta y contrato
+worker-gpu/runner.py          sim runner: toma trabajos y ejecuta scripts de sim/
+sim/                          plan de la tarea (Python puro) y scripts de Isaac Sim
+web/                          Next.js en Vercel: subida, progreso y visor 3D
+render.yaml                   blueprint de Render: API, orquestador y Postgres
 ```
+
+Cómo correr todo en local y desplegar: [`desarrollo.md`](desarrollo.md).
 
 ## 8. Costos estimados
 

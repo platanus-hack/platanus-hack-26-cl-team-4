@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "resultado.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "metodo", "fuente", "politica", "metricas", "video", "notas"],
+  "properties": {
+    "version": { "const": 1 },
+    "metodo": { "enum": ["planificador", "rl", "planificador_rl"] },
+    "fuente": { "enum": ["isaac", "simulado"], "description": "simulado = trayectoria sintética sin física (modo de desarrollo)" },
+    "politica": { "type": ["string", "null"] },
+    "metricas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["paneles_instalados", "intentos", "tasa_exito", "ciclo_promedio_s"],
+      "properties": {
+        "paneles_instalados": { "type": "integer", "minimum": 0 },
+        "intentos": { "type": "integer", "minimum": 0 },
+        "tasa_exito": { "type": "number", "minimum": 0, "maximum": 1 },
+        "ciclo_promedio_s": { "type": "number", "minimum": 0 }
+      }
+    },
+    "video": { "type": ["string", "null"] },
+    "notas": { "type": "string" }
+  }
+}

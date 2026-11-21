@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tarea.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "tarea", "descripcion", "pila_paneles", "objetivo", "restricciones"],
+  "properties": {
+    "version": { "const": 1 },
+    "tarea": { "enum": ["instalar_panel"] },
+    "descripcion": { "type": "string" },
+    "pila_paneles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en_robot", "cantidad"],
+      "properties": {
+        "en_robot": { "type": "boolean" },
+        "cantidad": { "type": "integer", "minimum": 1, "maximum": 30 }
+      }
+    },
+    "objetivo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["paneles", "ciclo_s"],
+      "properties": {
+        "paneles": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "ciclo_s": { "type": "number", "minimum": 1, "maximum": 600 }
+      }
+    },
+    "restricciones": { "type": "array", "items": { "type": "string" } }
+  }
+}
