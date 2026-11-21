@@ -5,6 +5,7 @@ Los archivos que empiezan con `_` no se cargan.
 
 - Formato: `robot.schema.json` sin `justificacion` ni `alternativas`. Copia `_plantilla.json`.
 - Cada dato sale de una fuente con URL y fecha (`fuente`). Si un dato no aparece en la fuente, déjalo fuera del pitch.
+- **`origen`:** opcional; sin el campo vale `catalogo`. Las fichas que trae la búsqueda web (contrato v3) tienen `origen: "busqueda"` y viven en el almacén de la corrida. Una persona las pasa a `robots/` con un PR.
 - `viaz-instalador-ficticio` existe solo para desarrollar el flujo. Tiene `"ficticio": true` y la web lo muestra así.
 
 ## Física propia del robot (`fisica`)

@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "comparacion.json",
+  "description": "Comparación de los finalistas después de sus corridas hijas. El código elige el ganador con la regla sobre evaluacion.json; el LLM solo escribe la explicación.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "ganador",
+    "regla",
+    "condiciones",
+    "ranking",
+    "advertencias",
+    "que_compara",
+    "que_no_compara",
+    "explicacion"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "ganador": {
+      "description": "Id del finalista con puesto 1.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "regla": {
+      "description": "Regla con que el código ordenó el ranking, en una oración.",
+      "type": "string"
+    },
+    "condiciones": {
+      "description": "Lo que fue igual para todos los finalistas.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "escena",
+        "horas_entrenamiento",
+        "semillas",
+        "tolerancia_pos_m",
+        "tolerancia_ang_grados"
+      ],
+      "properties": {
+        "escena": {
+          "type": "string"
+        },
+        "horas_entrenamiento": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "semillas": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer"
+          }
+        },
+        "tolerancia_pos_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tolerancia_ang_grados": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "ranking": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "corrida_id",
+          "puesto",
+          "tasa_exito",
+          "ciclo_s",
+          "fidelidad"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "corrida_id": {
+            "description": "Id de la corrida hija del finalista.",
+            "type": "string"
+          },
+          "puesto": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "tasa_exito": {
+            "description": "evaluacion.json → tolerancias[0].tasa_exito (la tolerancia de entrenamiento).",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "ciclo_s": {
+            "description": "evaluacion.json → ciclo_promedio_s. null si no hubo ningún éxito.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "fidelidad": {
+            "description": "Copia de clon.json → fidelidad.",
+            "enum": [
+              "generico",
+              "medido",
+              "verificado"
+            ]
+          }
+        }
+      }
+    },
+    "advertencias": {
+      "description": "Por ejemplo: niveles de fidelidad distintos, o una corrida hija que falló y quedó fuera del ranking.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "que_compara": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "que_no_compara": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "explicacion": {
+      "description": "Texto del LLM para el cliente. Explica la regla; no la cambia.",
+      "type": "string"
+    }
+  }
+}

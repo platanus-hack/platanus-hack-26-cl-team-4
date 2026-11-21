@@ -116,6 +116,14 @@
     "validado_en_escena": {
       "type": "boolean"
     },
+    "fidelidad": {
+      "description": "Qué tan fiel es el clon al robot real. generico: base genérica, sin bloque fisica. medido: usa el bloque fisica de la ficha, con datos publicados o medidos en fotos. verificado: medido, sin claves fisica.* en estimados, y pasó validar_robot y la rúbrica de calidad.",
+      "enum": [
+        "generico",
+        "medido",
+        "verificado"
+      ]
+    },
     "construccion": {
       "description": "Cómo se armó el clon: agente constructor o respaldo determinista (RF-CLO-07).",
       "type": "object",

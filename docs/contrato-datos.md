@@ -88,6 +88,19 @@ flowchart LR
 
 - **Del agente:** el agente devuelve solo `id`, `justificacion` y `alternativas`. El `id` es un `enum` con los ids del catálogo.
 - **Specs:** todas las specs salen de [`backend/viaz/catalogo/robots/`](../backend/viaz/catalogo/robots/), nunca del modelo.
+- **Campos opcionales nuevos (contrato v3):** `origen` (`catalogo` | `busqueda`; sin el campo, `catalogo`) y `capacidades` (tareas que el robot hace según su fuente). Ningún código los lee todavía.
+
+## Selección v3: `requisitos.json`, `seleccion.json`, `comparacion.json`
+
+> **Contrato, sin código.** Los esquemas y los fixtures existen y validan. Ninguna etapa escribe ni lee estos archivos todavía. Detalle en [`agentes/seleccion-robot.md`](agentes/seleccion-robot.md).
+
+| Archivo | Lo escribe | Contenido | Esquema | Ejemplo |
+|---|---|---|---|---|
+| `requisitos.json` | Perfil de dominio (código) | Objeto, carga mínima, efectores y tipos aceptados, movilidad, pendiente, alcance mínimo por robot, preferencias, advertencias | [`requisitos.schema.json`](../backend/viaz/esquemas/requisitos.schema.json) | [`fixtures/requisitos.json`](../backend/viaz/fixtures/requisitos.json) |
+| `seleccion.json` | Código + agente de selección | Estado de la búsqueda, encontrados, descartados con fallas, 1 a 3 finalistas, alternativas | [`seleccion.schema.json`](../backend/viaz/esquemas/seleccion.schema.json) | [`fixtures/seleccion.json`](../backend/viaz/fixtures/seleccion.json) |
+| `comparacion.json` | Código (regla) + agente (explicación) | Ganador, regla, condiciones comunes, ranking con fidelidad, qué compara y qué no | [`comparacion.schema.json`](../backend/viaz/esquemas/comparacion.schema.json) | [`fixtures/comparacion.json`](../backend/viaz/fixtures/comparacion.json) (métricas ilustrativas) |
+
+- **Un `robot.json` por finalista,** con el formato de arriba, en su corrida hija.
 
 ## `clon.json` (etapa 4) + `robot.urdf` + `validacion.json`
 
@@ -108,6 +121,7 @@ flowchart LR
 
 - **Generación:** el clon lo arma código determinista ([`backend/viaz/urdf.py`](../backend/viaz/urdf.py)): una base con ruedas y un brazo de 6 ejes escalado al alcance del robot.
 - **`geometria`:** tiene las medidas que usa el plan ([`sim/plan.py`](../sim/plan.py)). Coinciden con `robot.urdf`.
+- **`fidelidad` (opcional, contrato v3):** `generico` (base genérica), `medido` (usa `fisica` de la ficha) o `verificado` (`medido`, sin `fisica.*` estimados, y pasó `validar_robot` y la rúbrica). Ningún código lo escribe todavía.
 - **Articulaciones de `robot.urdf`:** `shoulder_pan`, `shoulder_lift`, `elbow`, `wrist_1`, `wrist_2` y `wrist_3`. El link de la ventosa se llama `efector`.
 - **`validacion.json`:** sale del trabajo `validar_clon` con el formato `{"ok", "problemas": [], "fuente", "paneles_planificados"}`. Si `ok` es `false`, la corrida pasa a `error`.
 

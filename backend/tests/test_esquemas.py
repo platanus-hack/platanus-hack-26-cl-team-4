@@ -59,6 +59,26 @@ def test_fixtures_y_catalogo_cumplen_el_contrato():
     assert all(r["ficticio"] or r["fuente"]["url"] for r in robots.values())
 
 
+def _fixture(nombre):
+    return json.loads((agentes.FIXTURES / f"{nombre}.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("nombre", ["requisitos", "seleccion", "comparacion"])
+def test_fixtures_de_seleccion_v3_cumplen_su_esquema(nombre):
+    validar(nombre, _fixture(nombre))
+
+
+def test_fixtures_de_seleccion_v3_son_coherentes_con_el_catalogo():
+    robots = catalogo.cargar()
+    e, req, sel, comp = (_fixture(n) for n in ("entorno", "requisitos", "seleccion", "comparacion"))
+    assert {f["id"]: f["alcance_min_m"] for f in req["por_robot"]} == {
+        i: agentes.alcance_necesario(e, r) for i, r in robots.items()}
+    candidatos = [f["id"] for f in sel["finalistas"]] + [a["id"] for a in sel["alternativas"]]
+    assert sorted(candidatos) == sorted(robots)
+    assert comp["ganador"] == sel["finalistas"][0]["id"]
+    assert {f["id"] for f in comp["ranking"]} == {f["id"] for f in sel["finalistas"]}
+
+
 def test_validar_rechaza_datos_fuera_de_contrato():
     with pytest.raises(ErrorEsquema):
         validar("tarea", {"version": 1})
