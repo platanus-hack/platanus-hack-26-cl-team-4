@@ -12,9 +12,13 @@ Convenciones (las mismas que sim/generar_escena.py y web/lib/escena.ts):
 from __future__ import annotations
 
 import math
+import sys
+from pathlib import Path
 
-TUBO_R = 0.05          # radio aproximado del tubo de torsión
-PANEL_ESPESOR = 0.04
+sys.path.insert(0, str(Path(__file__).parent))
+from fisica import PANEL_ESPESOR_M as PANEL_ESPESOR  # noqa: E402
+
+TUBO_R = 0.05          # medio lado del tubo de torsión (generar_escena.TUBO_LADO_M / 2)
 PASO_PILA = 0.045      # alto de cada panel en la pila del robot
 HOLGURA_SLOT = 0.02    # separación entre paneles instalados
 INICIO_X = 2.0         # primer panel a 2 m del inicio de la fila

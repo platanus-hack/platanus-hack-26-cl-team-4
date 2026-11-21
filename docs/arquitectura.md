@@ -150,6 +150,8 @@ stateDiagram-v2
 
 ## 5. Simulación en la 5090
 
+Escena física (capas, masas, fricción y prueba de física): [`escena-isaac.md`](escena-isaac.md).
+
 ### Sim runner
 - **Programa Python** en el pod. Toma trabajos de la API, corre scripts de `sim/` en Isaac Sim headless y sube los resultados a R2.
 - **Tipos de trabajo:** `generar_escena`, `validar_clon`, `ejecutar_tarea` y `entrenar_subtarea`.

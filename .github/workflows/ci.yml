@@ -18,7 +18,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
-      - run: python -m pytest -q
+      # usd-core abre escena.usd de verdad (test_escena_usda_es_usd_valido). No tiene wheel para Windows ARM.
+      - run: pip install usd-core
+      - run: python -m pytest -q -rs
 
   web:
     runs-on: ubuntu-latest

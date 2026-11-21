@@ -23,7 +23,9 @@ export function cajasEscena(e: Entorno): Caja[] {
     const postes = Math.floor(largo / POSTE_CADA_M) + 1;
     for (let j = 0; j < postes; j++) {
       const x = Math.min(j * POSTE_CADA_M, largo);
-      cajas.push({ nombre: `fila${i}-poste${j}`, centro: [x, y, alto / 2], tam: [0.15, 0.15, alto], color: "#737880" });
+      // El poste termina en la cara de abajo del tubo (lado 0,1 m), igual que en sim/generar_escena.py.
+      const h = alto - 0.05;
+      cajas.push({ nombre: `fila${i}-poste${j}`, centro: [x, y, h / 2], tam: [0.15, 0.15, h], color: "#737880" });
     }
   }
   return cajas;

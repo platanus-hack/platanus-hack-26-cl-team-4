@@ -103,6 +103,7 @@ python -m viaz.orquestador
 ### 4. Pod GPU (RTX 5090)
 1. Arrendar el pod con volumen persistente y la imagen de Isaac Sim (`nvcr.io/nvidia/isaac-sim`). Elegir una versión con soporte para RTX 50.
 2. Probar Isaac antes de todo: `/isaac-sim/python.sh -c "from isaacsim import SimulationApp; SimulationApp({'headless': True}).close()"`.
+   Después, correr la prueba de física de la escena en Isaac Lab ([`escena-isaac.md`](escena-isaac.md) § Prueba de física).
 3. Instalar el ffmpeg del video: `/isaac-sim/python.sh -m pip install imageio-ffmpeg`.
 4. Clonar el repo y correr:
 
