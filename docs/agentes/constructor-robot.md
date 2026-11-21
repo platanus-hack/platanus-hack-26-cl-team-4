@@ -107,3 +107,7 @@ sequenceDiagram
 - **Plantilla:** un `ensamblaje.json` de ejemplo genera un `robot_cfg.py` que Isaac Lab importa sin error.
 - **Reglas:** un ensamblaje con carga distinta al real se rechaza antes de ir al pod.
 - **En el pod:** el robot generado carga en la escena y levanta un panel de 32 kg en una prueba sin RL.
+
+## Calidad visual
+
+Todo lo que este agente construya en Isaac (escena, objetos o robot) cumple [`docs/calidad-virtualizacion.md`](../calidad-virtualizacion.md): reusar assets aprobados, 4 vistas fijas, rúbrica con todo ≥ 4 y máximo 3 intentos antes de pedir revisión humana.

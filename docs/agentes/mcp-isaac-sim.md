@@ -83,3 +83,7 @@ Reglas:
 - [ ] Elegir el servidor MCP para Isaac Sim y verificar que funciona con la versión del pod ([`infraestructura.md`](../infraestructura.md)).
 - [ ] Escribir el `CLAUDE.md` del pod con las instrucciones de §5.
 - [ ] Documentar el túnel SSH para usarlo desde un Mac.
+
+## Calidad visual
+
+Todo lo que este agente construya en Isaac (escena, objetos o robot) cumple [`docs/calidad-virtualizacion.md`](../calidad-virtualizacion.md): reusar assets aprobados, 4 vistas fijas, rúbrica con todo ≥ 4 y máximo 3 intentos antes de pedir revisión humana.
