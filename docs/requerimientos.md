@@ -1,10 +1,11 @@
 # Especificación de requerimientos de VIAZ
 
-> Estado: **borrador v0.6** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
+> Estado: **borrador v0.7** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
 > Estructura según ISO/IEC/IEEE 29148. Prioridades según el método **MoSCoW**. Calidad según ISO/IEC 25010.
 > **Cambio de v0.4:** el demo usa un entorno escrito a mano y una política entrenada con RL. El mapeo desde video pasa a Could.
 > **Cambio de v0.5:** base móvil con navegación programada y RL en el brazo; meta de 90 % a 5 cm y 5° en 100 episodios; tiempo fijo; avisos por Discord.
 > **Cambio de v0.6:** la web explica el flujo teórico (subir videos → extraer entorno → robot → entrenamiento) sin usarlo en vivo. El pitch muestra los resultados precalculados del parque de referencia.
+> **Cambio de v0.7:** los clips del video acelerado se graban desde checkpoints, no durante el entrenamiento (RF-INT-13, RF-MON-06). La GPU es una RTX en un host con driver 580, no solo una 5090 ([`investigacion-isaac-gpu.md`](investigacion-isaac-gpu.md)).
 > Lo marcado **[Por definir]** lo decide el equipo. Cada requerimiento tiene un ID: cítalo en issues, PRs y pruebas.
 
 ## Índice
@@ -87,7 +88,7 @@ flowchart LR
 | **Jurado / visitante** | Entender el flujo en menos de 2 min y ver al robot aprender y trabajar |
 | **Equipo (operador)** | Escribir el entorno, lanzar el entrenamiento y decidir con la ayuda del monitor |
 | **Fabricantes de robots** | Ver sus specs citadas con fuente y fecha |
-| **Pod RTX 5090** | Ejecutar validación, entrenamiento y grabación (actor de sistema) |
+| **Pod GPU RTX** | Ejecutar validación, entrenamiento y grabación (actor de sistema) |
 
 ## 3. Método de priorización MoSCoW
 
@@ -177,7 +178,7 @@ flowchart LR
 | RF-CLO-07 | Si el agente no logra un robot válido en 3 intentos, el sistema usa el clon determinista de `urdf.py` | **S** |
 | RF-CLO-08 | El agente entrega `robot.urdf` con los mismos joints, para el visor web | **C** |
 
-### 4.5 Entrenamiento RL de instalar el panel (`sim/`, pod RTX 5090)
+### 4.5 Entrenamiento RL de instalar el panel (`sim/`, pod GPU RTX)
 
 | ID | Requerimiento | MoSCoW |
 |---|---|---|
@@ -185,8 +186,8 @@ flowchart LR
 | RF-INT-18 | La base móvil avanza entre puntos de montaje con un controlador programado, sin RL | **M** |
 | RF-INT-19 | En cada episodio, la base se detiene con ruido de ±15 cm y ±5° respecto del punto de montaje | **M** |
 | RF-INT-11 | El episodio termina con éxito si el panel queda apoyado, sin chocar con la estructura, a 5 cm o menos y 5° o menos de la pose ideal | **M** |
-| RF-INT-12 | El script entrena la política con PPO en Isaac Lab, con entornos en paralelo en la 5090, y guarda checkpoints | **M** |
-| RF-INT-13 | El script graba clips del entrenamiento a intervalos fijos y arma `entrenamiento_rapido.mp4` en cámara rápida | **M** |
+| RF-INT-12 | El script entrena la política con PPO en Isaac Lab, con entornos en paralelo en la GPU del pod, sin cámaras, y guarda un checkpoint cada 50 iteraciones sin borrar los anteriores | **M** |
+| RF-INT-13 | Al terminar el entrenamiento, el script carga 4 checkpoints (inicio, `primer_exito`, `exito_50` y `umbral_alcanzado`, o `mejor_recompensa` si no llega al 90 %), graba un clip de ~7 s de cada uno con la cámara lateral 3/4 fija y arma `entrenamiento_rapido.mp4` de ~30 s. Cada clip muestra el tiempo de entrenamiento y una mini curva de éxito. El primer clip abre con 1–2 s de la grilla de entornos. Si no hay `primer_exito`, usa el checkpoint del 25 % | **M** |
 | RF-INT-14 | El script evalúa la política final en 100 episodios y escribe `resultado.json` (`metodo: "rl"`, `politica`) | **M** |
 | RF-INT-20 | La evaluación también informa la tasa de éxito a 2 cm y 2° | **S** |
 | RF-INT-21 | Si sobra tiempo, el entrenamiento se afina con tolerancia de 2 cm y 2° desde el mejor checkpoint | **C** |
@@ -206,7 +207,7 @@ flowchart LR
 | RF-MON-09 | El agente avisa por Discord los hitos: primer éxito, 50 %, 90 % y fin del entrenamiento | **S** |
 | RF-MON-10 | El agente manda como máximo 1 aviso por tipo cada 30 min, salvo NaN | **S** |
 | RF-MON-05 | El agente recomienda el mejor checkpoint para la muestra final | **S** |
-| RF-MON-06 | El agente marca hitos (primer éxito, mejor recompensa) para el video en cámara rápida | **S** |
+| RF-MON-06 | El agente marca hitos (`primer_exito`, `exito_50`, `umbral_alcanzado`, `mejor_recompensa`) con su iteración, para elegir los checkpoints de los clips (RF-INT-13) | **S** |
 | RF-MON-07 | El agente escribe un resumen final del entrenamiento para la web y el pitch | **S** |
 | RF-MON-08 | El agente detiene el entrenamiento solo con NaN. Otras acciones las aprueba un humano | **M** |
 
@@ -249,7 +250,7 @@ flowchart LR
 | RF-API-01 | `POST /proyectos` crea el proyecto y devuelve las URLs firmadas de subida | **C** |
 | RF-API-02 | `POST /proyectos/{id}/corridas` crea una corrida y la encola | **C** |
 
-### 4.9 Sim runner (`worker-gpu/`, pod RTX 5090)
+### 4.9 Sim runner (`worker-gpu/`, pod GPU RTX)
 
 | ID | Requerimiento | MoSCoW |
 |---|---|---|
@@ -286,7 +287,7 @@ flowchart TD
 | RNF-07 | Fiabilidad · disponibilidad | La corrida del demo en R2 se muestra aunque fallen el pod o Claude | — | **M** |
 | RNF-08 | Seguridad · confidencialidad | La clave de Claude y el webhook de Discord viven solo en Render. El pod no los necesita. El repo no contiene secretos | ISO/IEC 27002 | **M** |
 | RNF-09 | Mantenibilidad · modularidad | Cada agente tiene su prompt en un archivo propio y lee solo archivos del contrato | ISO/IEC/IEEE 42010 | **M** |
-| RNF-10 | Flexibilidad · instalabilidad | El runner corre en un pod RTX 5090 con versiones fijadas ([`infraestructura.md`](infraestructura.md)) | — | **M** |
+| RNF-10 | Flexibilidad · instalabilidad | El runner corre en un pod con GPU RTX y driver 580, con versiones fijadas ([`infraestructura.md`](infraestructura.md)) | — | **M** |
 | RNF-11 | Seguridad · autenticidad | Las rutas `/worker/*` exigen `Authorization: Bearer <WORKER_TOKEN>` | ISO/IEC 27002 | **M** |
 | RNF-12 | Compatibilidad · interoperabilidad | Los archivos del contrato son JSON UTF-8. Las fechas usan ISO 8601 (`AAAA-MM-DD`) | ISO/IEC 21778, ISO 8601 | **M** |
 | RNF-13 | Adecuación funcional · corrección | El sistema trata cada salida de un agente como no confiable hasta validarla | ISO/IEC 5338 | **M** |
@@ -420,7 +421,7 @@ timeline
 
 ## 10. Supuestos y dependencias
 
-- Hay un pod RTX 5090 (RunPod o Vast.ai) que aprobó la prueba de humo de [`infraestructura.md`](infraestructura.md) §5, incluido un ejemplo de RL de Isaac Lab.
+- Hay un pod con GPU RTX y driver 580 (Vast.ai, ver [`infraestructura.md`](infraestructura.md) §2) que aprobó la prueba de humo de [`infraestructura.md`](infraestructura.md) §5, incluido un ejemplo de RL de Isaac Lab.
 - Hay horas de pod suficientes para entrenar (RNF-17) y para repetir el entrenamiento 1 vez si falla.
 - El equipo tiene un canal de Discord y crea un webhook para el monitor.
 - Hay crédito en Render (US$50) y una cuenta de Cloudflare R2.
