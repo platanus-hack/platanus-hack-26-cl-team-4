@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "medidas_entorno.json",
+  "description": "Medidas del parque desde los videos (sim/medir_entorno.py). Las lee el agente Entorno. Valor ± error por campo de entorno.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "disponible", "fuente", "frames", "campos", "avisos"],
+  "properties": {
+    "version": { "const": 1 },
+    "disponible": { "type": "boolean" },
+    "fuente": { "type": "string" },
+    "frames": { "type": "integer", "minimum": 0 },
+    "segundos": { "type": "number", "minimum": 0 },
+    "campos": {
+      "type": "object",
+      "propertyNames": {
+        "enum": ["filas.cantidad", "filas.separacion_m", "filas.largo_m", "estructura.tipo", "estructura.altura_m",
+                 "estructura.inclinacion_grados", "panel.largo_m", "panel.ancho_m", "terreno.pendiente_grados"]
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["valor", "error", "confianza", "metodo", "muestras"],
+        "properties": {
+          "valor": { "type": ["number", "string"] },
+          "error": { "type": "number", "minimum": 0 },
+          "confianza": { "type": "number", "minimum": 0, "maximum": 1 },
+          "metodo": { "type": "string" },
+          "muestras": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "avisos": { "type": "array", "items": { "type": "string" } },
+    "diagnostico": { "type": "object" },
+    "error": { "type": "string" }
+  }
+}

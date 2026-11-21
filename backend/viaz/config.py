@@ -37,6 +37,14 @@ class Config:
     # Entorno y tarea escritos a mano (RF-MAP-11, RF-TAR-04). Vacío = fixtures de ejemplo.
     entorno_manual: str = field(default_factory=lambda: os.getenv("VIAZ_ENTORNO_MANUAL", ""))
     tarea_manual: str = field(default_factory=lambda: os.getenv("VIAZ_TAREA_MANUAL", ""))
+    # Medir el parque en los videos (sim/medir_entorno.py) antes del agente Entorno. En el flujo rl, con medición
+    # el entorno lo arma el agente con las medidas en vez de leerlo a mano.
+    medir: bool = field(default_factory=lambda: os.getenv("VIAZ_MEDIR", "").lower() in ("1", "true", "si", "sí"))
+    # Medida real del panel, si el cliente sabe el modelo: corrige la escala de la reconstrucción. Sin ella, la escala
+    # sale de la altura de la cámara (celular en la mano, 1,5 m; un dron: VIAZ_ALTURA_CAMARA_M con su altura de vuelo).
+    largo_panel_m: float = field(default_factory=lambda: float(os.getenv("VIAZ_LARGO_PANEL_M", "0") or 0))
+    escala_panel_m: float = field(default_factory=lambda: float(os.getenv("VIAZ_ESCALA_PANEL_M", "0") or 0))
+    altura_camara_m: float = field(default_factory=lambda: float(os.getenv("VIAZ_ALTURA_CAMARA_M", "1.5") or 0))
     horas_entrenamiento: float = field(default_factory=lambda: float(os.getenv("VIAZ_HORAS_ENTRENAMIENTO", "4")))
     episodios_evaluacion: int = field(default_factory=lambda: int(os.getenv("VIAZ_EPISODIOS_EVALUACION", "100")))
     intentos_constructor: int = field(default_factory=lambda: int(os.getenv("VIAZ_INTENTOS_CONSTRUCTOR", "3")))

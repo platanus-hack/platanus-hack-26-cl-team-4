@@ -34,7 +34,7 @@ import plan  # noqa: E402
 
 log = logging.getLogger("viaz.worker")
 TIPOS = {".json": "application/json", ".mp4": "video/mp4", ".urdf": "application/xml", ".usd": "application/octet-stream",
-         ".py": "text/x-python", ".jsonl": "application/x-ndjson", ".pt": "application/octet-stream"}
+         ".py": "text/x-python", ".jsonl": "application/x-ndjson", ".pt": "application/octet-stream", ".png": "image/png"}
 COMANDOS = ("entrenar", "evaluar", "grabar_clip", "validar_robot")
 
 
@@ -298,6 +298,36 @@ def validar_robot(ctx: Contexto, d: Path) -> None:
         video.unir(clips, d / "construccion.mp4")
 
 
+def medir_entorno(ctx: Contexto, d: Path) -> None:
+    """Mide el parque en los videos de la corrida (sim/medir_entorno.py): MapAnything + SAM 3 + geometría.
+
+    Corre con el Python de su propio entorno (VIAZ_PYTHON_MEDIR, por defecto /venv/medicion/bin/python): MapAnything
+    y SAM 3 traen un torch distinto del de Isaac. En modo simulado no hay GPU: escribe "disponible": false y el
+    agente Entorno sigue como antes, con los frames.
+    """
+    videos = sorted(d.glob("video_*"))
+    if ctx.modo != "isaac":
+        _escribir(d, "medidas_entorno.json", {"version": 1, "disponible": False, "fuente": "simulado", "frames": 0,
+                                               "campos": {}, "avisos": [], "error": "modo simulado: sin GPU para medir"})
+        return
+    if not videos:
+        raise RuntimeError("medir_entorno no recibió videos")
+    p = ctx.parametros
+    python = os.getenv("VIAZ_PYTHON_MEDIR", "/venv/medicion/bin/python")
+    cmd = [*shlex.split(python), str(SIM / "medir_entorno.py"), "--videos", *map(str, videos), "--salida", str(d),
+           "--frames", str(int(p.get("frames", 64)))]
+    if p.get("largo_panel_m"):
+        cmd += ["--largo-panel-m", str(p["largo_panel_m"])]
+    if p.get("escala_panel_m"):
+        cmd += ["--escala-panel-m", str(p["escala_panel_m"])]
+    if p.get("altura_camara_m") is not None:
+        cmd += ["--altura-camara-m", str(p["altura_camara_m"])]
+    log.info("ejecuto %s", " ".join(cmd))
+    r = subprocess.run(cmd, cwd=RAIZ, capture_output=True, text=True, timeout=1800)
+    if not (d / "medidas_entorno.json").exists():
+        raise RuntimeError(f"medir_entorno terminó con código {r.returncode} sin escribir medidas: {(r.stderr or r.stdout)[-1500:]}")
+
+
 def _enlazar_texturas(d: Path) -> None:
     """escena.usd cita ./texturas/ y el almacén solo lleva archivos sueltos. Sin este enlace, validar_clon y ejecutar_tarea
     abren el demo con colores planos. Enlaza la carpeta de texturas del pod (texturas.asegurar la hace una sola vez).
@@ -334,10 +364,11 @@ def ejecutar(tipo: str, d: Path, modo: str, isaac_python: str, ctx: Contexto | N
             tray = plan.generar(_leer(d, "entorno.json"), _leer(d, "tarea.json"), _leer(d, "clon.json"))
             _escribir(d, "trayectoria.json", tray)
             _escribir(d, "resultado.json", plan.resultado_simulado(tray))
-    elif tipo in ("validar_robot", "entrenar", "evaluar", "grabar_clips"):
+    elif tipo in ("validar_robot", "entrenar", "evaluar", "grabar_clips", "medir_entorno"):
         if ctx is None:
             raise RuntimeError(f"{tipo} necesita el contexto del trabajo")
-        {"validar_robot": validar_robot, "entrenar": entrenar, "evaluar": evaluar, "grabar_clips": grabar_clips}[tipo](ctx, d)
+        {"validar_robot": validar_robot, "entrenar": entrenar, "evaluar": evaluar, "grabar_clips": grabar_clips,
+         "medir_entorno": medir_entorno}[tipo](ctx, d)
     else:
         raise RuntimeError(f"tipo de trabajo desconocido: {tipo}")
 

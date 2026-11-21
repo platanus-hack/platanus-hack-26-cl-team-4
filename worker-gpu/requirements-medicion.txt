@@ -1,0 +1,13 @@
+# Medición del parque en los videos (sim/medir_entorno.py). Van en /venv/medicion, no en el entorno de Isaac.
+# torch, MapAnything y SAM 3 los instala worker-gpu/pod/instalar_medicion.sh (torch desde el índice cu128,
+# MapAnything y SAM 3 desde sus repositorios). Aquí va el resto.
+numpy>=1.26
+scipy>=1.11
+pillow>=10.1
+imageio-ffmpeg>=0.5
+opencv-python-headless>=4.9
+# Dependencias que SAM 3 usa y no declara (medido al instalar en el pod, 2026-11-21).
+pycocotools>=2.0
+psutil>=5.9
+einops>=0.7
+decord>=0.6
