@@ -4,7 +4,7 @@
 // model-viewer abre la cámara del celular: AR Quick Look en iPhone (USDZ) y Scene Viewer / WebXR en Android (GLB).
 // Se carga desde el CDN oficial porque trae su propia versión de three.js (la del visor 3D del proyecto es otra).
 import Script from "next/script";
-import { createElement, useState } from "react";
+import { createElement, useEffect, useRef, useState } from "react";
 
 const MODELOS = {
   maqueta: {
@@ -27,7 +27,21 @@ type Clave = keyof typeof MODELOS;
 
 export default function PaginaSala() {
   const [modo, setModo] = useState<Clave>("maqueta");
+  const [puedeAR, setPuedeAR] = useState<boolean | null>(null);
+  const visor = useRef<HTMLElement & { canActivateAR?: boolean; activateAR?: () => void }>(null);
   const m = MODELOS[modo];
+
+  // model-viewer decide si este celular y navegador pueden abrir la cámara en AR.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const v = visor.current;
+      if (v && customElements.get("model-viewer") && (v as unknown as { loaded?: boolean }).loaded) {
+        setPuedeAR(Boolean(v.canActivateAR));
+        clearInterval(id);
+      }
+    }, 300);
+    return () => clearInterval(id);
+  }, [modo]);
   return (
     <section className="ar">
       <Script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" />
@@ -45,10 +59,22 @@ export default function PaginaSala() {
       </div>
       <p className="tenue">{m.detalle}</p>
 
+      {puedeAR && (
+        <button className="ar-camara" onClick={() => visor.current?.activateAR?.()}>📷 Abrir la cámara</button>
+      )}
+      {puedeAR === false && (
+        <p className="aviso">
+          Este navegador no puede abrir la cámara en AR. En Android, ábrelo en <strong>Chrome</strong> y revisa que esté instalado
+          <strong> Servicios de Google Play para RA</strong> (Play Store). En iPhone, ábrelo en <strong>Safari</strong>. En computador
+          solo se ve en 3D.
+        </p>
+      )}
+
       {createElement(
         "model-viewer",
         {
           key: modo,
+          ref: visor,
           src: m.glb,
           "ios-src": m.usdz,
           alt: m.titulo,

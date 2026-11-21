@@ -94,6 +94,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .ar-modos button { background: var(--superficie); color: var(--texto); border: 1px solid var(--borde); }
 .ar-modos button.activo { background: var(--acento); color: var(--acento-texto); border-color: var(--acento); }
 .ar-visor { width: 100%; height: min(65vh, 600px); border-radius: 12px; border: 1px solid var(--borde); background: radial-gradient(#e9edf2, #c9d1db); }
+.ar-camara { font-size: 1.15rem; font-weight: 700; padding: 0.9rem 1.2rem; border-radius: 12px; background: var(--acento); color: var(--acento-texto); border: none; }
 .ar-boton { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); background: var(--acento); color: var(--acento-texto); font-weight: 600; padding: 0.7rem 1.2rem; border-radius: 999px; border: none; }
 .qr { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; padding: 1rem; }
 .qr-codigo { width: min(80vw, 520px); background: #fff; padding: 12px; border-radius: 12px; }
