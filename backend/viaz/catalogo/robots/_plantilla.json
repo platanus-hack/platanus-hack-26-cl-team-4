@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "fabricante-modelo",
+  "nombre": "Nombre comercial",
+  "fabricante": "Empresa",
+  "tipo": "base_movil_brazo",
+  "ficticio": false,
+  "carga_util_kg": 0,
+  "alcance_m": 0,
+  "velocidad_base_m_s": 0,
+  "efector": "ventosa",
+  "fuente": { "url": "https://... (página del fabricante o nota de prensa)", "consultado": "AAAA-MM-DD" }
+}

@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# Node / Next
+node_modules/
+.next/
+web/next-env.d.ts
+
+# Datos locales de desarrollo (SQLite y archivos del almacén local)
+.datos/
+
+# Secretos
+.env
+.env.*
+!.env.example
+*.tsbuildinfo

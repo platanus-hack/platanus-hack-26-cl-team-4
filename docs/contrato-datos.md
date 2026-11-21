@@ -1,24 +1,34 @@
 # Contrato de datos entre etapas
 
-> Estado: **propuesta**. Cada etapa lee y escribe solo estos archivos, en `runs/<id>/`.
-> Si cambias un campo: edita este archivo y `esquemas/` en el mismo PR, y avísale a todo el equipo.
+> **Fuente de verdad:** los JSON Schema de [`backend/viaz/esquemas/`](../backend/viaz/esquemas/). Este documento los explica.
+> El orquestador valida cada archivo contra su esquema. Si no cumple, la corrida pasa a `error`.
+> Si cambias un campo, edita en el mismo PR el esquema, este archivo y `web/lib/tipos.ts`, y avísale a todo el equipo.
 
 ```mermaid
 flowchart LR
   E[1. Entorno] --> EJ[entorno.json<br/>escena.usd]
   T[2. Tarea] --> TJ[tarea.json]
   EJ & TJ --> R[3. Robot] --> RJ[robot.json]
-  RJ --> C[4. Clon] --> CJ[clon.json<br/>robot.usd]
+  RJ --> C[4. Clon] --> CJ[clon.json<br/>robot.urdf<br/>validacion.json]
   EJ & TJ & CJ --> I[5. Inteligencia] --> IJ[resultado.json<br/>trayectoria.json<br/>video.mp4]
 ```
 
 ## Reglas comunes
 
-- **Unidades SI:** metros, kilogramos, segundos y grados. El nombre del campo lleva la unidad (`largo_m`, `peso_kg`).
-- **Rutas:** relativas a `runs/<id>/`.
-- **`confianza`:** valor de 0 a 1 para cada dato que un agente infiere de un video. Un dato que se escribe a mano lleva `1`.
-- **`fuente`:** cada dato que viene de afuera (specs de un robot) lleva la URL y la fecha en que se consultó.
+- **Archivos:** viven en `corridas/<id>/` del almacén (disco local o R2).
+- **Unidades SI:** metros, kilogramos, segundos y grados. El nombre del campo lleva la unidad (`largo_m`). Los ángulos de `q` van en radianes.
+- **Ejes:** Z arriba, como Isaac. El visor web lo rota a Y arriba.
+- **`confianza`:** valor de 0 a 1 por cada dato que un agente infiere de un video.
+- **`fuente`:** cada spec de un robot real lleva URL y fecha de consulta.
 - **Versión:** cada archivo lleva `"version": 1`. Un cambio que rompe el formato sube la versión.
+
+## Escena: mismas reglas en Isaac y en la web
+
+[`sim/generar_escena.py`](../sim/generar_escena.py) y [`web/lib/escena.ts`](../web/lib/escena.ts) construyen la escena con las mismas reglas:
+
+- **Filas:** la fila `i` tiene su tubo de torsión en `y = -i · separacion_m`, a `altura_m`, de `x = 0` a `x = largo_m`.
+- **Postes:** van cada 7 m.
+- **Robot:** avanza por el pasillo de la fila 0, en `y > 0`, mirando a `+X`.
 
 ## `entorno.json` (etapa 1)
 
@@ -26,9 +36,9 @@ flowchart LR
 {
   "version": 1,
   "tipo": "parque_solar",
-  "videos": ["videos/planta-01.mp4"],
-  "terreno": { "pendiente_grados": 3, "suelo": "tierra_compactada" },
-  "filas": { "cantidad": 3, "largo_m": 60, "separacion_m": 6 },
+  "videos": ["planta-1.mp4"],
+  "terreno": { "pendiente_grados": 2, "suelo": "tierra_compactada" },
+  "filas": { "cantidad": 3, "largo_m": 30, "separacion_m": 6 },
   "estructura": { "tipo": "tracker_1_eje", "altura_m": 1.5, "inclinacion_grados": 0 },
   "panel": { "largo_m": 2.38, "ancho_m": 1.13, "peso_kg": 32 },
   "escena_usd": "escena.usd",
@@ -37,8 +47,9 @@ flowchart LR
 }
 ```
 
-- `estructura.tipo`: `tracker_1_eje` | `fijo`.
-- `fondo_reconstruido_usd`: ruta a la reconstrucción visual (NuRec u OVER), o `null`.
+- **Del agente:** el agente llena todo menos `version`, `videos`, `escena_usd` y `fondo_reconstruido_usd`. Esos los pone el orquestador.
+- **`confianza` en el agente:** el agente la devuelve como lista `[{campo, valor}]`, porque structured outputs no acepta objetos con claves libres. El orquestador la convierte en objeto.
+- **`escena.usd`:** texto USDA. Lo genera el trabajo de GPU `generar_escena`.
 
 ## `tarea.json` (etapa 2)
 
@@ -46,55 +57,57 @@ flowchart LR
 {
   "version": 1,
   "tarea": "instalar_panel",
-  "descripcion": "Tomar un panel de la pila, llevarlo a la estructura y dejarlo sobre los rieles",
-  "pila_paneles": { "posicion_m": [2, -3, 0], "cantidad": 10 },
+  "descripcion": "Tomar un panel de la pila que lleva el robot y dejarlo sobre el tubo de la fila 1",
+  "pila_paneles": { "en_robot": true, "cantidad": 5 },
   "objetivo": { "paneles": 5, "ciclo_s": 60 },
-  "restricciones": ["no pisar las estructuras", "panel horizontal durante el traslado"]
+  "restricciones": ["no chocar con las estructuras"]
 }
 ```
-
-- `tarea`: por ahora solo `instalar_panel`.
 
 ## `robot.json` (etapa 3)
 
 ```json
 {
   "version": 1,
-  "id": "ejemplo-robot",
-  "nombre": "Nombre comercial",
-  "fabricante": "Empresa",
+  "id": "viaz-instalador-ficticio",
+  "nombre": "Instalador de referencia (ficticio)",
+  "fabricante": "VIAZ (robot de prueba, no existe)",
   "tipo": "base_movil_brazo",
+  "ficticio": true,
   "carga_util_kg": 40,
-  "alcance_m": 2.5,
+  "alcance_m": 2.4,
   "velocidad_base_m_s": 1.0,
   "efector": "ventosa",
-  "fuente": { "url": "https://...", "consultado": "2026-11-21" },
+  "fuente": { "url": null, "consultado": null },
   "justificacion": "Por qué calza con entorno.json y tarea.json",
   "alternativas": [{ "id": "otro-robot", "por_que_no": "carga útil insuficiente" }]
 }
 ```
 
-- `id`: coincide con el nombre de un archivo de `data/robots/`. El agente no inventa robots.
-- `tipo`: `base_movil_brazo` | `brazo_fijo` | `vehiculo_con_brazo`.
+- **Del agente:** el agente devuelve solo `id`, `justificacion` y `alternativas`. El `id` es un `enum` con los ids del catálogo.
+- **Specs:** todas las specs salen de [`backend/viaz/catalogo/robots/`](../backend/viaz/catalogo/robots/), nunca del modelo.
 
-## `clon.json` (etapa 4)
+## `clon.json` (etapa 4) + `robot.urdf` + `validacion.json`
 
 ```json
 {
   "version": 1,
-  "robot_id": "ejemplo-robot",
-  "usd": "robot.usd",
+  "robot_id": "viaz-instalador-ficticio",
+  "usd": null,
   "urdf": "robot.urdf",
-  "piezas": { "base": "husky", "brazo": "ur10", "efector": "ventosa" },
-  "escala": { "alcance_m": 2.5, "carga_util_kg": 40 },
-  "diferencias_con_real": ["malla visual aproximada", "base con ruedas en vez de orugas"],
+  "piezas": { "base": "caja_4_ruedas", "brazo": "brazo_6_ejes", "efector": "ventosa" },
+  "escala": { "alcance_m": 2.4, "carga_util_kg": 40 },
+  "geometria": { "l1_m": 1.092, "l2_m": 1.008, "muneca_m": 0.3, "montaje_x_m": 0.45,
+                 "hombro_z_m": 1.1, "cubierta_z_m": 0.8, "pila_x_m": -0.35 },
+  "diferencias_con_real": ["geometría primitiva (cajas y cilindros), sin mallas del fabricante"],
   "validado_en_escena": true
 }
 ```
 
-- `piezas`: nombres de assets de Isaac Lab. **[Por definir]** la lista final.
-- `validado_en_escena`: `true` si el runner cargó el clon en `escena.usd` sin errores.
-- `urdf`: lo usa el visor 3D de la web. Debe tener los mismos joints que `robot.usd`.
+- **Generación:** el clon lo arma código determinista ([`backend/viaz/urdf.py`](../backend/viaz/urdf.py)): una base con ruedas y un brazo de 6 ejes escalado al alcance del robot.
+- **`geometria`:** tiene las medidas que usa el plan ([`sim/plan.py`](../sim/plan.py)). Coinciden con `robot.urdf`.
+- **Articulaciones de `robot.urdf`:** `shoulder_pan`, `shoulder_lift`, `elbow`, `wrist_1`, `wrist_2` y `wrist_3`. El link de la ventosa se llama `efector`.
+- **`validacion.json`:** sale del trabajo `validar_clon` con el formato `{"ok", "problemas": [], "fuente", "paneles_planificados"}`. Si `ok` es `false`, la corrida pasa a `error`.
 
 ## `resultado.json` (etapa 5)
 
@@ -102,20 +115,16 @@ flowchart LR
 {
   "version": 1,
   "metodo": "planificador",
+  "fuente": "isaac",
   "politica": null,
-  "metricas": {
-    "paneles_instalados": 5,
-    "intentos": 6,
-    "tasa_exito": 0.83,
-    "ciclo_promedio_s": 48
-  },
+  "metricas": { "paneles_instalados": 4, "intentos": 5, "tasa_exito": 0.8, "ciclo_promedio_s": 11.5 },
   "video": "video.mp4",
-  "notas": "un panel se soltó en el intento 3"
+  "notas": "Plan fijo v0 reproducido con física. Instalados: [0, 1, 2, 4]."
 }
 ```
 
-- `metodo`: `planificador` | `rl` | `planificador_rl`.
-- `politica`: ruta al checkpoint entrenado, o `null` si no hay RL.
+- **`fuente`:** `isaac` (con física) o `simulado` (trayectoria sintética del worker sin GPU). La web marca `simulado` como "sin física".
+- **`video`:** `null` si no hay video, por ejemplo en modo simulado.
 
 ## `trayectoria.json` (etapa 5, para el visor 3D)
 
@@ -124,20 +133,21 @@ flowchart LR
   "version": 1,
   "fps": 30,
   "articulaciones": ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"],
+  "paneles": [{ "id": 0, "pos_m": [2.565, 0, 1.57], "quat": [1, 0, 0, 0] }],
+  "pila": { "en_base": true, "pos_m": [-0.35, 0, 0.8], "paso_m": 0.045 },
   "frames": [
-    {
-      "t_s": 0.0,
-      "base": { "pos_m": [0, 0, 0], "yaw_grados": 0 },
-      "q": [0, -1.57, 1.57, 0, 0, 0],
-      "paneles": [{ "id": 0, "pos_m": [2, -3, 0.1], "quat": [1, 0, 0, 0], "instalado": false }]
-    }
+    { "t_s": 0.0, "base": { "pos_m": [-1, 1.75, 0], "yaw_grados": 0 },
+      "q": [0, 0, 1.2, 1.94, 0, 0], "agarre": null, "instalados": [] }
   ]
 }
 ```
 
-- `articulaciones`: nombres iguales a los joints de `robot.urdf`. `q` va en radianes, en el mismo orden.
-- `paneles`: solo los paneles que se mueven en ese frame. `quat` va en orden `w, x, y, z`.
-- El sim runner guarda máximo 30 fps para que el archivo no pase de unos MB.
+- **`paneles`:** pose final de cada panel. Con `quat` identidad (`w, x, y, z`), `ancho_m` va en X y `largo_m` en Y.
+- **Estado de cada panel en un frame:**
+  - Si su id está en `instalados`, el panel está en su pose final.
+  - Si su id es `agarre`, el panel va pegado al link `efector`.
+  - Si no, el panel está en la pila sobre la base, en `pila.pos_m` (marco de la base). El id más alto queda abajo.
+- **Ritmo:** máximo 30 fps.
 
 ## API (Render)
 
@@ -145,19 +155,23 @@ Para la web:
 
 | Método | Ruta | Body | Respuesta |
 |---|---|---|---|
-| `POST` | `/proyectos` | `{"nombre", "descripcion"}` | `201 {"id", "subida": [{"archivo", "url_firmada"}]}` |
+| `POST` | `/proyectos` | `{"nombre", "descripcion", "videos": ["<archivo>"]}` | `201 {"id", "subida": [{"archivo", "url_firmada"}]}` |
 | `POST` | `/proyectos/{id}/corridas` | — | `201 {"corrida_id"}` |
-| `GET` | `/corridas/{id}` | — | `200 {"estado", "etapas": [{"nombre", "estado", "artefactos": {"<archivo>": "<url>"}}], "error"}` |
-| `GET` | `/corridas/demo` | — | La corrida de respaldo del parque solar |
+| `GET` | `/corridas/{id}` | — | `200 {"id", "estado", "etapas": [{"nombre", "estado", "artefactos": {"<archivo>": "<url>"}}], "error"}` |
+| `GET` | `/corridas/demo` | — | La corrida de `VIAZ_CORRIDA_DEMO` |
+| `GET` | `/salud` | — | `200 {"ok", "agentes", "almacen"}` |
 
-- `estado`: `subiendo` | `analizando_entorno` | `eligiendo_robot` | `clonando` | `simulando` | `listo` | `error`.
+- **Subida:** la web sube cada video con `PUT` a su `url_firmada` (R2 o `/archivos/...` en local).
+- **`estado` de la corrida:** `en_cola` → `analizando_entorno` → `eligiendo_robot` → `clonando` → `simulando` → `listo`, o `error` en cualquier punto.
+- **`estado` de una etapa:** `pendiente` | `en_curso` | `listo` | `error`.
 
 Para el sim runner (header `Authorization: Bearer <WORKER_TOKEN>`):
 
 | Método | Ruta | Body | Respuesta |
 |---|---|---|---|
 | `POST` | `/worker/trabajos/tomar` | — | `200 {"trabajo_id", "tipo", "corrida_id", "entradas": {"<archivo>": "<url>"}, "subidas": {"<archivo>": "<url_firmada>"}}` · `204` si no hay trabajos |
-| `POST` | `/worker/trabajos/{id}/fin` | `{"ok": true}` o `{"ok": false, "error": "..."}` | `200` |
+| `POST` | `/worker/trabajos/{id}/fin` | `{"ok": true}` o `{"ok": false, "error": "..."}` | `200` · `409` si no estaba tomado |
 
-- `tipo`: `generar_escena` | `validar_clon` | `ejecutar_tarea` | `entrenar_subtarea`.
-- Un trabajo tomado y sin `fin` en 30 min vuelve a la cola.
+- **`tipo`:** `generar_escena` | `validar_clon` | `ejecutar_tarea` | `entrenar_subtarea` (este último todavía no se usa).
+- **Salidas:** el worker sube solo los archivos de `subidas` que generó. Por ejemplo, sin video no sube `video.mp4`.
+- **Trabajo vencido:** un trabajo tomado y sin `fin` en 30 min vuelve a la cola.

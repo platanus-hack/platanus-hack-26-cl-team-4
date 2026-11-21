@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "robot.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "nombre", "fabricante", "tipo", "ficticio", "carga_util_kg", "alcance_m", "velocidad_base_m_s", "efector", "fuente", "justificacion", "alternativas"],
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "nombre": { "type": "string" },
+    "fabricante": { "type": "string" },
+    "tipo": { "enum": ["base_movil_brazo", "brazo_fijo", "vehiculo_con_brazo"] },
+    "ficticio": { "type": "boolean" },
+    "carga_util_kg": { "type": "number", "minimum": 0 },
+    "alcance_m": { "type": "number", "minimum": 0.3, "maximum": 6 },
+    "velocidad_base_m_s": { "type": "number", "minimum": 0 },
+    "efector": { "enum": ["ventosa", "pinza"] },
+    "fuente": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "consultado"],
+      "properties": {
+        "url": { "type": ["string", "null"] },
+        "consultado": { "type": ["string", "null"] }
+      }
+    },
+    "justificacion": { "type": "string" },
+    "alternativas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "por_que_no"],
+        "properties": {
+          "id": { "type": "string" },
+          "por_que_no": { "type": "string" }
+        }
+      }
+    }
+  }
+}

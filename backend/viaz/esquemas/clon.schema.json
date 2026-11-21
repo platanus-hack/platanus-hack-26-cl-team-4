@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "clon.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "robot_id", "usd", "urdf", "piezas", "escala", "geometria", "diferencias_con_real", "validado_en_escena"],
+  "properties": {
+    "version": { "const": 1 },
+    "robot_id": { "type": "string" },
+    "usd": { "type": ["string", "null"] },
+    "urdf": { "type": "string" },
+    "piezas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base", "brazo", "efector"],
+      "properties": {
+        "base": { "type": "string" },
+        "brazo": { "type": "string" },
+        "efector": { "type": "string" }
+      }
+    },
+    "escala": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alcance_m", "carga_util_kg"],
+      "properties": {
+        "alcance_m": { "type": "number" },
+        "carga_util_kg": { "type": "number" }
+      }
+    },
+    "geometria": {
+      "description": "Medidas del clon que usa el plan de la tarea. Coinciden con robot.urdf.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["l1_m", "l2_m", "muneca_m", "montaje_x_m", "hombro_z_m", "cubierta_z_m", "pila_x_m"],
+      "properties": {
+        "l1_m": { "type": "number" },
+        "l2_m": { "type": "number" },
+        "muneca_m": { "type": "number" },
+        "montaje_x_m": { "type": "number" },
+        "hombro_z_m": { "type": "number" },
+        "cubierta_z_m": { "type": "number" },
+        "pila_x_m": { "type": "number" }
+      }
+    },
+    "diferencias_con_real": { "type": "array", "items": { "type": "string" } },
+    "validado_en_escena": { "type": "boolean" }
+  }
+}

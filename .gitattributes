@@ -1,0 +1,4 @@
+# LF en todo el texto: los scripts de bash y Python fallan con CRLF en el pod Linux.
+* text=auto eol=lf
+*.png binary
+*.mp4 binary

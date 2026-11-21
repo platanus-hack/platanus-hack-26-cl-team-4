@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "trayectoria.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "fps", "articulaciones", "paneles", "pila", "frames"],
+  "properties": {
+    "version": { "const": 1 },
+    "fps": { "type": "number", "minimum": 1, "maximum": 60 },
+    "articulaciones": { "type": "array", "items": { "type": "string" } },
+    "paneles": {
+      "description": "Pose de cada panel cuando queda instalado. Con quat identidad, ancho va en X y largo en Y.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "pos_m", "quat"],
+        "properties": {
+          "id": { "type": "integer" },
+          "pos_m": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+          "quat": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }
+        }
+      }
+    },
+    "pila": {
+      "description": "Paneles que el robot lleva encima, en el marco de la base.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en_base", "pos_m", "paso_m"],
+      "properties": {
+        "en_base": { "type": "boolean" },
+        "pos_m": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+        "paso_m": { "type": "number" }
+      }
+    },
+    "frames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["t_s", "base", "q", "agarre", "instalados"],
+        "properties": {
+          "t_s": { "type": "number" },
+          "base": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pos_m", "yaw_grados"],
+            "properties": {
+              "pos_m": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+              "yaw_grados": { "type": "number" }
+            }
+          },
+          "q": { "type": "array", "items": { "type": "number" } },
+          "agarre": { "type": ["integer", "null"] },
+          "instalados": { "type": "array", "items": { "type": "integer" } }
+        }
+      }
+    }
+  }
+}

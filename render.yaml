@@ -1,0 +1,59 @@
+# Blueprint de Render: API + orquestador + Postgres. Ver docs/desarrollo.md § Deploy.
+# Los valores con sync: false se cargan a mano en el dashboard (no van al repo).
+envVarGroups:
+  - name: viaz-comun
+    envVars:
+      - key: WORKER_TOKEN        # el pod GPU usa este mismo valor
+        generateValue: true
+      - key: VIAZ_AGENTES        # fijo = fixtures; claude = Claude API
+        value: fijo
+      - key: VIAZ_ALMACEN
+        value: r2
+      - key: VIAZ_MODELO
+        value: claude-opus-5-5
+      - key: PYTHON_VERSION
+        value: 3.12.8
+
+services:
+  - type: web
+    name: viaz-api
+    runtime: python
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install ".[postgres]"
+    startCommand: uvicorn viaz.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /salud
+    envVars:
+      - fromGroup: viaz-comun
+      - key: DATABASE_URL
+        fromDatabase: { name: viaz-db, property: connectionString }
+      - key: VIAZ_ORIGENES       # ej: https://viaz.vercel.app,http://localhost:3000
+        sync: false
+      - key: VIAZ_CORRIDA_DEMO   # id de la corrida de respaldo para /corridas/demo
+        sync: false
+      - { key: R2_ENDPOINT, sync: false }
+      - { key: R2_BUCKET, sync: false }
+      - { key: R2_ACCESS_KEY_ID, sync: false }
+      - { key: R2_SECRET_ACCESS_KEY, sync: false }
+
+  - type: worker
+    name: viaz-orquestador
+    runtime: python
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install ".[postgres]"
+    startCommand: python -m viaz.orquestador
+    envVars:
+      - fromGroup: viaz-comun
+      - key: DATABASE_URL
+        fromDatabase: { name: viaz-db, property: connectionString }
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - { key: R2_ENDPOINT, sync: false }
+      - { key: R2_BUCKET, sync: false }
+      - { key: R2_ACCESS_KEY_ID, sync: false }
+      - { key: R2_SECRET_ACCESS_KEY, sync: false }
+
+databases:
+  - name: viaz-db
+    plan: basic-256mb
