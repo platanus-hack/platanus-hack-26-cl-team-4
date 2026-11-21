@@ -212,6 +212,7 @@ Cómo correr todo en local y desplegar: [`desarrollo.md`](desarrollo.md).
 
 - **Render:** unos US$20 al mes, dentro del crédito de US$50.
 - **GPU:** el costo depende de las horas encendidas. Apagar el pod es la principal forma de ahorrar.
+- **Horas de GPU por fase:** [`plan-entrenamiento.md`](plan-entrenamiento.md) estima unas 3 a 5 h en total, con entrenamiento por lotes y el pod apagado entre fases.
 
 ## 9. Quién hace qué **[Por definir]**
 
