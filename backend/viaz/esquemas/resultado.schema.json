@@ -21,6 +21,63 @@
       }
     },
     "video": { "type": ["string", "null"] },
-    "notas": { "type": "string" }
+    "notas": { "type": "string" },
+    "evaluacion": {
+      "description": "Opcional. Evaluación de la política entrenada (RF-WEB-16): 'tasa_exito a pos_m y ang_grados, en N episodios'.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episodios", "exitos", "tasa_exito", "tolerancia"],
+      "properties": {
+        "episodios": { "type": "integer", "minimum": 1 },
+        "exitos": { "type": "integer", "minimum": 0 },
+        "tasa_exito": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tolerancia": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pos_m", "ang_grados"],
+          "properties": {
+            "pos_m": { "type": "number", "minimum": 0 },
+            "ang_grados": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "entrenamiento": {
+      "description": "Opcional. Datos del entrenamiento con RL (RF-WEB-13, RF-WEB-14, RF-WEB-15).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pasos_sim", "tiempo_real_s", "num_entornos", "video_rapido", "curva", "hitos"],
+      "properties": {
+        "pasos_sim": { "type": "integer", "minimum": 0, "description": "pasos de política sumados en todos los entornos" },
+        "tiempo_real_s": { "type": "number", "minimum": 0, "description": "duración real del entrenamiento en la GPU" },
+        "num_entornos": { "type": "integer", "minimum": 1 },
+        "video_rapido": { "type": ["string", "null"], "description": "archivo del video en cámara rápida, ej. entrenamiento_rapido.mp4" },
+        "curva": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["paso", "tasa_exito"],
+            "properties": {
+              "paso": { "type": "integer", "minimum": 0 },
+              "tasa_exito": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "hitos": {
+          "description": "Avisos del agente monitor durante el entrenamiento",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["paso", "texto"],
+            "properties": {
+              "paso": { "type": "integer", "minimum": 0 },
+              "texto": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
   }
 }

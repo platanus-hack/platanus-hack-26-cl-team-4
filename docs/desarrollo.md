@@ -116,6 +116,17 @@ ISAAC_PYTHON=/isaac-sim/python.sh python worker-gpu/runner.py --modo isaac
 - **Si Isaac todavía no funciona:** `--modo simulado` en el pod mantiene vivo el flujo.
 - **Estado de los scripts:** `sim/validar_clon.py`, `sim/ejecutar_tarea.py` y `sim/isaac_comun.py` **no se han probado en Isaac**. Escribí la API de Isaac Sim 5.x de memoria, así que el primer error real va a salir ahí.
 
-### 5. Corrida de respaldo para el pitch
-1. Correr una corrida completa en producción y anotar su id.
-2. Poner ese id en `VIAZ_CORRIDA_DEMO` (Render). `/corridas/demo` la muestra aunque el pod esté apagado.
+### 5. Demo de la portada (RF-WEB-08)
+La portada muestra la corrida del demo desde archivos estáticos en `web/public/demo/`. No usa la API ni el pod, así que funciona en Vercel aunque Render esté apagado. `/corridas/demo` redirige a la portada.
+
+- **Regenerar el demo** (agentes fijos y plan sintético, marcado "sin física"):
+  ```bash
+  cd backend && python -m viaz.demo
+  ```
+  El test `test_demo_versionado_esta_al_dia` falla si el demo versionado quedó desactualizado.
+- **Cuando el pod entregue resultados reales**, copiar en `web/public/demo/`:
+  - `resultado.json` con `evaluacion` y `entrenamiento` (ver [`contrato-datos.md`](contrato-datos.md));
+  - `trayectoria.json` de la política entrenada;
+  - `video.mp4` y `entrenamiento_rapido.mp4`.
+
+  La web muestra cada sección apenas existe su archivo. Si falta un archivo, la sección dice que está pendiente.

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "viaz-instalador-ficticio",
+  "nombre": "Instalador de referencia (ficticio)",
+  "fabricante": "VIAZ (robot de prueba, no existe)",
+  "tipo": "base_movil_brazo",
+  "ficticio": true,
+  "carga_util_kg": 40,
+  "alcance_m": 2.4,
+  "velocidad_base_m_s": 1.0,
+  "efector": "ventosa",
+  "fuente": {
+    "url": null,
+    "consultado": null
+  },
+  "justificacion": "Su carga útil de 40 kg supera los 32 kg de cada panel, y su alcance de 2,4 m llega al tubo desde el pasillo. Es el único robot del catálogo por ahora.",
+  "alternativas": []
+}
