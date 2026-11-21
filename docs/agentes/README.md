@@ -10,7 +10,8 @@
 flowchart LR
   H["Equipo:<br/>entorno.json + tarea.json<br/>a mano"] --> ROB["Agente de<br/>selección de robot"]
   CAT[(Catálogo de robots)] --> ROB
-  ROB -->|robot.json| CON["Agente constructor<br/>Isaac Lab"]
+  WEBB["Búsqueda web<br/>(v3, no existe)"] -.-> ROB
+  ROB -->|"robot.json<br/>(v3: uno por finalista)"| CON["Agente constructor<br/>Isaac Lab"]
   ASS[(Catálogo de assets<br/>Isaac Lab)] --> CON
   CON -->|robot_cfg.py + robot.usd| RL["Entrenamiento RL<br/>pod 5090"]
   RL -->|métricas| MON["Agente monitor<br/>del entrenamiento"]
@@ -21,7 +22,7 @@ flowchart LR
 
 | Agente | Contrato | Tipo | Prompt | Requerimientos | En el demo | Estado |
 |---|---|---|---|---|---|---|
-| Selección de robot | [`seleccion-robot.md`](seleccion-robot.md) | LLM | [`robot.md`](../../backend/viaz/agentes/prompts/robot.md) | RF-ROB-01..07 | **Sí (Must)** | Implementado |
+| Selección de robot | [`seleccion-robot.md`](seleccion-robot.md) (contrato v3) | Código + LLM (+ búsqueda web en v3) | [`robot.md`](../../backend/viaz/agentes/prompts/robot.md) | RF-ROB-01..12 | **Sí (Must)** | Implementado: v2 (un robot, catálogo cerrado). v3 sin implementar |
 | Constructor del robot en Isaac Lab | [`constructor-robot.md`](constructor-robot.md) | LLM + plantilla + pod | [`constructor.md`](../../backend/viaz/agentes/prompts/constructor.md) | RF-CLO-01..08 | **Sí (Must)** | Implementado ([`robot_cfg.py`](../../backend/viaz/robot_cfg.py)). `crear_articulacion_cfg()` sin probar en Isaac |
 | Monitor del entrenamiento | [`monitor-entrenamiento.md`](monitor-entrenamiento.md) | LLM + reglas | [`monitor.md`](../../backend/viaz/agentes/prompts/monitor.md) | RF-MON-01..10 | **Sí (Must)** | Implementado ([`monitor.py`](../../backend/viaz/monitor.py)). Discord sin probar con un webhook real |
 | MCP de Isaac Sim | [`mcp-isaac-sim.md`](mcp-isaac-sim.md) | LLM con herramientas MCP | En el contrato, §5 | Depuración | Opcional | Por definir el servidor |
