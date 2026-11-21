@@ -7,8 +7,8 @@ import "./globals.css";
 const archivo = Archivo({ subsets: ["latin"], axes: ["wdth"], variable: "--fuente", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "VIAZ: un robot real trabajando en tu planta",
-  description: "Sube videos de tu planta. VIAZ la virtualiza, elige un robot real, lo clona y lo entrena en Isaac Lab para mostrarte cómo trabajaría.",
+  title: "VIAZ: la inteligencia de un robot real para tu planta",
+  description: "VIAZ es una cadena de agentes de IA que convierte los videos de una planta en un robot real entrenado en Isaac Lab, antes de comprarlo.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

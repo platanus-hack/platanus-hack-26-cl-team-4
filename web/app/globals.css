@@ -69,27 +69,109 @@ h1, h2, h3 { margin: 0; }
   padding: 32px var(--margen) 48px; color: var(--acero); font-size: var(--t-chica);
 }
 
-/* ---------- Hero: el visor en vivo es lo único audaz de la página ---------- */
-.hero-texto {
+/* ---------- Hero: la idea + la cadena de agentes (lo único audaz de la página) ---------- */
+.hero {
   max-width: calc(var(--ancho-max) + 2 * var(--margen)); margin: 0 auto;
-  padding: clamp(20px, 4vw, 48px) var(--margen) clamp(20px, 3vw, 32px);
-  display: grid; grid-template-columns: 7fr 5fr; gap: clamp(20px, 4vw, 56px); align-items: end;
+  padding: clamp(28px, 6vw, 80px) var(--margen) clamp(40px, 6vw, 72px);
 }
 .hero h1 {
-  font-size: var(--t-hero); font-weight: 800; line-height: 1.0;
-  max-width: 16ch; text-wrap: balance;
+  font-size: clamp(2rem, 4.6vw, 3.75rem); font-weight: 800; line-height: 1.02;
+  max-width: 24ch; text-wrap: balance;
 }
-.hero-bajada { margin: 0; max-width: 46ch; font-size: var(--t-media); line-height: 1.4; }
-.hero-visor { height: min(72vh, 760px); min-height: 440px; }
-.hero-visor .visor { height: 100%; }
+.hero-bajada { margin: 22px 0 0; max-width: 58ch; font-size: var(--t-media); line-height: 1.45; }
+.hero-acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.hero-acciones a { text-decoration: none; }
+.hero-cadena { margin-top: clamp(36px, 5vw, 64px); }
+@media (max-width: 760px) { .hero-bajada { font-size: var(--t-base); } }
 
+/* Cadena: una línea gruesa con nodos. Amarillo = paso que hace un agente de IA. */
+.cadena { margin: 0; }
+.cadena-pasos {
+  list-style: none; margin: 0; padding: 0; position: relative;
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 0 12px;
+}
+.cadena-pasos::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 11px; height: 4px; background: var(--tinta);
+  transform-origin: left; animation: dibujar 1.4s cubic-bezier(.6,0,.2,1) both;
+}
+.nodo { position: relative; display: grid; gap: 4px; padding-top: 34px; }
+.nodo-punto {
+  position: absolute; top: 0; left: 0; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--cielo); border: 4px solid var(--tinta);
+  animation: encender 0.35s ease-out both; animation-delay: calc(0.15s + var(--i) * 0.2s);
+}
+.nodo-agente .nodo-punto { background: var(--senal); }
+.nodo-nombre {
+  font-variation-settings: "wdth" 125; font-weight: 800; font-size: var(--t-media); line-height: 1.1;
+  letter-spacing: -0.01em; text-wrap: balance;
+}
+.nodo-quien { color: var(--acero); font-size: var(--t-chica); }
+.nodo-agente .nodo-quien { color: var(--tinta); }
+.cadena-leyenda { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 24px; color: var(--acero); font-size: var(--t-chica); }
+.leyenda-item { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.leyenda-punto { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--tinta); background: var(--cielo); display: inline-block; }
+.leyenda-agente { background: var(--senal); }
+
+@keyframes dibujar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes encender { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* En pantallas angostas la cadena se vuelve vertical: la línea baja por la izquierda. */
 @media (max-width: 900px) {
-  .hero-texto { grid-template-columns: 1fr; }
+  .cadena-pasos { grid-template-columns: 1fr; gap: 18px; padding-left: 44px; }
+  .cadena-pasos::before { left: 11px; right: auto; top: 0; bottom: 0; width: 4px; height: auto; transform-origin: top; animation-name: dibujar-v; }
+  .nodo { padding-top: 0; }
+  .nodo-punto { left: -44px; top: 0; }
 }
-@media (max-width: 760px) {
-  .hero-bajada { font-size: var(--t-base); }
-  .hero-visor { height: 62vh; min-height: 380px; }
+@keyframes dibujar-v { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cadena-pasos::before, .nodo-punto { animation: none; }
 }
+
+/* ---------- El problema: hechos con su fuente ---------- */
+.hechos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px clamp(24px, 5vw, 64px); }
+@media (max-width: 760px) { .hechos { grid-template-columns: 1fr; } }
+.hechos li { border-top: 1px solid var(--regla); padding-top: 14px; }
+.hecho-texto { margin: 0 0 8px; font-size: var(--t-media); line-height: 1.4; max-width: 44ch; }
+.hecho-fuente { margin: 0; color: var(--acero); font-size: var(--t-chica); }
+.hecho-fuente a { color: var(--acero); }
+.remate { margin: 36px 0 0; max-width: 62ch; font-size: var(--t-media); line-height: 1.45; font-weight: 600; }
+
+/* ---------- Cómo funciona: los 6 pasos (sí es una secuencia) ---------- */
+.intro-seccion { margin: -6px 0 28px; max-width: 62ch; font-size: var(--t-media); line-height: 1.45; }
+.flujo { list-style: none; counter-reset: paso; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px clamp(24px, 4vw, 48px); }
+@media (max-width: 900px) { .flujo { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .flujo { grid-template-columns: 1fr; } }
+.flujo-paso { counter-increment: paso; border-top: 4px solid var(--tinta); padding-top: 14px; }
+.flujo-paso::before {
+  content: counter(paso); display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  border: 3px solid var(--tinta); font-weight: 800; font-size: var(--t-chica); margin-bottom: 12px;
+}
+.flujo-agente::before { background: var(--senal); }
+.flujo-paso h3 { font-variation-settings: "wdth" 125; font-size: var(--t-media); font-weight: 800; line-height: 1.15; }
+.flujo-paso p { margin: 6px 0 0; max-width: 40ch; }
+.flujo-quien { color: var(--acero); font-size: var(--t-chica); }
+.flujo-produce { color: var(--modulo); font-weight: 600; font-size: var(--t-chica); }
+.nota-flujo { margin: 28px 0 0; color: var(--acero); font-size: var(--t-chica); max-width: 62ch; }
+
+/* ---------- Por qué confiar ---------- */
+.principios { margin: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px clamp(24px, 5vw, 64px); }
+@media (max-width: 760px) { .principios { grid-template-columns: 1fr; } }
+.principios dt { font-weight: 800; font-size: var(--t-media); margin-bottom: 6px; }
+.principios dd { margin: 0; max-width: 52ch; }
+
+/* ---------- Demo (al final) ---------- */
+.demo { margin-top: clamp(56px, 8vw, 104px); padding-bottom: 8px; border-top: 4px solid var(--tinta); }
+.demo-visor {
+  height: min(72vh, 720px); min-height: 400px; margin-top: 8px; padding: 0 var(--margen);
+  max-width: calc(var(--ancho-max) + 2 * var(--margen)); margin-left: auto; margin-right: auto;
+}
+.demo-visor .visor { border-radius: 6px; }
+.demo-visor .visor { height: 100%; }
+@media (max-width: 760px) { .demo-visor { height: 62vh; min-height: 360px; } }
+
+/* ---------- Cierre ---------- */
+.cierre p { max-width: 62ch; margin: 0 0 10px; }
 
 /* ---------- Visor ---------- */
 .visor { display: flex; flex-direction: column; background: #cfe0ea; overflow: hidden; }
@@ -201,7 +283,9 @@ h1, h2, h3 { margin: 0; }
 .boton-principal, .boton-secundario {
   font: inherit; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 11px 22px; justify-self: start;
 }
-.boton-principal { background: var(--tinta); color: var(--cielo); border: 0; }
+.boton-principal { background: var(--tinta); color: var(--cielo); border: 0; display: inline-block; }
+.boton-principal:hover { background: var(--modulo); }
+.boton-secundario:hover { background: var(--cielo-hondo); }
 .boton-principal:disabled { opacity: 0.45; cursor: not-allowed; }
 .boton-secundario { background: transparent; color: var(--tinta); border: 1.5px solid var(--tinta); display: inline-block; }
 .campo-archivos input:focus-visible + .boton-secundario { outline: 3px solid var(--modulo); outline-offset: 2px; }

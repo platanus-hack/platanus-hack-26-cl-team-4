@@ -1,59 +1,62 @@
 # Diseño de la web de VIAZ
 
-Plan hecho con la skill `frontend-design`. Si cambias la paleta o la tipografía, actualiza este archivo.
+Plan hecho con la skill `frontend-design`. Si cambias la paleta, la tipografía o la estructura, actualiza este archivo.
 
-## Brief
-- **Tema:** construcción de parques solares a escala de servicio público en Chile (Atacama).
-- **Audiencia:** jurado del hack y jefes de proyecto de empresas de energía.
-- **Trabajo principal de la página:** mostrar, sin backend, un robot real (clonado) trabajando en la planta, con métricas honestas.
+## Brief (v2)
+- **Qué vende la página:** la **idea** de VIAZ: una cadena de agentes de IA que crea la inteligencia de un robot real para una planta concreta. El robot instalando paneles es la **prueba**, al final, no el tema.
+- **Audiencia:** jurado del hack, y jefes de proyecto de empresas que construyen parques solares en Chile.
+- **Trabajo de la página:** que en 10 segundos se entienda qué hace VIAZ y por qué importa. Después, el detalle del flujo, el problema con datos verificados y el demo.
+- **Requerimientos:** RF-WEB-19 (explicar el flujo completo en pasos), RF-WEB-06..08, 13..16 (demo precalculado). El flujo se explica, no se usa en vivo (v0.6).
 
-## Color: mediodía en el desierto
+## Color: mediodía en el desierto (sin cambios)
 | Token | Hex | Uso |
 |---|---|---|
-| `--cielo` | `#E4EEF3` | Fondo de la página: cielo pálido de mediodía |
-| `--tinta` | `#14253A` | Texto: azul profundo de las celdas del módulo |
-| `--modulo` | `#22477E` | Datos y enlaces: azul del panel |
-| `--acero` | `#6E7A86` | Texto secundario y reglas: acero galvanizado |
-| `--tierra` | `#B98552` | Terreno del visor 3D (uso mínimo fuera de él) |
-| `--senal` | `#F4B400` | Amarillo de seguridad de la maquinaria. Solo para el robot y el estado activo |
+| `--cielo` | `#E4EEF3` | Fondo de la página |
+| `--tinta` | `#14253A` | Texto y la línea de la cadena |
+| `--modulo` | `#22477E` | Datos, enlaces y lo que produce cada paso |
+| `--acero` | `#6E7A86` | Texto secundario y reglas |
+| `--tierra` | `#B98552` | Terreno del visor 3D |
+| `--senal` | `#F4B400` | **Marca de "lo hace un agente de IA"** en la cadena. También el robot |
 
-## Tipografía
-- **Una sola familia: Archivo variable**, con contraste de **ancho**.
-  - **Títulos:** expandida (`wdth 125`), peso 800. Evoca la rotulación de las máquinas de construcción.
-  - **Texto:** ancho normal (`wdth 100`), peso 400.
-- **Escala:** 14 · 16 · 20 · 28 · 44 · 72 px. Líneas de 70 caracteres como máximo.
+## Tipografía (sin cambios)
+- **Archivo variable:** expandida (`wdth 125`) en títulos y en los nombres de los pasos, ancho normal en el texto.
 
-## Layout
+## Estructura
 ```
-┌─────────────────────────────────────────────┐
-│ VIAZ                      Probar con tu planta│
-├─────────────────────────────────────────────┤
-│  VISOR 3D EN VIVO, ancho completo (78vh)    │
-│                                             │
-│  Título expandido abajo a la izquierda      │
-│  [estado: simulación sin física] [controles]│
-├──────────────────────────┬──────────────────┤
-│ Resultado: una frase     │ Ficha técnica    │
-│ grande con la métrica    │ del robot (dl)   │
-├──────────────────────────┴──────────────────┤
-│ Entrenamiento: video acelerado + curva +    │
-│ hitos del monitor (o estado pendiente)      │
-├─────────────────────────────────────────────┤
-│ Cómo se hizo: 5 pasos (sí es una secuencia) │
-├─────────────────────────────────────────────┤
-│ Diferencias con el robot real               │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│ VIAZ                          Probar con tu planta │
+├──────────────────────────────────────────────────┤
+│ HERO: la idea                                     │
+│ Título expandido (2-3 líneas) + bajada de 1 frase │
+│ [Ver el demo] [Cómo funciona]                     │
+│                                                   │
+│ ══●══════●══════●══════●══════●══════●══  cadena  │
+│ Subir   Extraer  Elegir  Construir Entrenar Mostrar│
+│ videos  entorno  robot   robot     intelig. result.│
+│ (● amarillo = agente de IA; ● acero = persona/web)│
+├──────────────────────────────────────────────────┤
+│ El problema: 3-4 hechos con su fuente (frases)    │
+├──────────────────────────────────────────────────┤
+│ Cómo funciona: los 6 pasos en detalle             │
+│ quién lo hace · qué produce                       │
+├──────────────────────────────────────────────────┤
+│ Por qué confiar: 4 principios                     │
+├──────────────────────────────────────────────────┤
+│ El demo (al final): visor 3D + resultados         │
+├──────────────────────────────────────────────────┤
+│ Equipo + probar con tu planta                     │
+└──────────────────────────────────────────────────┘
 ```
-- **Alineación:** todo alineado a la izquierda, en una grilla de 12 columnas.
+- **Alineación:** todo alineado a la izquierda. La cadena ocupa todo el ancho del contenido.
 
 ## Principios
-- **Una sola audacia:** el visor 3D en vivo es el hero. Todo lo demás es sobrio, sin sombras ni tarjetas repetidas.
-- **Ficha técnica, no tarjetas:** los datos del robot van en una lista de definiciones con reglas finas, como la ficha de un fabricante. Ahí la regla marca filas de datos.
-- **Honestidad visible:** "sin física", "robot ficticio" y "pendiente" se dicen en el lugar del dato, no en una nota al pie.
-- **Vocabulario ISO 8373:** robot móvil, manipulador, efector final, carga útil y alcance.
-- **Movimiento:** solo el del visor. Con `prefers-reduced-motion`, el visor parte pausado.
+- **Una sola audacia: la cadena de agentes del hero.** Es una línea gruesa con 6 nodos y nombres expandidos, como una línea de producción. El amarillo marca solo los pasos que hace un agente de IA: el color comunica, no decora.
+- **Un solo momento de movimiento:** al cargar, la línea se dibuja de izquierda a derecha y los nodos se encienden en orden, una vez. Con `prefers-reduced-motion`, aparece entera.
+- **Hechos con fuente, en frases:** el problema se cuenta con datos verificados de `docs/investigacion-datasets.md`, cada uno con su enlace. Nada de números gigantes con etiqueta chica.
+- **El demo es la prueba, al final:** el visor 3D y las métricas viven en su propia sección, con la honestidad de siempre ("sin física", "robot de referencia", "pendiente").
+- **Numeración solo donde hay secuencia:** los 6 pasos del flujo van numerados. Los principios y los hechos no.
 
 ## Revisión contra lo genérico
-- **Cambio 1:** primero pensé en un hero oscuro con acento amarillo. Se parecía demasiado al default "fondo casi negro con un solo acento". Lo cambié a luz de día, que es como se ve una planta en Atacama.
-- **Cambio 2:** primero pensé en las métricas como números grandes con etiqueta chica. Es el tratamiento por defecto. Lo cambié a una frase completa con la tolerancia y los episodios, como pide RF-WEB-16.
-- **Cambio 3:** descarté las etiquetas en MAYÚSCULAS y la fuente monoespaciada para datos chicos. Los datos van en Archivo con cifras tabulares.
+- **v1 → v2:** el hero era el visor 3D del robot. Vendía el demo y no la idea. Ahora el hero es la cadena de agentes, y el visor pasa a la sección del demo.
+- **Descartado:** una grilla de tarjetas iguales para los pasos ("SaaS card kit"). La cadena es una sola línea continua: los pasos dependen uno del otro, y la línea lo muestra.
+- **Descartado:** estadísticas como números gigantes. Los hechos van como frases con la cifra adentro y la fuente al lado.
