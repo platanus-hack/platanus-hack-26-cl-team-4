@@ -28,7 +28,7 @@ case "$driver" in
 esac
 
 paso "región"
-pais=${VIAZ_PAIS:-$(curl -s -m 10 ipinfo.io/country || echo "??")}
+pais=${VIAZ_PAIS:-$(curl -sf -m 10 https://ipinfo.io/country || echo "??")}
 echo "país: $pais"
 if [ "$pais" = "CN" ]; then
 	# El host trae el espejo de USTC, que corta con 429. Aliyun fue el más rápido (15 MB/s).
@@ -60,6 +60,12 @@ if ! $PY -c "import torch,sys;sys.exit(0 if torch.__version__=='2.7.0+cu128' els
 		"torchvision-0.22.0%2Bcu128-cp311-cp311-manylinux_2_28_x86_64.whl"; do
 		curl -sfL --retry 3 -m 900 -o "$WS/wheels/${f//%2B/+}" "$TORCH_URL/$f"
 	done
+	# SHA-256 del índice oficial download.pytorch.org/whl/cu128: el espejo no puede cambiar los archivos.
+	(cd $WS/wheels && sha256sum -c - <<-EOF
+		c4bbc0b4be60319ba1cefc90be9557b317f0b3c261eeceb96ca6e0343eec56bf  torch-2.7.0+cu128-cp311-cp311-manylinux_2_28_x86_64.whl
+		f3ac527d58b4c2043eb8d9e29fc56cd1751f36f2aaa6dc75e34ec54c951bcb9c  torchvision-0.22.0+cu128-cp311-cp311-manylinux_2_28_x86_64.whl
+	EOF
+	)
 	uv pip install -q --python $PY $WS/wheels/torch-2.7.0+cu128-*.whl $WS/wheels/torchvision-0.22.0+cu128-*.whl
 fi
 
