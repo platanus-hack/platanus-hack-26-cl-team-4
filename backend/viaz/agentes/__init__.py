@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 from pathlib import Path
 
 from .. import urdf
@@ -14,6 +15,12 @@ from ..esquemas import esquema, sin_campos
 from .base import ErrorAgente, frames_de_videos, pedir_json, validado
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
+PROMPTS = Path(__file__).resolve().parent / "prompts"
+
+
+def _prompt(nombre: str) -> str:
+    """Instrucciones del agente. Viven en prompts/<nombre>.md (contrato: docs/agentes/)."""
+    return (PROMPTS / f"{nombre}.md").read_text(encoding="utf-8")
 
 
 def _fixture(nombre: str) -> dict:
@@ -22,11 +29,7 @@ def _fixture(nombre: str) -> dict:
 
 # ---------- 1. Entorno ----------
 
-SISTEMA_ENTORNO = """Eres el agente Entorno de VIAZ. Analizas frames de video de una planta industrial
-(por ahora, parques solares) y estimas los parámetros que hacen falta para generar su escena 3D.
-Mide con referencias visibles: personas (~1,7 m), vehículos, paneles estándar (~2,3 × 1,1 m).
-Si un dato no se ve, usa un valor típico de parques solares y bájale la confianza.
-`confianza` lleva una entrada por dato estimado, con clave tipo "filas.separacion_m" y valor de 0 a 1."""
+SISTEMA_ENTORNO = _prompt("entorno")
 
 
 def esquema_agente_entorno() -> dict:
@@ -59,10 +62,7 @@ def entorno(modo: str, modelo: str, proyecto: dict, frames: list[dict] | None) -
 
 # ---------- 2. Tarea ----------
 
-SISTEMA_TAREA = """Eres el agente Tarea de VIAZ. Con los frames de la planta, la descripción del cliente
-y los parámetros del entorno, defines qué trabajo hará el robot y cómo se mide.
-Por ahora la única tarea es "instalar_panel": el robot lleva una pila de paneles y los deja sobre la estructura.
-El objetivo debe ser alcanzable en una demo corta (3 a 10 paneles)."""
+SISTEMA_TAREA = _prompt("tarea")
 
 
 def tarea(modo: str, modelo: str, proyecto: dict, entorno_json: dict, frames: list[dict] | None) -> dict:
@@ -80,12 +80,17 @@ def tarea(modo: str, modelo: str, proyecto: dict, entorno_json: dict, frames: li
 
 # ---------- 3. Robot ----------
 
-SISTEMA_ROBOT = """Eres el agente Robot de VIAZ. Eliges, de un catálogo cerrado de robots reales,
-el que mejor hace la tarea en esa planta. Compara carga útil contra el peso del panel, alcance contra
-la altura y separación de la estructura, y el tipo de robot contra el terreno.
-Solo puedes elegir ids del catálogo. Justifica con números del entorno y del robot.
-En `alternativas` pon los otros robots del catálogo y por qué no los elegiste.
-Si un robot es ficticio, dilo en la justificación."""
+SISTEMA_ROBOT = _prompt("robot")
+
+
+def alcance_necesario(entorno_json: dict) -> float:
+    """Alcance mínimo (m) para dejar un panel sobre el tubo de la fila 0 desde el pasillo.
+    Misma geometría que urdf.py y sim/plan.py: hombro sobre la base, muñeca de largo fijo."""
+    hombro_z = urdf.CUBIERTA_Z + urdf.HOMBRO_ALTO
+    muneca = sum(urdf.MUNECA)
+    d = entorno_json["panel"]["largo_m"] / 2 + 0.56          # sim/plan.py: distancia_pasillo
+    dz = entorno_json["estructura"]["altura_m"] + 0.05 + 0.04 + muneca - hombro_z  # tubo + panel + muñeca
+    return round(math.ceil((math.hypot(d, dz) + muneca) * 100) / 100 + 0.05, 2)  # +5 cm de margen: justo en el límite, la IK falla
 
 
 def robot(modo: str, modelo: str, entorno_json: dict, tarea_json: dict, catalogo: dict[str, dict]) -> dict:
@@ -104,6 +109,7 @@ def robot(modo: str, modelo: str, entorno_json: dict, tarea_json: dict, catalogo
         }
         texto = (f"entorno.json:\n{json.dumps(entorno_json, ensure_ascii=False)}\n\n"
                  f"tarea.json:\n{json.dumps(tarea_json, ensure_ascii=False)}\n\n"
+                 f"alcance_necesario_m: {alcance_necesario(entorno_json)}\n\n"
                  f"Catálogo:\n{json.dumps(list(catalogo.values()), ensure_ascii=False)}")
         eleccion = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=esq,
                               contenido=[{"type": "text", "text": texto}])

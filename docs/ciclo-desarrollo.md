@@ -20,7 +20,7 @@ flowchart LR
 
 | Fase | Qué produce | Dónde vive | Estado |
 |---|---|---|---|
-| 1. Requerimientos | RF y RNF con ID, prioridad MoSCoW y normas ISO | `docs/requerimientos.md` | Borrador v0.3 |
+| 1. Requerimientos | RF y RNF con ID, prioridad MoSCoW y normas ISO | `docs/requerimientos.md` | Borrador v0.4 |
 | 2. Diseño | Arquitectura, contrato de datos, JSON Schemas | `docs/arquitectura.md`, `docs/contrato-datos.md`, `esquemas/` | Arquitectura y contrato propuestos; faltan esquemas |
 | 3. Implementación | Código por etapa, primero el mapeo y con stubs | `web/`, `api/`, `orquestador/`, `agentes/`, `worker-gpu/`, `sim/` | Por empezar |
 | 4. Pruebas | Validación de esquemas, pruebas por etapa, prueba de punta a punta | `tests/` | Por empezar |
@@ -31,42 +31,39 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  I0["Iteración 0<br/>Preparación"] --> I1["Iteración 1 → CP1<br/>Mapeo + flujo con stubs"]
-  I1 --> I2["Iteración 2 → CP2<br/>Mapeo real + robot + clon"]
-  I2 --> I3["Iteración 3 → Freeze<br/>Simulación + web + pitch"]
+  I0["Iteración 0<br/>Preparación"] --> I1["Iteración 1 → CP1<br/>Entorno a mano + robot elegido"]
+  I1 --> I2["Iteración 2 → CP2<br/>Constructor + entrenamiento lanzado"]
+  I2 --> I3["Iteración 3 → Freeze<br/>Política, videos, web y pitch"]
 ```
 
-**Prioridad del equipo:** el **mapeo** (videos → entorno virtual) va primero en cada iteración. Todas las etapas leen `entorno.json`.
+**Prioridad del equipo:** lanzar el entrenamiento RL lo antes posible. Dura horas y es el camino crítico del demo.
 
 ### Iteración 0 — Preparación (ahora → antes de CP1)
-- [ ] Revisar y aprobar `requerimientos.md` (los 3 integrantes).
-- [ ] Arrendar el pod RTX 5090 y pasar la prueba de humo ([`infraestructura.md`](infraestructura.md) §5).
-- [ ] Conseguir un video de parque solar (bloquea RF-MAP-01..04).
-- [ ] Crear `esquemas/*.schema.json` desde `contrato-datos.md`, partiendo por `entorno.schema.json`.
-- [ ] Escribir un `entorno.json` de ejemplo a mano (stub del mapeo).
-- [ ] Crear la estructura de carpetas del repo ([`arquitectura.md`](arquitectura.md) §7) y `render.yaml`.
+- [ ] Revisar y aprobar `requerimientos.md` v0.4 (los 3 integrantes).
+- [ ] Arrendar el pod RTX 5090 y pasar la prueba de humo, incluido un ejemplo de RL de Isaac Lab ([`infraestructura.md`](infraestructura.md) §5).
+- [ ] Elegir el parque real y escribir `entorno.json` y `tarea.json` a mano (RF-MAP-11, RF-TAR-04).
+- [ ] Decidir base fija o móvil para el RL, umbral de éxito y horas de pod ([`requerimientos.md`](requerimientos.md) §11).
 
-### Iteración 1 — Mapeo y flujo con stubs (→ CP1, sáb 11:00)
-- [ ] **Mapeo:** `generar_escena` crea `escena.usd` de 3 filas desde el `entorno.json` de ejemplo (RF-MAP-05..06).
-- [ ] **Mapeo:** la web dibuja la misma escena en three.js (RF-MAP-07, RNF-16).
-- [ ] API, Postgres y cola en Render (RF-API-01..05).
-- [ ] Sim runner toma trabajos y sube a R2 (RF-GPU-01..04).
-- [ ] Orquestador corre todas las etapas con stubs y valida cada salida (RF-ORQ-01..05).
-- [ ] Web en Vercel: crear proyecto, subir videos y ver progreso (RF-WEB-01..03, RF-WEB-09).
+### Iteración 1 — Entorno y robot (→ CP1, sáb 11:00)
+- [ ] `generar_escena` crea `escena.usd` desde el `entorno.json` a mano (RF-MAP-05..06).
+- [ ] Catálogo de 5 a 10 robots reales con fuentes (RF-ROB-01..02).
+- [ ] Agente de selección elige el robot y justifica (RF-ROB-03..04).
+- [ ] Catálogo de assets de Isaac Lab verificado en el pod (`sim/assets_isaaclab.json`).
+- [ ] Latido de trabajos largos en la API y el runner (RF-API-06, RF-GPU-06).
 
-### Iteración 2 — Mapeo real y etapas reales (→ CP2, sáb 23:00)
-- [ ] **Mapeo:** frames con `ffmpeg` y agente Entorno sobre un video real (RF-MAP-01..04).
-- [ ] Agente Tarea (RF-TAR-01..02).
-- [ ] Catálogo de robots con fuentes y agente Robot (RF-ROB-01..04).
-- [ ] Clon con `robot.usd` y `robot.urdf`, validado en el pod (RF-CLO-01..06).
-- [ ] El visor 3D carga el robot y reproduce una trayectoria (RF-WEB-04..05).
+### Iteración 2 — Constructor y entrenamiento (→ CP2, sáb 23:00)
+- [ ] Agente constructor: `ensamblaje.json` → `robot_cfg.py` → `validar_clon`, con 3 intentos (RF-CLO-01..06).
+- [ ] Entorno RL `instalar_panel` en Isaac Lab con recompensa y condición de éxito (RF-INT-10..11).
+- [ ] Entrenamiento lanzado con grabación de clips (RF-INT-12..13).
+- [ ] Agente monitor leyendo métricas y avisando (RF-MON-01..04, RF-MON-08).
 
-### Iteración 3 — Simulación y demo (→ Freeze, dom 05:00)
-- [ ] El clon instala paneles con el planificador; métricas, video y trayectoria (RF-INT-01..04).
-- [ ] Panel lateral, video y corrida de respaldo en la web (RF-WEB-06..08, RNF-07).
+### Iteración 3 — Política y demo (→ Freeze, dom 05:00)
+- [ ] Elegir el checkpoint con el monitor y evaluar 20 episodios (RF-INT-14, RF-MON-05).
+- [ ] Grabar `video.mp4` con la muestra y armar `entrenamiento_rapido.mp4` (RF-INT-13, RF-INT-15).
+- [ ] Web con los dos videos, el robot elegido y las métricas (RF-WEB-06..09, RF-WEB-13, RF-WEB-15).
 - [ ] Verificar los criterios de aceptación ([`requerimientos.md`](requerimientos.md) §8).
 - [ ] Pitch.
-- [ ] Extras si sobra tiempo: RL (RF-INT-05), fondo reconstruido (RF-MAP-10).
+- [ ] Plan B si el RL no llega al umbral: muestra con planificador (RF-INT-01).
 
 **Regla de recorte:** si una tarea **M** está en riesgo 2 h antes del checkpoint, se deja su stub y se sigue. Un stub que funciona vale más que una etapa real a medias.
 
@@ -106,3 +103,4 @@ Una tarea está terminada cuando:
 | 2026-11-21 | — | Se crean requerimientos y ciclo de desarrollo | — |
 | 2026-11-21 | — | Se agregan normas ISO e infraestructura | GPU: RTX 5090 en la nube; base: Ubuntu 22.04 + Isaac Sim 5.1 + Isaac Lab 2.3 (por verificar) |
 | 2026-11-21 | — | Requerimientos v0.3 alineados con la arquitectura web + nube (PR #2) | El mapeo va primero; MoSCoW; normas ISO dentro de `requerimientos.md` |
+| 2026-11-21 | — | Requerimientos v0.4: plan del demo con RL | Entorno y tarea a mano; agentes de selección, constructor y monitor; video en cámara rápida del entrenamiento en la web; tarea solo poner el panel |

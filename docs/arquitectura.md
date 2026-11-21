@@ -137,6 +137,8 @@ stateDiagram-v2
 
 ## 4. Agentes
 
+> Contratos e instrucciones de cada agente: [`agentes/`](agentes/README.md).
+
 - **Un agente por etapa:** cada uno tiene su prompt, sus herramientas y su archivo de salida. Solo leen archivos del contrato.
 - **Modelo:** Claude Opus 5.5 (`VIAZ_MODELO`). Las respuestas usan structured outputs (`output_config.format`) con el JSON Schema de la etapa, y `fallbacks: "default"` por si el modelo rechaza la consulta.
 - **Modo `fijo`:** `VIAZ_AGENTES=fijo` devuelve fixtures, para desarrollar el flujo sin gastar API.
