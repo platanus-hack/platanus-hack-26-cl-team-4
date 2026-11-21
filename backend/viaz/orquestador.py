@@ -281,7 +281,7 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
 
     # 2. Tarea escrita a mano
     c.etapa("tarea", "en_curso")
-    tarea = validar("tarea", _manual(cfg.tarea_manual, "tarea"))
+    tarea = agentes.revisar_tarea(_manual(cfg.tarea_manual, "tarea"), entorno)   # esquema + reglas 2 a 6 del contrato
     c.escribir("tarea.json", tarea)
     c.etapa("tarea", "listo", ["tarea.json"])
 
