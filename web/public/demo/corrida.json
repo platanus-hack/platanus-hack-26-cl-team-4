@@ -1,0 +1,13 @@
+{
+  "generado": "2026-11-21T06:22:05Z",
+  "origen": "python -m viaz.demo (agentes fijos + plan sintético)",
+  "archivos": [
+    "clon.json",
+    "entorno.json",
+    "resultado.json",
+    "robot.json",
+    "robot.urdf",
+    "tarea.json",
+    "trayectoria.json"
+  ]
+}

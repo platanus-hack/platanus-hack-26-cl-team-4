@@ -28,8 +28,11 @@ export interface Robot {
   nombre: string;
   fabricante: string;
   ficticio: boolean;
+  tipo: "base_movil_brazo" | "brazo_fijo" | "vehiculo_con_brazo";
   carga_util_kg: number;
   alcance_m: number;
+  velocidad_base_m_s: number;
+  efector: "ventosa" | "pinza";
   justificacion: string;
   alternativas: { id: string; por_que_no: string }[];
   fuente: { url: string | null; consultado: string | null };
@@ -45,6 +48,25 @@ export interface Resultado {
   metricas: { paneles_instalados: number; intentos: number; tasa_exito: number; ciclo_promedio_s: number };
   video: string | null;
   notas: string;
+  evaluacion?: {
+    episodios: number;
+    exitos: number;
+    tasa_exito: number;
+    tolerancia: { pos_m: number; ang_grados: number };
+  };
+  entrenamiento?: {
+    pasos_sim: number;
+    tiempo_real_s: number;
+    num_entornos: number;
+    video_rapido: string | null;
+    curva: { paso: number; tasa_exito: number }[];
+    hitos: { paso: number; texto: string }[];
+  };
+}
+
+export interface Tarea {
+  descripcion: string;
+  objetivo: { paneles: number; ciclo_s: number };
 }
 
 export interface Frame {

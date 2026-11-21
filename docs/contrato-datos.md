@@ -124,7 +124,32 @@ flowchart LR
 ```
 
 - **`fuente`:** `isaac` (con física) o `simulado` (trayectoria sintética del worker sin GPU). La web marca `simulado` como "sin física".
-- **`video`:** `null` si no hay video, por ejemplo en modo simulado.
+- **`video`:** `null` si no hay video, por ejemplo en modo simulado. Es la muestra del robot ya entrenado (RF-WEB-06).
+
+### Campos opcionales del entrenamiento con RL
+
+Los escribe el script de entrenamiento del pod. Si faltan, la web muestra la sección como pendiente.
+
+```json
+{
+  "evaluacion": {
+    "episodios": 100, "exitos": 92, "tasa_exito": 0.92,
+    "tolerancia": { "pos_m": 0.05, "ang_grados": 5 }
+  },
+  "entrenamiento": {
+    "pasos_sim": 48000000, "tiempo_real_s": 2700, "num_entornos": 4096,
+    "video_rapido": "entrenamiento_rapido.mp4",
+    "curva": [{ "paso": 0, "tasa_exito": 0.0 }, { "paso": 24000000, "tasa_exito": 0.61 }],
+    "hitos": [{ "paso": 12000000, "texto": "El brazo ya llega al tubo; falta alinear el panel" }]
+  }
+}
+```
+
+- **`evaluacion` (RF-WEB-16):** la web la muestra como "92 % a 5 cm y 5°, en 100 episodios".
+- **`entrenamiento.pasos_sim` y `tiempo_real_s` (RF-WEB-15):** dicen cuánto representa el video acelerado. `pasos_sim` suma los pasos de política de todos los entornos.
+- **`video_rapido` (RF-WEB-13):** el video del entrenamiento en cámara rápida, en la misma carpeta.
+- **`curva` y `hitos` (RF-WEB-14):** la tasa de éxito en el tiempo y los avisos del agente monitor.
+- **Ejemplo:** los números del bloque de arriba son ilustrativos, no un resultado.
 
 ## `trayectoria.json` (etapa 5, para el visor 3D)
 
