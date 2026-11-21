@@ -18,6 +18,11 @@ Qué NO lleva: nada del robot (el terreno no sabe qué robot viene después), lo
 
 Reglas (iguales a web/lib/escena.ts): Z arriba, metros. Fila i: tubo en y = -i * separacion,
 a altura_m, de x = 0 a x = largo_m, con postes cada 7 m.
+
+Espacios que no son parque_solar (sala, bodega, taller...): escena_generica_usda() arma el suelo, las paredes si
+espacio.interior, y cada elemento de entorno.json como caja o cilindro. Origen en una esquina del espacio; X a lo largo,
+Y a lo ancho; posicion_m es el centro de la cara inferior. Un elemento fijo es un colisionador inamovible; uno no fijo
+con masa_kg es un cuerpo rígido. Las aberturas (puertas, ventanas) no llevan colisión ni cortan la pared. [Por hacer]
 """
 from __future__ import annotations
 
@@ -56,7 +61,24 @@ ASPECTOS = {
     "marco": (COLOR_MARCO, 0.35, 0.9),
     "roca": (COLOR_ROCA, 0.9, 0.0),
     "madera": (COLOR_MADERA, 0.8, 0.0),
+    # Espacios genéricos (escena_generica_usda): un aspecto por categoría de elemento, más piso y pared.
+    "piso": ((0.62, 0.60, 0.56), 0.8, 0.0),
+    "pared": ((0.85, 0.85, 0.82), 0.9, 0.0),
+    "estructura": ((0.55, 0.57, 0.60), 0.5, 0.6),
+    "maquina": ((0.45, 0.50, 0.55), 0.5, 0.5),
+    "mueble": ((0.60, 0.45, 0.30), 0.8, 0.0),
+    "superficie_trabajo": ((0.70, 0.55, 0.35), 0.7, 0.0),
+    "contenedor": ((0.30, 0.45, 0.60), 0.6, 0.0),
+    "objeto_manipulable": ((0.85, 0.60, 0.20), 0.7, 0.0),
+    "obstaculo": ((0.70, 0.30, 0.25), 0.8, 0.0),
+    "abertura": ((0.40, 0.30, 0.20), 0.8, 0.0),
+    "otro": ((0.60, 0.60, 0.60), 0.8, 0.0),
 }
+CATEGORIAS = ("estructura", "maquina", "mueble", "superficie_trabajo", "contenedor", "objeto_manipulable",
+              "obstaculo", "abertura", "otro")
+MATERIAL_CATEGORIA = {"estructura": "acero", "maquina": "acero"}   # el resto: "objeto" (fisica.MATERIALES)
+PARED_ESPESOR_M = 0.1
+ALTO_PARED_SIN_TECHO_M = 2.5
 TEXTURAS_DIR = "texturas"
 RAW = 'colorSpace = "raw"'    # normales, rugosidad y metal son datos: sin esto Isaac los lee como color sRGB
 # Metal del acero y del marco. Con 0,85 el acero a la sombra solo refleja el cielo y la cámara de Isaac lo ve azul marino
@@ -448,8 +470,99 @@ def _luces(con_texturas: bool = False) -> str:
     }}'''
 
 
+def cuerpos_genericos(entorno: dict) -> list[dict]:
+    """Suelo y, si espacio.interior, 4 paredes por fuera de la caja del espacio. Todos fijos, con colisión."""
+    e = entorno["espacio"]
+    largo, ancho = e["largo_m"], e["ancho_m"]
+    lista = [{"nombre": "Suelo", "centro": (largo / 2, ancho / 2, -0.05), "tam": (largo + 2, ancho + 2, 0.1),
+              "aspecto": "piso", "material": "suelo"}]
+    if e["interior"]:
+        h, t = e["alto_m"] or ALTO_PARED_SIN_TECHO_M, PARED_ESPESOR_M
+        for nombre, centro, tam in (
+            ("Pared_Y0", (largo / 2, -t / 2, h / 2), (largo + 2 * t, t, h)),
+            ("Pared_YA", (largo / 2, ancho + t / 2, h / 2), (largo + 2 * t, t, h)),
+            ("Pared_X0", (-t / 2, ancho / 2, h / 2), (t, ancho, h)),
+            ("Pared_XL", (largo + t / 2, ancho / 2, h / 2), (t, ancho, h)),
+        ):
+            lista.append({"nombre": nombre, "centro": centro, "tam": tam, "aspecto": "pared", "material": "suelo"})
+    return lista
+
+
+def _nombre_usd(texto: str, i: int) -> str:
+    limpio = "".join(ch if ch.isalnum() else "_" for ch in texto).strip("_") or "elemento"
+    return f"E{i:02d}_{limpio[:40]}"
+
+
+def _elemento(i: int, el: dict) -> str:
+    """Un elemento de entorno.json como Cube o Cylinder vertical. Gira sobre Z alrededor de su centro."""
+    d, p = el["dimensiones_m"], el["posicion_m"]
+    centro = (p["x_m"], p["y_m"], p["z_m"] + d["alto_m"] / 2)
+    aspecto = el["categoria"] if el["categoria"] in CATEGORIAS else "otro"
+    material = MATERIAL_CATEGORIA.get(aspecto, "objeto")
+    dinamico = not el["fijo"] and bool(el["masa_kg"])
+    apis = ["PhysicsCollisionAPI", "MaterialBindingAPI"] + (["PhysicsRigidBodyAPI", "PhysicsMassAPI"] if dinamico else [])
+    if el["forma"] == "cilindro":
+        prim = "Cylinder"
+        forma = (f'double radius = {max(d["largo_m"], d["ancho_m"]) / 2:.4f}\n'
+                 f'        double height = {d["alto_m"]:.4f}\n'
+                 f'        uniform token axis = "Z"')
+        escala, orden = "", '["xformOp:translate", "xformOp:rotateZ"]'
+    else:
+        prim, forma = "Cube", "double size = 1"
+        escala = f'\n        float3 xformOp:scale = ({_vec((d["largo_m"], d["ancho_m"], d["alto_m"]))})'
+        orden = '["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]'
+    masa = f'\n        float physics:mass = {el["masa_kg"]}' if dinamico else ""
+    return f'''
+    def {prim} "{_nombre_usd(el["nombre"], i)}" (
+        prepend apiSchemas = [{", ".join(f'"{x}"' for x in apis)}]
+    )
+    {{
+        {forma}
+        double3 xformOp:translate = ({_vec(centro)})
+        float xformOp:rotateZ = {el["rotacion_grados"]}{escala}
+        uniform token[] xformOpOrder = {orden}
+        color3f[] primvars:displayColor = [({_vec(ASPECTOS[aspecto][0])})]{masa}
+        rel material:binding = </World/Materiales/Vis{aspecto.capitalize()}>
+        rel material:binding:physics = </World/Materiales/{material.capitalize()}>
+    }}'''
+
+
+def escena_generica_usda(entorno: dict, con_texturas: bool = False) -> str:
+    """El USD de un espacio que no es parque_solar: suelo, paredes y elementos. Sin cerros, rocas ni paneles."""
+    elementos = [(i, el) for i, el in enumerate(entorno.get("elementos", [])) if el["categoria"] != "abertura"]
+    aspectos = ("piso", "pared", *CATEGORIAS)
+    materiales = (_material("suelo", fisica.material_suelo(entorno)) + _material("acero", fisica.material("acero"))
+                  + _material("objeto", fisica.material("objeto")) + "".join(_aspecto(n, con_texturas) for n in aspectos))
+    planta = "".join(_cubo(c) for c in cuerpos_genericos(entorno)) + "".join(_elemento(i, el) for i, el in elementos)
+    return f'''#usda 1.0
+(
+    defaultPrim = "World"
+    metersPerUnit = 1
+    kilogramsPerUnit = 1
+    upAxis = "Z"
+)
+
+def Xform "World"
+{{
+    def Scope "Materiales"
+    {{{materiales}
+    }}
+
+    def Xform "Planta"
+    {{{planta}
+    }}
+
+    def Xform "Luces"
+    {{{_luces(con_texturas)}
+    }}
+}}
+'''
+
+
 def escena_usda(entorno: dict, con_texturas: bool = False) -> str:
     """El USD de la escena. con_texturas: materiales OmniPBR que citan texturas/ (main() las escribe), rocas y cielo."""
+    if entorno["tipo"] != "parque_solar":
+        return escena_generica_usda(entorno, con_texturas)
     fijos = cuerpos(entorno)
     suelo = fijos[0]
     centro_xy = suelo["centro"][:2]
@@ -533,6 +646,11 @@ def main() -> None:
     entorno = json.loads((a.dir / "entorno.json").read_text(encoding="utf-8"))
     con_texturas = _escribir_texturas(a.dir)
     (a.dir / "escena.usd").write_text(escena_usda(entorno, con_texturas), encoding="utf-8")
+    if entorno["tipo"] != "parque_solar":
+        e = entorno["espacio"]
+        print(f"escena.usd: {entorno['tipo']} de {e['largo_m']} × {e['ancho_m']} m, "
+              f"{len(entorno.get('elementos', []))} elementos, {'con' if con_texturas else 'sin'} texturas")
+        return
     print(f"escena.usd: {entorno['filas']['cantidad']} filas de {entorno['filas']['largo_m']} m, "
           f"{len(paneles_visuales(entorno))} paneles ya instalados, "
           f"{'con' if con_texturas else 'sin'} texturas")

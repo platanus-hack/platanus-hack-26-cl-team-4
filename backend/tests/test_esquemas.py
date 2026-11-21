@@ -91,3 +91,62 @@ def test_escena_tiene_una_fila_por_entorno():
     usda = generar_escena.escena_usda(e)
     assert usda.startswith("#usda 1.0")
     assert usda.count('_Tubo"') == e["filas"]["cantidad"]
+
+
+# ---------- Entorno genérico (cualquier espacio, no solo parque solar) ----------
+
+def _fixture(nombre):
+    return json.loads((agentes.FIXTURES / f"{nombre}.json").read_text(encoding="utf-8"))
+
+
+def test_entorno_generico_cumple_el_contrato_sin_perfil_solar():
+    sala = validar("entorno", _fixture("entorno_sala"))
+    assert sala["tipo"] == "sala" and "filas" not in sala
+
+
+def test_perfil_solar_es_obligatorio_solo_en_parque_solar():
+    solar = _fixture("entorno")
+    del solar["panel"]
+    with pytest.raises(ErrorEsquema):
+        validar("entorno", solar)
+    sala = _fixture("entorno_sala")
+    sala["filas"] = _fixture("entorno")["filas"]
+    with pytest.raises(ErrorEsquema):
+        validar("entorno", sala)
+
+
+def test_normalizar_entorno_quita_perfiles_nulos_y_arma_confianza():
+    resp = {k: v for k, v in _fixture("entorno_sala").items()
+            if k not in ("version", "videos", "escena_usd", "fondo_reconstruido_usd")}
+    resp.update(filas=None, estructura=None, panel=None,
+                confianza=[{"campo": "espacio.largo_m", "valor": 0.8}])
+    datos = agentes.normalizar_entorno(resp)
+    assert not {"filas", "estructura", "panel"} & set(datos)
+    assert datos["confianza"] == {"espacio.largo_m": 0.8}
+
+
+def test_escena_generica_tiene_paredes_y_elementos():
+    sala = _fixture("entorno_sala")
+    usda = generar_escena.escena_usda(sala)
+    assert usda.count('"Pared_') == 4
+    solidos = [el for el in sala["elementos"] if el["categoria"] != "abertura"]
+    assert usda.count('"E0') == len(solidos)
+    assert "def Cylinder" in usda
+    movibles = [el for el in solidos if not el["fijo"] and el["masa_kg"]]
+    assert usda.count("physics:mass") == len(movibles)
+    assert "_Tubo" not in usda
+
+
+def test_medidas_solares_no_se_aplican_a_otro_tipo():
+    medidas = {"version": 1, "disponible": True, "fuente": "x", "frames": 1, "avisos": [],
+               "campos": {"filas.cantidad": {"valor": 4, "error": 0, "confianza": 0.9, "metodo": "m", "muestras": 1}}}
+    sala = agentes.aplicar_medidas(_fixture("entorno_sala"), medidas)
+    assert "filas" not in sala and "mediciones" not in sala
+    validar("entorno", sala)
+
+
+def test_orquestador_corta_tipos_sin_pipeline():
+    from viaz import orquestador
+    orquestador.exigir_pipeline(_fixture("entorno"))
+    with pytest.raises(agentes.ErrorAgente, match="sala"):
+        orquestador.exigir_pipeline(_fixture("entorno_sala"))

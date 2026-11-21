@@ -37,11 +37,25 @@ CAMPOS_MEDIBLES = ("filas.cantidad", "filas.separacion_m", "filas.largo_m", "est
 CONFIANZA_MIN_MEDIDA = 0.4      # bajo esto la medida no manda: el agente decide (y lo anota)
 CONFIANZA_MAX_ESTIMADA = 0.7    # un dato que nadie midió no pasa de esta confianza
 
+# Perfiles: bloques extra que solo existen para un tipo de espacio. El agente mapea cualquier espacio (sala,
+# bodega, taller...); la medición 3D (sim/medir_geometria.py) y las etapas Tarea → Inteligencia todavía solo
+# saben trabajar con parque_solar (sim/plan.py, urdf.py, web).
+PERFILES = {"parque_solar": ("filas", "estructura", "panel")}
+TIPOS_CON_PIPELINE = {"parque_solar"}
+
 
 def esquema_agente_entorno() -> dict:
     """Lo que devuelve el modelo: entorno.json sin los campos del orquestador, más sus ajustes a las medidas.
-    `confianza` va como lista porque structured outputs no acepta objetos con claves libres."""
+    - `confianza` va como lista porque structured outputs no acepta objetos con claves libres.
+    - Los bloques de perfil (filas, estructura, panel) van siempre, pero aceptan null.
+    - Sin if/then/else: la API no los acepta; la regla de perfiles se valida en local."""
     esq = sin_campos(esquema("entorno"), ["version", "videos", "escena_usd", "fondo_reconstruido_usd", "mediciones"])
+    for k in ("if", "then", "else"):
+        esq.pop(k, None)
+    for campos in PERFILES.values():
+        for c in campos:
+            esq["properties"][c] = {"anyOf": [esq["properties"][c], {"type": "null"}]}
+            esq["required"].append(c)
     # La fricción del suelo no se ve en un video: la escribe el equipo o sale del tipo de suelo (sim/fisica.py).
     esq["properties"]["terreno"]["properties"].pop("friccion", None)
     esq["properties"]["confianza"] = {"type": "array", "items": {
@@ -56,7 +70,7 @@ def esquema_agente_entorno() -> dict:
 
 
 def texto_entorno(proyecto: dict, medidas: dict | None = None) -> str:
-    texto = f"Planta: {proyecto['nombre']}\nDescripción del cliente: {proyecto['descripcion'] or '(sin descripción)'}"
+    texto = f"Espacio: {proyecto['nombre']}\nDescripción del cliente: {proyecto['descripcion'] or '(sin descripción)'}"
     if medidas and medidas.get("disponible"):
         texto += ("\n\nmedidas_entorno.json (medido en los videos con una reconstrucción 3D métrica; "
                   "la imagen cenital muestra la nube y las filas encontradas):\n" + json.dumps(medidas, ensure_ascii=False))
@@ -88,6 +102,9 @@ def aplicar_medidas(datos: dict, medidas: dict | None, ajustes: list[dict] | Non
     Devuelve datos con `mediciones` (qué se midió y qué se ajustó). Sin medidas, solo limita la confianza.
     """
     confianza = dict(datos.get("confianza") or {})
+    # Las medidas 3D son del perfil parque_solar (filas, estructura, panel). En otro tipo no aplican.
+    if datos.get("tipo") != "parque_solar":
+        medidas = None
     if not medidas or not medidas.get("disponible"):
         datos["confianza"] = {k: min(v, CONFIANZA_MAX_ESTIMADA) for k, v in confianza.items()}
         return datos
@@ -115,6 +132,19 @@ def aplicar_medidas(datos: dict, medidas: dict | None, ajustes: list[dict] | Non
     return datos
 
 
+def normalizar_entorno(datos: dict) -> dict:
+    """Respuesta del modelo → forma del contrato: confianza como objeto y sin perfiles que no aplican."""
+    datos = copy.deepcopy(datos)
+    if isinstance(datos.get("confianza"), list):
+        datos["confianza"] = {c["campo"]: c["valor"] for c in datos["confianza"]}
+    propios = PERFILES.get(datos.get("tipo"), ())
+    for campos in PERFILES.values():
+        for c in campos:
+            if c not in propios or datos.get(c) is None:
+                datos.pop(c, None)
+    return datos
+
+
 def entorno(modo: str, modelo: str, proyecto: dict, frames: list[dict] | None,
             medidas: dict | None = None, vista_png: bytes | None = None) -> dict:
     """entorno.json del proyecto. Con medidas (sim/medir_entorno.py), los datos medidos mandan: el agente revisa,
@@ -129,8 +159,8 @@ def entorno(modo: str, modelo: str, proyecto: dict, frames: list[dict] | None,
             contenido.append({"type": "image", "source": {"type": "base64", "media_type": "image/png",
                                                           "data": base64.b64encode(vista_png).decode()}})
         contenido.append({"type": "text", "text": texto_entorno(proyecto, medidas)})
-        datos = pedir_json(modelo=modelo, sistema=SISTEMA_ENTORNO, esquema=esquema_agente_entorno(), contenido=contenido)
-        datos["confianza"] = {c["campo"]: c["valor"] for c in datos["confianza"]}
+        datos = normalizar_entorno(pedir_json(modelo=modelo, sistema=SISTEMA_ENTORNO,
+                                              esquema=esquema_agente_entorno(), contenido=contenido))
         ajustes = datos.pop("ajustes", [])
         datos = aplicar_medidas(datos, medidas, ajustes)
     datos.update(version=1, videos=[v.rsplit("/", 1)[1] for v in proyecto["videos"]],
