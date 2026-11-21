@@ -20,7 +20,7 @@ flowchart LR
 
 | Fase | Qué produce | Dónde vive | Estado |
 |---|---|---|---|
-| 1. Requerimientos | RF y RNF con ID, prioridad MoSCoW y normas ISO | `docs/requerimientos.md` | Borrador v0.5 |
+| 1. Requerimientos | RF y RNF con ID, prioridad MoSCoW y normas ISO | `docs/requerimientos.md` | Borrador v0.6 |
 | 2. Diseño | Arquitectura, contrato de datos, JSON Schemas | `docs/arquitectura.md`, `docs/contrato-datos.md`, `esquemas/` | Arquitectura y contrato propuestos; faltan esquemas |
 | 3. Implementación | Código por etapa, primero el mapeo y con stubs | `web/`, `api/`, `orquestador/`, `agentes/`, `worker-gpu/`, `sim/` | Por empezar |
 | 4. Pruebas | Validación de esquemas, pruebas por etapa, prueba de punta a punta | `tests/` | Por empezar |
@@ -63,6 +63,7 @@ flowchart LR
 - [ ] Elegir el checkpoint con el monitor y evaluar 100 episodios, a 5 cm/5° y a 2 cm/2° (RF-INT-14, RF-INT-20, RF-MON-05).
 - [ ] Grabar `video.mp4` con la muestra y armar `entrenamiento_rapido.mp4` (RF-INT-13, RF-INT-15).
 - [ ] Web con los dos videos, el robot elegido y las métricas (RF-WEB-06..09, RF-WEB-13, RF-WEB-15).
+- [ ] Sección de la web que explica el flujo completo y rotula el parque de referencia (RF-WEB-19, RNF-20).
 - [ ] Verificar los criterios de aceptación ([`requerimientos.md`](requerimientos.md) §8).
 - [ ] Pitch.
 - [ ] Plan B si el RL no llega al umbral: muestra con planificador (RF-INT-01).
@@ -107,3 +108,4 @@ Una tarea está terminada cuando:
 | 2026-11-21 | — | Requerimientos v0.3 alineados con la arquitectura web + nube (PR #2) | El mapeo va primero; MoSCoW; normas ISO dentro de `requerimientos.md` |
 | 2026-11-21 | — | Requerimientos v0.4: plan del demo con RL | Entorno y tarea a mano; agentes de selección, constructor y monitor; video en cámara rápida del entrenamiento en la web; tarea solo poner el panel |
 | 2026-11-21 | — | Requerimientos v0.5 | Base móvil con navegación programada y RL en el brazo; meta 90 % a 5 cm y 5° en 100 episodios; tiempo fijo; avisos por Discord |
+| 2026-11-21 | — | Requerimientos v0.6 | La subida de videos se explica en la web y en el pitch, pero no se usa en vivo; el demo muestra el parque de referencia |

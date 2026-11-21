@@ -1,9 +1,10 @@
 # Especificación de requerimientos de VIAZ
 
-> Estado: **borrador v0.5** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
+> Estado: **borrador v0.6** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
 > Estructura según ISO/IEC/IEEE 29148. Prioridades según el método **MoSCoW**. Calidad según ISO/IEC 25010.
 > **Cambio de v0.4:** el demo usa un entorno escrito a mano y una política entrenada con RL. El mapeo desde video pasa a Could.
 > **Cambio de v0.5:** base móvil con navegación programada y RL en el brazo; meta de 90 % a 5 cm y 5° en 100 episodios; tiempo fijo; avisos por Discord.
+> **Cambio de v0.6:** la web explica el flujo teórico (subir videos → extraer entorno → robot → entrenamiento) sin usarlo en vivo. El pitch muestra los resultados precalculados del parque de referencia.
 > Lo marcado **[Por definir]** lo decide el equipo. Cada requerimiento tiene un ID: cítalo en issues, PRs y pruebas.
 
 ## Índice
@@ -54,13 +55,35 @@ flowchart LR
 - Un tipo de planta: `parque_solar`, con su entorno escrito a mano.
 - Una tarea: `instalar_panel`. El robot **solo pone el panel** sobre la estructura: sin cables, pernos ni conexión eléctrica.
 - Un catálogo curado de 5 a 10 robots reales.
-- Una web pública con resultados precalculados: robot elegido, video en cámara rápida del entrenamiento y muestra del robot entrenado.
+- Una web pública que explica el flujo completo, incluida la subida de videos, sin usarla en vivo.
+- Resultados precalculados del parque de referencia: robot elegido, video en cámara rápida del entrenamiento y muestra del robot entrenado.
+
+### 1.2 Flujo teórico y lo que muestra el pitch
+
+```mermaid
+flowchart LR
+  subgraph T["Flujo teórico (se explica, no se usa en vivo)"]
+    P1["1. El cliente sube<br/>videos de su planta"] --> P2["2. Se extrae<br/>el entorno"]
+  end
+  subgraph D["Lo que muestra el pitch (precalculado)"]
+    P3["3. Robot elegido<br/>+ justificación"] --> P4["4. Video acelerado<br/>del entrenamiento"]
+    P4 --> P5["5. Muestra del<br/>robot entrenado"]
+    P5 --> P6["6. Métricas:<br/>90 % a 5 cm y 5°"]
+  end
+  P2 --> P3
+```
+
+| Parte | En la web | En el pitch |
+|---|---|---|
+| Subir videos y extraer el entorno | Una sección explica el flujo completo con sus pasos (RF-WEB-19). El formulario de subida del esqueleto puede quedar, pero no se usa (Could) | Se explica: "en producción, el cliente sube sus videos y VIAZ extrae el entorno" |
+| Entorno del demo | Se muestra el parque de referencia y se dice que su entorno se escribió a mano (RNF-20) | Se dice con claridad |
+| Robot, videos y métricas | Precalculados (RF-WEB-06..08, RF-WEB-13, RF-WEB-15..16) | Es el centro del pitch |
 
 ## 2. Actores e interesados
 
 | Actor | Necesidad |
 |---|---|
-| **Cliente industrial** | Ver qué robot real le sirve y cómo trabaja en su planta |
+| **Cliente industrial** | Entender cómo VIAZ pasa de sus videos a un robot real trabajando en su planta |
 | **Jurado / visitante** | Entender el flujo en menos de 2 min y ver al robot aprender y trabajar |
 | **Equipo (operador)** | Escribir el entorno, lanzar el entrenamiento y decidir con la ayuda del monitor |
 | **Fabricantes de robots** | Ver sus specs citadas con fuente y fecha |
@@ -86,9 +109,9 @@ flowchart LR
 
 | Tipo | Must | Should | Could | Won't |
 |---|---|---|---|---|
-| Funcionales | 47 | 23 | 17 | — |
-| No funcionales | 13 | 6 | 0 | — |
-| Fuera del alcance | — | — | — | 10 |
+| Funcionales | 48 | 23 | 17 | — |
+| No funcionales | 14 | 6 | 0 | — |
+| Fuera del alcance | — | — | — | 11 |
 
 ## 4. Requerimientos funcionales
 
@@ -195,6 +218,7 @@ flowchart LR
 | RF-WEB-06 | La web reproduce `video.mp4`: la muestra del robot ya entrenado | **M** |
 | RF-WEB-07 | El panel lateral muestra el robot elegido, su justificación, su fuente, las diferencias del clon y las métricas | **M** |
 | RF-WEB-08 | La web muestra la corrida del demo precalculada (`/corridas/demo`) sin depender del pod | **M** |
+| RF-WEB-19 | La web explica el flujo completo en pasos: subir videos, extraer el entorno, elegir el robot, construirlo, entrenarlo y mostrar el resultado | **M** |
 | RF-WEB-09 | La web funciona en una URL pública de Vercel | **M** |
 | RF-WEB-15 | La web indica cuánto tiempo real y cuántos pasos de simulación representa el video acelerado | **M** |
 | RF-WEB-16 | La web muestra la tasa de éxito con la tolerancia y la cantidad de episodios (ej.: "92 % a 5 cm y 5°, 100 episodios") | **M** |
@@ -244,7 +268,7 @@ Cada RNF lleva su característica de calidad según ISO/IEC 25010:2023.
 flowchart TD
   Q[ISO/IEC 25010] --> C1[Compatibilidad] --> R01["RNF-01, RNF-12"]
   Q --> C2[Seguridad] --> R02["RNF-02, RNF-08, RNF-11, RNF-15"]
-  Q --> C3[Adecuación funcional] --> R03["RNF-03, RNF-13, RNF-16, RNF-18"]
+  Q --> C3[Adecuación funcional] --> R03["RNF-03, RNF-13, RNF-16, RNF-18, RNF-20"]
   Q --> C4[Mantenibilidad] --> R04["RNF-04, RNF-09, RNF-14"]
   Q --> C5[Eficiencia de desempeño] --> R05["RNF-05, RNF-06, RNF-17, RNF-19"]
   Q --> C6[Fiabilidad] --> R07[RNF-07]
@@ -272,6 +296,7 @@ flowchart TD
 | RNF-17 | Eficiencia de desempeño (entrenamiento) | El tiempo de entrenamiento es fijo. Termina con 90 % en 3 chequeos seguidos, al agotar el tiempo o si el equipo lo decide. Las horas se fijan tras la primera hora de entrenamiento **[Por fijar]** | — | **M** |
 | RNF-18 | Adecuación funcional · corrección | Los videos se rotulan como simulación. El video acelerado dice su factor de velocidad | ISO 12100 | **M** |
 | RNF-19 | Eficiencia de desempeño (video) | `entrenamiento_rapido.mp4` dura entre 30 y 90 s y pesa menos de 50 MB | — | **M** |
+| RNF-20 | Adecuación funcional · corrección | La web dice que el demo usa un parque de referencia con su entorno escrito a mano, y que la subida de videos es el flujo de producción | ISO 12100 | **M** |
 
 ## 6. Fuera del alcance (Won't)
 
@@ -287,6 +312,7 @@ flowchart TD
 | W-08 | Entrenamiento en vivo durante el pitch | Dura horas. La web muestra el video acelerado |
 | W-10 | RL de la navegación de la base | Hace el problema mucho más difícil. La base usa un controlador programado (RF-INT-18) |
 | W-09 | Política en vivo en la web | La web muestra videos grabados. El pod puede estar apagado |
+| W-11 | Subir y procesar videos en vivo durante el pitch | El entorno va a mano y el entrenamiento dura horas. El flujo se explica (RF-WEB-19) |
 
 ## 7. Normas ISO
 
@@ -325,7 +351,7 @@ flowchart LR
 | ISO/IEC/IEEE 12207:2017 | Ciclo de vida del software | Ciclo incremental por checkpoint ([`ciclo-desarrollo.md`](ciclo-desarrollo.md)) | — |
 | ISO/IEC/IEEE 29148:2018 | Ingeniería de requerimientos | Estructura de este documento. ID único, prioridad y verificación por requerimiento | Todos |
 | ISO/IEC/IEEE 42010:2022 | Descripción de arquitectura | Vistas y decisiones con su porqué en [`arquitectura.md`](arquitectura.md). Interesados en §2 | RNF-09 |
-| ISO/IEC 25010:2023 | Calidad del producto | Clasificación de los RNF (§5) | RNF-01..19 |
+| ISO/IEC 25010:2023 | Calidad del producto | Clasificación de los RNF (§5) | RNF-01..20 |
 | ISO/IEC/IEEE 29119 | Pruebas de software | Niveles de prueba: esquema, etapa, sistema y aceptación | RNF-04, RNF-14 |
 | ISO/IEC 5338:2023 | Ciclo de vida de sistemas con IA | Salidas de agentes validadas y registradas. Entrenamiento vigilado por el monitor, con decisiones humanas | RNF-02, RNF-13, RF-ORQ-06, RF-ROB-03, RF-MON-08 |
 | ISO/IEC 27002:2022 | Controles de seguridad | Secretos fuera del repo, token del worker, URLs firmadas con vencimiento | RNF-08, RNF-11, RNF-15 |
@@ -342,7 +368,7 @@ Estas normas aplican a los **robots reales**, no a nuestro software.
 | ISO 8373:2021 | Vocabulario de robótica | Términos de la web y del catálogo | RF-WEB-11 |
 | ISO 10218-1/-2:2025 | Seguridad de robots industriales | Campo `normas` del catálogo y pitch | RF-ROB-07 |
 | ISO 3691-4:2023 | Vehículos industriales sin conductor | Robots con base móvil del catálogo | RF-ROB-07 |
-| ISO 12100:2010 | Evaluación de riesgo de máquinas | Pitch: la simulación revisa alcance y carga antes de comprar. No certifica nada | RNF-03, RNF-18 |
+| ISO 12100:2010 | Evaluación de riesgo de máquinas | Pitch: la simulación revisa alcance y carga antes de comprar. No certifica nada | RNF-03, RNF-18, RNF-20 |
 
 ### 7.3 Controles de seguridad (ISO/IEC 27002, mínimo)
 
@@ -360,8 +386,9 @@ flowchart TD
   A3 -->|sí| A4{"Política: ≥ 90 % de éxito<br/>a 5 cm y 5°, en 100 episodios"}
   A4 -->|sí| A5{"Videos: cámara rápida del<br/>entrenamiento y muestra final"}
   A5 -->|sí| A6{"Web pública con robot,<br/>videos y métricas, sin pod"}
-  A6 -->|sí| OK[Demo aceptado]
-  A1 & A2 & A3 & A4 & A5 & A6 -->|no| FIX[Volver a la etapa que falla]
+  A6 -->|sí| A7{"La web explica el flujo<br/>y rotula el parque de referencia"}
+  A7 -->|sí| OK[Demo aceptado]
+  A1 & A2 & A3 & A4 & A5 & A6 & A7 -->|no| FIX[Volver a la etapa que falla]
 ```
 
 1. `entorno.json` y `tarea.json` escritos a mano validan contra su esquema, y la escena tiene al menos 3 filas.
@@ -371,6 +398,7 @@ flowchart TD
    - **Si se acaba el tiempo antes del 90 %:** el demo se acepta con la mejor cifra alcanzada, mostrada tal cual en la web (RF-WEB-16).
 5. Existen `entrenamiento_rapido.mp4` (30 a 90 s) y `video.mp4` con la muestra del robot entrenado.
 6. La web pública muestra el robot elegido, su justificación, los dos videos y las métricas, con el pod apagado.
+7. La web explica el flujo completo, incluida la subida de videos, y dice que el demo usa un parque de referencia.
 
 **Plan B:** si la política no instala paneles de forma visible (menos de 50 %), el planificador hace la muestra final (RF-INT-01). La web dice qué método se usó.
 
@@ -388,7 +416,7 @@ timeline
 |---|---|---|
 | **CP1** (sáb 11:00) | RF-MAP-11, RF-MAP-05..06, RF-TAR-02, RF-TAR-04, RF-ROB-01..04, RF-API-03..06, RF-GPU-01..04, RF-ORQ-01..02, RF-ORQ-05, RNF-01, RNF-12; ejemplo de RL de Isaac Lab en el pod; webhook de Discord creado | RF-MAP-07, RF-ROB-05..06, RF-ORQ-06 |
 | **CP2** (sáb 23:00) | RF-CLO-01..06, RF-INT-10..13, RF-INT-18..19, RF-GPU-06, RF-MON-01..04, RF-MON-08 | RF-CLO-07, RF-INT-16, RF-MON-05..06, RF-MON-09..10 |
-| **Freeze** (dom 05:00) | RF-INT-14..15, RF-WEB-06..09, RF-WEB-13, RF-WEB-15..16, RNF-07, RNF-18..19, criterios de §8 | RF-INT-01, RF-INT-17, RF-INT-20..21, RF-MON-07, RF-WEB-04..05, RF-WEB-14 |
+| **Freeze** (dom 05:00) | RF-INT-14..15, RF-WEB-06..09, RF-WEB-13, RF-WEB-15..16, RF-WEB-19, RNF-20, RNF-07, RNF-18..19, criterios de §8 | RF-INT-01, RF-INT-17, RF-INT-20..21, RF-MON-07, RF-WEB-04..05, RF-WEB-14 |
 
 ## 10. Supuestos y dependencias
 
