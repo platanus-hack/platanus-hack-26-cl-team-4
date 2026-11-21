@@ -33,7 +33,8 @@ echo "país: $pais"
 if [ "$pais" = "CN" ]; then
 	# El host trae el espejo de USTC, que corta con 429. Aliyun fue el más rápido (15 MB/s).
 	export UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple
-	export PIP_TRUSTED_HOST=mirrors.aliyun.com
+	# El host exporta PIP_TRUSTED_HOST para USTC: se borra para que pip verifique el certificado.
+	unset PIP_TRUSTED_HOST
 	TORCH_URL=https://mirrors.aliyun.com/pytorch-wheels/cu128
 else
 	TORCH_URL=https://download.pytorch.org/whl/cu128
