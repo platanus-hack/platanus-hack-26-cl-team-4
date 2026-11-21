@@ -2,6 +2,7 @@
 
 > Estado: **propuesta** para que el equipo la revise. Lo marcado **[Por definir]** lo decide el equipo.
 > Contrato entre etapas y API: [`contrato-datos.md`](contrato-datos.md). Qué es VIAZ: [`../READMEVIAZ.md`](../READMEVIAZ.md).
+> Requerimientos (MoSCoW + ISO): [`requerimientos.md`](requerimientos.md). Ciclo de desarrollo: [`ciclo-desarrollo.md`](ciclo-desarrollo.md). Versiones del pod: [`infraestructura.md`](infraestructura.md).
 
 ## 1. Qué construimos
 
