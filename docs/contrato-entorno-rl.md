@@ -2,7 +2,7 @@
 
 > Estado: **v1** (2026-11-21). Para el equipo que construye el entorno `instalar_panel` en Isaac Lab.
 > Si el entorno cumple este contrato, el sistema lo lanza, lo vigila, lo evalúa y graba los videos sin cambios de código.
-> Requerimientos: RF-INT-10..21, RF-GPU-02, RF-GPU-06, RF-MON-01. Esquemas: [`backend/viaz/esquemas/`](../backend/viaz/esquemas/).
+> Requerimientos: RF-INT-10..25, RF-MAP-12..14, RF-GPU-02, RF-GPU-06, RF-MON-01 (requerimientos v0.8). Esquemas: [`backend/viaz/esquemas/`](../backend/viaz/esquemas/).
 
 ```mermaid
 flowchart LR
@@ -65,6 +65,8 @@ $VIAZ_CMD_ENTRENAR --entorno E --tarea T --robot R --escena S --salida DIR
 | Respetar `--max-horas` | Al cumplirse, guarda un checkpoint y sale con código `0` |
 | Medir el éxito con las tolerancias | Panel apoyado sobre el tubo, sin choque, a ≤ 5 cm y ≤ 5° (RF-INT-11) |
 | Entrenar sin cámaras | Sin render durante el entrenamiento (v0.7) |
+| Usar la escena de entrenamiento | Un tramo de tubo de la fila 0, el robot detenido frente al punto de montaje y su pila, copiado en N entornos (RF-MAP-12) |
+| Usar la física del RL | Unión fija ventosa–panel con la masa real (RF-INT-22); torque y velocidad de `PARAMETROS["brazo"]["esfuerzo_max_nm"]` y `PARAMETROS["velocidad_max_rad_s"]` (RF-INT-23); masa ±10 % y fricción ±20 % por episodio (RF-INT-24) |
 | Aceptar `--reanudar` | Continúa desde ese checkpoint (RF-GPU-05, Should) |
 
 Línea de ejemplo de `metricas.jsonl`:
