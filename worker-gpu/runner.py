@@ -298,6 +298,23 @@ def validar_robot(ctx: Contexto, d: Path) -> None:
         video.unir(clips, d / "construccion.mp4")
 
 
+def _enlazar_texturas(d: Path) -> None:
+    """escena.usd cita ./texturas/ y el almacén solo lleva archivos sueltos. Sin este enlace, validar_clon y ejecutar_tarea
+    abren el demo con colores planos. Enlaza la carpeta de texturas del pod (texturas.asegurar la hace una sola vez).
+
+    Los trabajos del entorno RL no la necesitan: la escena de entrenamiento resuelve sus texturas sola
+    (viaz_escena.carpeta_texturas), con el mismo cache.
+    """
+    if not (d / "escena.usd").exists() or (d / "texturas").exists():
+        return
+    try:
+        import generar_escena
+        import texturas
+    except ImportError:
+        return  # sin numpy o PIL: generar_escena ya dejó el USD con colores planos
+    (d / "texturas").symlink_to(texturas.asegurar(list(generar_escena.GRUPOS_TEXTURA)))
+
+
 # ---------- despacho ----------
 
 def ejecutar(tipo: str, d: Path, modo: str, isaac_python: str, ctx: Contexto | None = None) -> None:
@@ -345,6 +362,8 @@ def ciclo(api: str, token: str, modo: str, isaac_python: str, s: requests.Sessio
             b = s.get(url, timeout=300)
             b.raise_for_status()
             (d / archivo).write_bytes(b.content)
+        if modo == "isaac":
+            _enlazar_texturas(d)
         ejecutar(t["tipo"], d, modo, isaac_python, ctx)
         for archivo, url in t["subidas"].items():
             f = d / archivo

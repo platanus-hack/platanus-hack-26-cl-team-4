@@ -111,6 +111,89 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "fisica": {
+      "description": "Medidas físicas propias del robot. Con este bloque, el clon usa estas medidas en vez de la base genérica (backend/viaz/urdf.py). Lo que el fabricante no publica va también en `estimados`.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "largo_m",
+        "ancho_m",
+        "masa_kg",
+        "traccion",
+        "altura_cubierta_m",
+        "brazo_x_m",
+        "gabinete_largo_m",
+        "gabinete_alto_m",
+        "brazo_grosor_m",
+        "antebrazo_grosor_m",
+        "ventosa_largo_m",
+        "ventosa_ancho_m",
+        "remolque_largo_m",
+        "remolque_masa_kg"
+      ],
+      "properties": {
+        "largo_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ancho_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "masa_kg": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Masa del vehículo con su brazo, sin el remolque."
+        },
+        "traccion": {
+          "enum": [
+            "orugas"
+          ]
+        },
+        "altura_cubierta_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "brazo_x_m": {
+          "type": "number",
+          "description": "Eje vertical del brazo, desde el centro del vehículo. Positivo hacia adelante."
+        },
+        "gabinete_largo_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "gabinete_alto_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "brazo_grosor_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "antebrazo_grosor_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ventosa_largo_m": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Marco de ventosas, a lo largo del antebrazo."
+        },
+        "ventosa_ancho_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "remolque_largo_m": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Remolque de paneles que el robot arrastra; la pila va sobre él."
+        },
+        "remolque_masa_kg": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
     }
   }
 }

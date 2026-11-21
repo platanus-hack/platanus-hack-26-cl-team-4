@@ -109,7 +109,7 @@ def test_corrida_falla_si_el_robot_no_alcanza(entorno_local, monkeypatch):
     """Un clon que no llega a la estructura deja la corrida en error con el motivo."""
     import viaz.urdf as urdf
     original = urdf.geometria
-    monkeypatch.setattr(urdf, "geometria", lambda alcance: {**original(alcance), "l1_m": 0.3, "l2_m": 0.3})
+    monkeypatch.setattr(urdf, "geometria", lambda alcance, fisica=None: {**original(alcance, fisica), "l1_m": 0.3, "l2_m": 0.3})
     url, _ = entorno_local
     pid = requests.post(f"{url}/proyectos", json={"nombre": "x"}, timeout=5).json()["id"]
     cid = requests.post(f"{url}/proyectos/{pid}/corridas", timeout=5).json()["corrida_id"]

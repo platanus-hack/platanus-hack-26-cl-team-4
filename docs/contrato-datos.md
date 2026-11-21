@@ -37,7 +37,7 @@ flowchart LR
   "version": 1,
   "tipo": "parque_solar",
   "videos": ["planta-1.mp4"],
-  "terreno": { "pendiente_grados": 2, "suelo": "tierra_compactada" },
+  "terreno": { "pendiente_grados": 2, "suelo": "tierra_compactada", "friccion": 0.6 },
   "filas": { "cantidad": 3, "largo_m": 30, "separacion_m": 6 },
   "estructura": { "tipo": "tracker_1_eje", "altura_m": 1.5, "inclinacion_grados": 0 },
   "panel": { "largo_m": 2.38, "ancho_m": 1.13, "peso_kg": 32 },
@@ -50,6 +50,8 @@ flowchart LR
 - **Del agente:** el agente llena todo menos `version`, `videos`, `escena_usd` y `fondo_reconstruido_usd`. Esos los pone el orquestador.
 - **`confianza` en el agente:** el agente la devuelve como lista `[{campo, valor}]`, porque structured outputs no acepta objetos con claves libres. El orquestador la convierte en objeto.
 - **`escena.usd`:** texto USDA. Lo genera el trabajo de GPU `generar_escena`.
+- **`terreno.friccion`:** opcional, de 0,1 a 1,5. Es el coeficiente de fricción del suelo que usa la física (material de PhysX). El agente Entorno no lo llena. Si falta, `sim/fisica.py` usa el valor del tipo de `suelo`, o 0,6 si no conoce ese tipo. En el parque del demo es un valor estimado: por eso su `confianza` es 0,5.
+- **Física que sale de `entorno.json`:** masa y tamaño del panel (`panel`), altura del tubo (`estructura.altura_m`), separación de filas (`filas`) y fricción del suelo (`terreno`). El resto de la física está en [`escena-isaac.md`](escena-isaac.md), sección "Decisiones de física del terreno".
 
 ## `tarea.json` (etapa 2)
 
