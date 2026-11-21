@@ -44,7 +44,9 @@ sequenceDiagram
 | Brazo | UR10 de Isaac Lab | Isaac Lab trae tareas del UR10 con ventosa corta y larga |
 | Efector | Ventosa larga o corta (surface gripper) | Mismo origen |
 | Base móvil | Ridgeback de Isaac Sim (existe con Franka y con UR5) | No está confirmado como configuración de Isaac Lab **[Verificar]** |
-| Base fija | Pedestal simple | Opción más rápida para entrenar (ver pregunta abierta de RL) |
+| Base móvil simple | Caja con ruedas del clon actual (`urdf.py`), movida por el controlador | Respaldo si no hay una base móvil de Isaac Lab que funcione |
+
+**Decisión del equipo:** base móvil. La base navega con un controlador programado (RF-INT-18). El RL controla solo el brazo, con la base detenida con ruido (RF-INT-19).
 
 **Riesgo de carga:** el panel pesa unos 32 kg. Varios brazos de catálogo cargan menos. El agente puede subir los límites de esfuerzo de las articulaciones hasta la carga útil del robot real, y lo anota en `diferencias_con_real`.
 
@@ -56,7 +58,7 @@ sequenceDiagram
 {
   "version": 1,
   "robot_id": "ejemplo-robot",
-  "base": { "asset": "pedestal", "altura_m": 0.8 },
+  "base": { "asset": "base_movil_simple", "altura_cubierta_m": 0.8 },
   "brazo": { "asset": "ur10", "escala_alcance": 1.6, "esfuerzo_max_nm": 900 },
   "efector": { "asset": "ventosa_larga" },
   "carga_util_kg": 40,

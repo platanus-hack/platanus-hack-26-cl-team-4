@@ -1,8 +1,9 @@
 # Especificación de requerimientos de VIAZ
 
-> Estado: **borrador v0.4** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
+> Estado: **borrador v0.5** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
 > Estructura según ISO/IEC/IEEE 29148. Prioridades según el método **MoSCoW**. Calidad según ISO/IEC 25010.
 > **Cambio de v0.4:** el demo usa un entorno escrito a mano y una política entrenada con RL. El mapeo desde video pasa a Could.
+> **Cambio de v0.5:** base móvil con navegación programada y RL en el brazo; meta de 90 % a 5 cm y 5° en 100 episodios; tiempo fijo; avisos por Discord.
 > Lo marcado **[Por definir]** lo decide el equipo. Cada requerimiento tiene un ID: cítalo en issues, PRs y pruebas.
 
 ## Índice
@@ -45,8 +46,8 @@ flowchart LR
 | 1 | Escribe `entorno.json` y `tarea.json` del parque del demo | El equipo, a mano |
 | 2 | Elige el robot real del catálogo y justifica | Agente de selección de robot |
 | 3 | Construye el robot en Isaac Lab con las specs del real y lo valida | Agente constructor |
-| 4 | Entrena la política de instalar el panel con RL y graba el entrenamiento | Script de Isaac Lab en el pod |
-| 5 | Vigila el entrenamiento y recomienda seguir, parar o ajustar | Agente monitor |
+| 4 | Entrena con RL el brazo para instalar el panel y graba el entrenamiento. La base móvil navega con un controlador programado | Script de Isaac Lab en el pod |
+| 5 | Vigila el entrenamiento, avisa por Discord y recomienda seguir, parar o ajustar | Agente monitor |
 | 6 | Muestra los videos, el robot elegido y las métricas | Web (Vercel) |
 
 **Dentro del alcance:**
@@ -85,9 +86,9 @@ flowchart LR
 
 | Tipo | Must | Should | Could | Won't |
 |---|---|---|---|---|
-| Funcionales | 44 | 20 | 16 | — |
+| Funcionales | 47 | 23 | 17 | — |
 | No funcionales | 13 | 6 | 0 | — |
-| Fuera del alcance | — | — | — | 9 |
+| Fuera del alcance | — | — | — | 10 |
 
 ## 4. Requerimientos funcionales
 
@@ -157,12 +158,16 @@ flowchart LR
 
 | ID | Requerimiento | MoSCoW |
 |---|---|---|
-| RF-INT-10 | Existe un entorno de Isaac Lab `instalar_panel`: el robot toma un panel y lo deja apoyado sobre el tubo de la estructura | **M** |
-| RF-INT-11 | El episodio termina con éxito si el panel queda apoyado, sin chocar con la estructura, dentro de la tolerancia **[Propuesta: 5 cm y 5°]** | **M** |
+| RF-INT-10 | Existe un entorno de Isaac Lab `instalar_panel`: con la base detenida, el brazo toma un panel y lo deja apoyado sobre el tubo de la estructura | **M** |
+| RF-INT-18 | La base móvil avanza entre puntos de montaje con un controlador programado, sin RL | **M** |
+| RF-INT-19 | En cada episodio, la base se detiene con ruido de ±15 cm y ±5° respecto del punto de montaje | **M** |
+| RF-INT-11 | El episodio termina con éxito si el panel queda apoyado, sin chocar con la estructura, a 5 cm o menos y 5° o menos de la pose ideal | **M** |
 | RF-INT-12 | El script entrena la política con PPO en Isaac Lab, con entornos en paralelo en la 5090, y guarda checkpoints | **M** |
 | RF-INT-13 | El script graba clips del entrenamiento a intervalos fijos y arma `entrenamiento_rapido.mp4` en cámara rápida | **M** |
-| RF-INT-14 | El script evalúa la política final en 20 episodios y escribe `resultado.json` (`metodo: "rl"`, `politica`) | **M** |
-| RF-INT-15 | El script graba `video.mp4`: la muestra del robot ya entrenado instalando paneles | **M** |
+| RF-INT-14 | El script evalúa la política final en 100 episodios y escribe `resultado.json` (`metodo: "rl"`, `politica`) | **M** |
+| RF-INT-20 | La evaluación también informa la tasa de éxito a 2 cm y 2° | **S** |
+| RF-INT-21 | Si sobra tiempo, el entrenamiento se afina con tolerancia de 2 cm y 2° desde el mejor checkpoint | **C** |
+| RF-INT-15 | El script graba `video.mp4`: la muestra del robot ya entrenado avanzando e instalando paneles | **M** |
 | RF-INT-16 | El script guarda la curva de entrenamiento (recompensa y tasa de éxito por iteración) en `curva.json` | **S** |
 | RF-INT-17 | El script guarda `trayectoria.json` de un episodio de la política, para el visor web | **S** |
 | RF-INT-01 | Si el RL no converge, un planificador (cuRobo o RMPflow) hace la tarea y graba la muestra (`metodo: "planificador"`) | **S** |
@@ -174,7 +179,9 @@ flowchart LR
 | RF-MON-01 | El agente corre en Render y lee las métricas que llegan con cada latido, cada 10 min **[Por definir]**: recompensa media, tasa de éxito, largo de episodio y pérdidas | **M** |
 | RF-MON-02 | En cada chequeo, el agente clasifica el estado: `mejorando`, `estancado`, `divergiendo` o `terminado` | **M** |
 | RF-MON-03 | El agente escribe cada chequeo en `monitoreo.jsonl`, con evidencia numérica y una recomendación | **M** |
-| RF-MON-04 | El agente avisa al equipo si detecta NaN, divergencia o estancamiento por 3 chequeos seguidos | **M** |
+| RF-MON-04 | El agente avisa por Discord (webhook a un canal del equipo) si detecta NaN, divergencia o estancamiento por 3 chequeos seguidos | **M** |
+| RF-MON-09 | El agente avisa por Discord los hitos: primer éxito, 50 %, 90 % y fin del entrenamiento | **S** |
+| RF-MON-10 | El agente manda como máximo 1 aviso por tipo cada 30 min, salvo NaN | **S** |
 | RF-MON-05 | El agente recomienda el mejor checkpoint para la muestra final | **S** |
 | RF-MON-06 | El agente marca hitos (primer éxito, mejor recompensa) para el video en cámara rápida | **S** |
 | RF-MON-07 | El agente escribe un resumen final del entrenamiento para la web y el pitch | **S** |
@@ -190,6 +197,7 @@ flowchart LR
 | RF-WEB-08 | La web muestra la corrida del demo precalculada (`/corridas/demo`) sin depender del pod | **M** |
 | RF-WEB-09 | La web funciona en una URL pública de Vercel | **M** |
 | RF-WEB-15 | La web indica cuánto tiempo real y cuántos pasos de simulación representa el video acelerado | **M** |
+| RF-WEB-16 | La web muestra la tasa de éxito con la tolerancia y la cantidad de episodios (ej.: "92 % a 5 cm y 5°, 100 episodios") | **M** |
 | RF-WEB-14 | La web muestra la curva de entrenamiento y los hitos del monitor | **S** |
 | RF-WEB-04 | El visor 3D muestra la escena y el robot desde `robot.urdf` | **S** |
 | RF-WEB-05 | El visor reproduce `trayectoria.json` de la política entrenada | **S** |
@@ -252,7 +260,7 @@ flowchart TD
 | RNF-05 | Eficiencia de desempeño (web) | La página carga en menos de 3 s. Los videos empiezan en menos de 5 s | — | **S** |
 | RNF-06 | Eficiencia de desempeño (agentes) | Selección de robot: menos de 2 min. Constructor con sus 3 intentos: menos de 30 min | — | **S** |
 | RNF-07 | Fiabilidad · disponibilidad | La corrida del demo en R2 se muestra aunque fallen el pod o Claude | — | **M** |
-| RNF-08 | Seguridad · confidencialidad | La clave de Claude vive solo en Render. El pod no la necesita. El repo no contiene secretos | ISO/IEC 27002 | **M** |
+| RNF-08 | Seguridad · confidencialidad | La clave de Claude y el webhook de Discord viven solo en Render. El pod no los necesita. El repo no contiene secretos | ISO/IEC 27002 | **M** |
 | RNF-09 | Mantenibilidad · modularidad | Cada agente tiene su prompt en un archivo propio y lee solo archivos del contrato | ISO/IEC/IEEE 42010 | **M** |
 | RNF-10 | Flexibilidad · instalabilidad | El runner corre en un pod RTX 5090 con versiones fijadas ([`infraestructura.md`](infraestructura.md)) | — | **M** |
 | RNF-11 | Seguridad · autenticidad | Las rutas `/worker/*` exigen `Authorization: Bearer <WORKER_TOKEN>` | ISO/IEC 27002 | **M** |
@@ -261,7 +269,7 @@ flowchart TD
 | RNF-14 | Mantenibilidad · analizabilidad | Cada requerimiento Must tiene al menos una prueba o un paso manual documentado | ISO/IEC/IEEE 29119 | **S** |
 | RNF-15 | Seguridad · confidencialidad | Las URLs firmadas de R2 vencen en 24 h o menos | ISO/IEC 27002 | **S** |
 | RNF-16 | Adecuación funcional · coherencia | La escena web y `escena.usd` salen del mismo `entorno.json` con las mismas reglas | — | **S** |
-| RNF-17 | Eficiencia de desempeño (entrenamiento) | El entrenamiento cabe en el tiempo de pod disponible. **[Propuesta: 4 h como máximo]** | — | **M** |
+| RNF-17 | Eficiencia de desempeño (entrenamiento) | El tiempo de entrenamiento es fijo. Termina con 90 % en 3 chequeos seguidos, al agotar el tiempo o si el equipo lo decide. Las horas se fijan tras la primera hora de entrenamiento **[Por fijar]** | — | **M** |
 | RNF-18 | Adecuación funcional · corrección | Los videos se rotulan como simulación. El video acelerado dice su factor de velocidad | ISO 12100 | **M** |
 | RNF-19 | Eficiencia de desempeño (video) | `entrenamiento_rapido.mp4` dura entre 30 y 90 s y pesa menos de 50 MB | — | **M** |
 
@@ -277,6 +285,7 @@ flowchart TD
 | W-06 | Cuentas de usuario e inicio de sesión | El demo no las necesita |
 | W-07 | Certificación ISO | Usamos las normas como referencia, no como certificación |
 | W-08 | Entrenamiento en vivo durante el pitch | Dura horas. La web muestra el video acelerado |
+| W-10 | RL de la navegación de la base | Hace el problema mucho más difícil. La base usa un controlador programado (RF-INT-18) |
 | W-09 | Política en vivo en la web | La web muestra videos grabados. El pod puede estar apagado |
 
 ## 7. Normas ISO
@@ -348,7 +357,7 @@ Estas normas aplican a los **robots reales**, no a nuestro software.
 flowchart TD
   A1{"entorno.json a mano válido<br/>y escena con ≥ 3 filas"} -->|sí| A2{"Robot del catálogo con<br/>carga útil ≥ peso del panel"}
   A2 -->|sí| A3{"Robot construido por el agente<br/>y validado en Isaac Lab"}
-  A3 -->|sí| A4{"Política: tasa de éxito ≥ 70 %<br/>en 20 episodios"}
+  A3 -->|sí| A4{"Política: ≥ 90 % de éxito<br/>a 5 cm y 5°, en 100 episodios"}
   A4 -->|sí| A5{"Videos: cámara rápida del<br/>entrenamiento y muestra final"}
   A5 -->|sí| A6{"Web pública con robot,<br/>videos y métricas, sin pod"}
   A6 -->|sí| OK[Demo aceptado]
@@ -358,11 +367,12 @@ flowchart TD
 1. `entorno.json` y `tarea.json` escritos a mano validan contra su esquema, y la escena tiene al menos 3 filas.
 2. El robot elegido existe en `data/robots/` y su carga útil es mayor o igual al peso del panel.
 3. El agente constructor entrega un robot con `validado_en_escena: true`, en 3 intentos o menos.
-4. La política entrenada deja el panel apoyado en al menos el 70 % de 20 episodios de evaluación **[Umbral por confirmar]**.
+4. La política entrenada deja el panel apoyado a 5 cm y 5° o menos en al menos el 90 % de 100 episodios de evaluación, con la base detenida con ruido.
+   - **Si se acaba el tiempo antes del 90 %:** el demo se acepta con la mejor cifra alcanzada, mostrada tal cual en la web (RF-WEB-16).
 5. Existen `entrenamiento_rapido.mp4` (30 a 90 s) y `video.mp4` con la muestra del robot entrenado.
 6. La web pública muestra el robot elegido, su justificación, los dos videos y las métricas, con el pod apagado.
 
-**Plan B:** si la política no llega al umbral, el planificador hace la muestra final (RF-INT-01). La web dice qué método se usó.
+**Plan B:** si la política no instala paneles de forma visible (menos de 50 %), el planificador hace la muestra final (RF-INT-01). La web dice qué método se usó.
 
 ## 9. Trazabilidad con los checkpoints
 
@@ -376,14 +386,15 @@ timeline
 
 | Checkpoint | Must | Should / Could (si hay tiempo) |
 |---|---|---|
-| **CP1** (sáb 11:00) | RF-MAP-11, RF-MAP-05..06, RF-TAR-02, RF-TAR-04, RF-ROB-01..04, RF-API-03..06, RF-GPU-01..04, RF-ORQ-01..02, RF-ORQ-05, RNF-01, RNF-12; ejemplo de RL de Isaac Lab en el pod | RF-MAP-07, RF-ROB-05..06, RF-ORQ-06 |
-| **CP2** (sáb 23:00) | RF-CLO-01..06, RF-INT-10..13, RF-GPU-06, RF-MON-01..04, RF-MON-08 | RF-CLO-07, RF-INT-16, RF-MON-05..06 |
-| **Freeze** (dom 05:00) | RF-INT-14..15, RF-WEB-06..09, RF-WEB-13, RF-WEB-15, RNF-07, RNF-18..19, criterios de §8 | RF-INT-01, RF-INT-17, RF-MON-07, RF-WEB-04..05, RF-WEB-14 |
+| **CP1** (sáb 11:00) | RF-MAP-11, RF-MAP-05..06, RF-TAR-02, RF-TAR-04, RF-ROB-01..04, RF-API-03..06, RF-GPU-01..04, RF-ORQ-01..02, RF-ORQ-05, RNF-01, RNF-12; ejemplo de RL de Isaac Lab en el pod; webhook de Discord creado | RF-MAP-07, RF-ROB-05..06, RF-ORQ-06 |
+| **CP2** (sáb 23:00) | RF-CLO-01..06, RF-INT-10..13, RF-INT-18..19, RF-GPU-06, RF-MON-01..04, RF-MON-08 | RF-CLO-07, RF-INT-16, RF-MON-05..06, RF-MON-09..10 |
+| **Freeze** (dom 05:00) | RF-INT-14..15, RF-WEB-06..09, RF-WEB-13, RF-WEB-15..16, RNF-07, RNF-18..19, criterios de §8 | RF-INT-01, RF-INT-17, RF-INT-20..21, RF-MON-07, RF-WEB-04..05, RF-WEB-14 |
 
 ## 10. Supuestos y dependencias
 
 - Hay un pod RTX 5090 (RunPod o Vast.ai) que aprobó la prueba de humo de [`infraestructura.md`](infraestructura.md) §5, incluido un ejemplo de RL de Isaac Lab.
 - Hay horas de pod suficientes para entrenar (RNF-17) y para repetir el entrenamiento 1 vez si falla.
+- El equipo tiene un canal de Discord y crea un webhook para el monitor.
 - Hay crédito en Render (US$50) y una cuenta de Cloudflare R2.
 - Hay acceso a la API de Claude con tool use **[Origen de los créditos por definir]**.
 - El equipo tiene datos de un parque solar real para escribir `entorno.json` (ficha técnica, fotos o imagen satelital).
@@ -396,8 +407,8 @@ timeline
 - ¿Qué parque real usamos para el `entorno.json` a mano?
 - ¿Qué robot es la referencia del demo?
 - ¿Quién es responsable de cada área?
-- **RL:** ¿la base del robot queda fija junto a la estructura durante el entrenamiento, o el robot también se desplaza? Una base fija entrena mucho más rápido.
-- **RL:** ¿el umbral de éxito es 5 cm y 5°, con 70 % en 20 episodios?
-- **RL:** ¿cuántas horas de pod damos al entrenamiento (RNF-17)?
-- **Monitor:** ¿avisa por Discord, por consola o en un archivo?
+- ~~¿Base fija o móvil?~~ **Resuelto:** base móvil con navegación programada; RL en el brazo (RF-INT-18..19).
+- ~~¿Umbral de éxito?~~ **Resuelto:** 90 % a 5 cm y 5° en 100 episodios; se informa también a 2 cm y 2° (RF-INT-11, RF-INT-14, RF-INT-20).
+- ¿Cuántas horas de pod damos al entrenamiento? Se fija tras la primera hora, con la pendiente de la curva (RNF-17).
+- ~~¿Canal de avisos del monitor?~~ **Resuelto:** Discord, con webhook a un canal del equipo (RF-MON-04).
 - **Assets:** ¿qué brazo de Isaac Lab soporta la carga del panel (32 kg)? Varios brazos de catálogo cargan menos de 32 kg. Ver [`agentes/constructor-robot.md`](agentes/constructor-robot.md).

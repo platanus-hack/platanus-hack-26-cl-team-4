@@ -14,7 +14,7 @@ flowchart LR
   ASS[(Catálogo de assets<br/>Isaac Lab)] --> CON
   CON -->|robot_cfg.py + robot.usd| RL["Entrenamiento RL<br/>pod 5090"]
   RL -->|métricas| MON["Agente monitor<br/>del entrenamiento"]
-  MON -->|avisos| H
+  MON -->|avisos por Discord| H
   RL --> V["Videos:<br/>cámara rápida + muestra"]
   MCP["Agente MCP Isaac Sim<br/>solo depuración"] -.-> CON & RL
 ```
@@ -23,7 +23,7 @@ flowchart LR
 |---|---|---|---|---|---|---|
 | Selección de robot | [`seleccion-robot.md`](seleccion-robot.md) | LLM | [`robot.md`](../../backend/viaz/agentes/prompts/robot.md) | RF-ROB-01..07 | **Sí (Must)** | Implementado |
 | Constructor del robot en Isaac Lab | [`constructor-robot.md`](constructor-robot.md) | LLM + plantilla + pod | [`constructor.md`](../../backend/viaz/agentes/prompts/constructor.md) | RF-CLO-01..08 | **Sí (Must)** | Por implementar. Respaldo: clon determinista |
-| Monitor del entrenamiento | [`monitor-entrenamiento.md`](monitor-entrenamiento.md) | LLM | [`monitor.md`](../../backend/viaz/agentes/prompts/monitor.md) | RF-MON-01..08 | **Sí (Must)** | Por implementar |
+| Monitor del entrenamiento | [`monitor-entrenamiento.md`](monitor-entrenamiento.md) | LLM | [`monitor.md`](../../backend/viaz/agentes/prompts/monitor.md) | RF-MON-01..10 | **Sí (Must)** | Por implementar |
 | MCP de Isaac Sim | [`mcp-isaac-sim.md`](mcp-isaac-sim.md) | LLM con herramientas MCP | En el contrato, §5 | Depuración | Opcional | Por definir el servidor |
 | Mapeo de terreno (Entorno) | [`mapeo-terreno.md`](mapeo-terreno.md) | LLM con visión | [`entorno.md`](../../backend/viaz/agentes/prompts/entorno.md) | RF-MAP-01..04 | No (Could): el entorno va a mano | Implementado |
 | Tarea | [`tarea.md`](tarea.md) | LLM con visión | [`tarea.md`](../../backend/viaz/agentes/prompts/tarea.md) | RF-TAR-01 | No (Could): la tarea va a mano | Implementado |
@@ -64,9 +64,11 @@ flowchart LR
 | `entrenar` | `robot_cfg.py`, `escena.usd`, `entorno.json`, `tarea.json` | Checkpoints, métricas por latido, clips → `entrenamiento_rapido.mp4`, `curva.json` |
 | `evaluar` | Checkpoint elegido | `resultado.json` (`metodo: "rl"`), `video.mp4`, `trayectoria.json` (Should) |
 
-- **Tarea RL:** tomar un panel y dejarlo apoyado sobre el tubo. Sin cables ni pernos (W-05).
-- **Éxito:** panel apoyado, sin choque, dentro de la tolerancia (RF-INT-11, propuesta 5 cm y 5°).
-- **Plan B:** si el RL no llega al umbral, el planificador graba la muestra (RF-INT-01).
+- **Tarea RL:** con la base detenida, el brazo toma un panel y lo deja apoyado sobre el tubo. Sin cables ni pernos (W-05).
+- **Base móvil:** avanza entre puntos de montaje con un controlador programado (RF-INT-18). Se detiene con ruido de ±15 cm y ±5° (RF-INT-19).
+- **Éxito:** panel apoyado, sin choque, a 5 cm y 5° o menos (RF-INT-11). Meta: 90 % en 100 episodios.
+- **Tiempo:** fijo. Se fija tras la primera hora de entrenamiento (RNF-17).
+- **Plan B:** si la política queda bajo 50 %, el planificador graba la muestra (RF-INT-01).
 
 ### Orquestador ([`orquestador.py`](../../backend/viaz/orquestador.py))
 
@@ -80,6 +82,6 @@ flowchart LR
 | Entorno y tarea | A mano (RF-MAP-11, RF-TAR-04) | Agentes o fixtures | Cargar archivos a mano por corrida (RF-ORQ-05) |
 | Constructor | Agente con Isaac Lab (RF-CLO-01..06) | Clon determinista (`urdf.py`) | Implementar; mantener el determinista como respaldo |
 | Entrenamiento | `entrenar` + `evaluar` con RL (RF-INT-10..15) | `ejecutar_tarea` con planificador | Implementar el entorno RL en `sim/` |
-| Monitor | RF-MON-01..08 | No existe | Implementar en el orquestador |
+| Monitor | RF-MON-01..10, avisos por Discord | No existe | Implementar en el orquestador, con `VIAZ_DISCORD_WEBHOOK` en Render |
 | Latido | `POST /worker/trabajos/{id}/latido` (RF-API-06) | No existe; un trabajo vence a los 30 min | Implementar antes de entrenar horas |
 | Frames por video | Solo si se usa el mapeo (Could) | 1 cada 3 s, máx. 8 | Sin acción para el demo |
