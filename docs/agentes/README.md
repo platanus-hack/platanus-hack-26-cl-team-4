@@ -22,8 +22,8 @@ flowchart LR
 | Agente | Contrato | Tipo | Prompt | Requerimientos | En el demo | Estado |
 |---|---|---|---|---|---|---|
 | Selección de robot | [`seleccion-robot.md`](seleccion-robot.md) | LLM | [`robot.md`](../../backend/viaz/agentes/prompts/robot.md) | RF-ROB-01..07 | **Sí (Must)** | Implementado |
-| Constructor del robot en Isaac Lab | [`constructor-robot.md`](constructor-robot.md) | LLM + plantilla + pod | [`constructor.md`](../../backend/viaz/agentes/prompts/constructor.md) | RF-CLO-01..08 | **Sí (Must)** | Por implementar. Respaldo: clon determinista |
-| Monitor del entrenamiento | [`monitor-entrenamiento.md`](monitor-entrenamiento.md) | LLM | [`monitor.md`](../../backend/viaz/agentes/prompts/monitor.md) | RF-MON-01..10 | **Sí (Must)** | Por implementar |
+| Constructor del robot en Isaac Lab | [`constructor-robot.md`](constructor-robot.md) | LLM + plantilla + pod | [`constructor.md`](../../backend/viaz/agentes/prompts/constructor.md) | RF-CLO-01..08 | **Sí (Must)** | Implementado ([`robot_cfg.py`](../../backend/viaz/robot_cfg.py)). `crear_articulacion_cfg()` sin probar en Isaac |
+| Monitor del entrenamiento | [`monitor-entrenamiento.md`](monitor-entrenamiento.md) | LLM + reglas | [`monitor.md`](../../backend/viaz/agentes/prompts/monitor.md) | RF-MON-01..10 | **Sí (Must)** | Implementado ([`monitor.py`](../../backend/viaz/monitor.py)). Discord sin probar con un webhook real |
 | MCP de Isaac Sim | [`mcp-isaac-sim.md`](mcp-isaac-sim.md) | LLM con herramientas MCP | En el contrato, §5 | Depuración | Opcional | Por definir el servidor |
 | Mapeo de terreno (Entorno) | [`mapeo-terreno.md`](mapeo-terreno.md) | LLM con visión | [`entorno.md`](../../backend/viaz/agentes/prompts/entorno.md) | RF-MAP-01..04 | No (Could): el entorno va a mano | Implementado |
 | Tarea | [`tarea.md`](tarea.md) | LLM con visión | [`tarea.md`](../../backend/viaz/agentes/prompts/tarea.md) | RF-TAR-01 | No (Could): la tarea va a mano | Implementado |
@@ -75,13 +75,15 @@ flowchart LR
 - **Hoy:** corre Entorno → Tarea → Robot → Clon determinista → `ejecutar_tarea` con planificador.
 - **Para el demo:** lee `entorno.json` y `tarea.json` a mano, corre Robot → Constructor → `entrenar` → `evaluar`, y el monitor en paralelo.
 
-## 5. Diferencias entre documentos y código
+## 5. Estado del código frente a los requerimientos
 
-| Tema | Requerimientos v0.4 | Código actual | Acción |
+| Tema | Requerimientos v0.7 | Código | Pendiente |
 |---|---|---|---|
-| Entorno y tarea | A mano (RF-MAP-11, RF-TAR-04) | Agentes o fixtures | Cargar archivos a mano por corrida (RF-ORQ-05) |
-| Constructor | Agente con Isaac Lab (RF-CLO-01..06) | Clon determinista (`urdf.py`) | Implementar; mantener el determinista como respaldo |
-| Entrenamiento | `entrenar` + `evaluar` con RL (RF-INT-10..15) | `ejecutar_tarea` con planificador | Implementar el entorno RL en `sim/` |
-| Monitor | RF-MON-01..10, avisos por Discord | No existe | Implementar en el orquestador, con `VIAZ_DISCORD_WEBHOOK` en Render |
-| Latido | `POST /worker/trabajos/{id}/latido` (RF-API-06) | No existe; un trabajo vence a los 30 min | Implementar antes de entrenar horas |
+| Entorno y tarea | A mano (RF-MAP-11, RF-TAR-04) | `VIAZ_ENTORNO_MANUAL` / `VIAZ_TAREA_MANUAL`; sin ruta usa los fixtures | Escribir el `entorno.json` del parque de referencia |
+| Constructor | Agente con Isaac Lab (RF-CLO-01..07) | Implementado: 3 intentos + ensamblaje por defecto | Verificar `crear_articulacion_cfg()` y el catálogo de assets en el pod |
+| Entrenamiento | `entrenar`, `grabar_clips`, `evaluar` (RF-INT-12..15) | Implementado en el runner; el entorno RL lo construye el equipo | Entorno RL de Isaac Lab que cumpla [`contrato-entorno-rl.md`](../contrato-entorno-rl.md) |
+| Monitor | RF-MON-01..10 | Implementado: reglas + Claude, Discord, hitos, detener con NaN o 90 % × 3 | Crear el webhook de Discord |
+| Latido | RF-API-06, RF-GPU-06 | Implementado | — |
+| Plan B con planificador | RF-INT-01 (Should) | Solo una nota en `resultado.json` bajo 50 % | Por hacer |
+| Curva en la web | RF-WEB-14 (Should) | `curva.json` existe; la web no lo dibuja | Por hacer |
 | Frames por video | Solo si se usa el mapeo (Could) | 1 cada 3 s, máx. 8 | Sin acción para el demo |

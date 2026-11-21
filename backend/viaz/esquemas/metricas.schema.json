@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "metricas.jsonl (una línea)",
+  "description": "Una línea por iteración de PPO. La escribe el entorno RL en <salida>/metricas.jsonl.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "iteracion",
+    "pasos",
+    "tiempo_s",
+    "recompensa_media",
+    "tasa_exito"
+  ],
+  "properties": {
+    "iteracion": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "pasos": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tiempo_s": {
+      "type": "number",
+      "minimum": 0
+    },
+    "recompensa_media": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "tasa_exito": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Éxito a la tolerancia de entrenamiento (5 cm y 5°)"
+    },
+    "largo_episodio": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "perdida_valor": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "perdida_politica": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "entropia": {
+      "type": [
+        "number",
+        "null"
+      ]
+    }
+  }
+}

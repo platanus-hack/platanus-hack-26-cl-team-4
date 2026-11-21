@@ -62,7 +62,9 @@ def test_fixtures_y_catalogo_cumplen_el_contrato():
 def test_validar_rechaza_datos_fuera_de_contrato():
     with pytest.raises(ErrorEsquema):
         validar("tarea", {"version": 1})
-    assert set(NOMBRES) == {"entorno", "tarea", "robot", "clon", "resultado", "trayectoria"}
+    assert {"entorno", "tarea", "robot", "clon", "resultado", "trayectoria"} <= set(NOMBRES)
+    for n in NOMBRES:
+        esquema(n)  # todos los esquemas cargan
 
 
 def test_robot_fijo_toma_las_specs_del_catalogo():

@@ -10,9 +10,11 @@ flowchart LR
   R[worker simulado] -->|toma trabajos| A
 ```
 
-- **Agentes en modo `fijo`:** devuelven fixtures y no gastan API.
-- **Worker en modo `simulado`:** genera una trayectoria sintética sin física.
-- **Resultado:** el flujo completo funciona en un Mac.
+- **Flujo `rl` (por defecto, el del demo):** entorno y tarea a mano → selección de robot → agente constructor → entrenar (con el monitor) → grabar clips → evaluar. El flujo anterior sigue con `VIAZ_FLUJO=planificador`.
+- **Agentes en modo `fijo`:** devuelven fixtures y no gastan API. El monitor usa sus reglas.
+- **Worker en modo `simulado`:** usa [`sim/rl_simulado.py`](../sim/rl_simulado.py), que imita el entorno RL de Isaac Lab ([`contrato-entorno-rl.md`](contrato-entorno-rl.md)): métricas sintéticas, checkpoints vacíos y videos de prueba rotulados "simulación".
+- **Resultado:** el flujo completo funciona en un Mac, con los dos videos y las métricas en la web.
+- **Más rápido en local:** `VIAZ_MONITOR_S=3` (orquestador) y `VIAZ_SIM_ITERACIONES=300 VIAZ_SIM_SEGUNDOS=25` (worker).
 
 Requisitos: Python 3.11+ y Node 20+. Cada bloque va en su propia terminal.
 
@@ -75,6 +77,17 @@ python -m viaz.orquestador
 | `WORKER_TOKEN` | API, pod | `dev-token` | Autoriza al sim runner |
 | `VIAZ_ORIGENES` | API | `http://localhost:3000` | CORS, separados por coma |
 | `VIAZ_CORRIDA_DEMO` | API | — | Id de la corrida que muestra `/corridas/demo` |
+| `VIAZ_FLUJO` | orquestador | `rl` | `rl` (demo) o `planificador` (flujo anterior) |
+| `VIAZ_ENTORNO_MANUAL`, `VIAZ_TAREA_MANUAL` | orquestador | fixtures | Rutas al `entorno.json` y `tarea.json` escritos a mano |
+| `VIAZ_HORAS_ENTRENAMIENTO` | orquestador | `4` | Tope del entrenamiento (RNF-17) |
+| `VIAZ_EPISODIOS_EVALUACION` | orquestador | `100` | Episodios de evaluación (RF-INT-14) |
+| `VIAZ_INTENTOS_CONSTRUCTOR` | orquestador | `3` | Intentos del agente constructor (RF-CLO-05) |
+| `VIAZ_MONITOR_S` | orquestador | `600` | Cada cuánto chequea el monitor |
+| `VIAZ_DISCORD_WEBHOOK` | orquestador | — | Avisos del monitor. Sin valor, los avisos van al log |
+| `VIAZ_ADMIN_TOKEN` | API | `WORKER_TOKEN` | Token para `POST /corridas/{id}/detener` |
+| `VIAZ_DIR_POD` | pod | `.datos/pod` | Carpeta persistente con checkpoints y métricas |
+| `VIAZ_CMD_ENTRENAR`, `VIAZ_CMD_EVALUAR`, `VIAZ_CMD_CLIP`, `VIAZ_CMD_VALIDAR_ROBOT` | pod | — | Comandos del entorno RL ([`contrato-entorno-rl.md`](contrato-entorno-rl.md) §1) |
+| `VIAZ_FUENTE` | pod | DejaVu / Arial | Fuente TTF de los rótulos del video (con tildes) |
 | `NEXT_PUBLIC_API_URL` | web | `http://localhost:8000` | URL de la API |
 | `VIAZ_API`, `VIAZ_MODO_SIM`, `ISAAC_PYTHON` | pod | — | Ver más abajo |
 
@@ -110,9 +123,12 @@ python -m viaz.orquestador
 ```bash
 pip install -r worker-gpu/requirements.txt
 VIAZ_API=https://viaz-api.onrender.com WORKER_TOKEN=<de Render> \
-ISAAC_PYTHON=/isaac-sim/python.sh python worker-gpu/runner.py --modo isaac
+ISAAC_PYTHON=/isaac-sim/python.sh \
+VIAZ_CMD_ENTRENAR=... VIAZ_CMD_EVALUAR=... VIAZ_CMD_CLIP=... VIAZ_CMD_VALIDAR_ROBOT=... \
+VIAZ_DIR_POD=/workspace/viaz python worker-gpu/runner.py --modo isaac
 ```
 
+- **Fuentes para los rótulos:** `apt-get install -y fonts-dejavu-core` (si no, el texto del video sale sin tildes).
 - **Si Isaac todavía no funciona:** `--modo simulado` en el pod mantiene vivo el flujo.
 - **Estado de los scripts:** `sim/validar_clon.py`, `sim/ejecutar_tarea.py` y `sim/isaac_comun.py` **no se han probado en Isaac**. Escribí la API de Isaac Sim 5.x de memoria, así que el primer error real va a salir ahí.
 

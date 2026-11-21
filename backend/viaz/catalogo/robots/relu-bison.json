@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "relu-bison",
+  "nombre": "Bison (robot de instalación fotovoltaica)",
+  "fabricante": "Beijing Relu Robotics (China)",
+  "tipo": "vehiculo_con_brazo",
+  "ficticio": false,
+  "carga_util_kg": 50,
+  "alcance_m": 5.0,
+  "velocidad_base_m_s": 1.11,
+  "efector": "ventosa",
+  "fuente": {
+    "url": "https://www.accessnewswire.com/newsroom/en/electronics-and-engineering/relu-robotics-deploys-aipowered-photovoltaic-installation-robot-in-alg-1191828",
+    "consultado": "2026-11-21"
+  },
+  "estimados": {
+    "efector": "La nota de prensa no nombra el efector; los robots de instalación de módulos usan ventosas.",
+    "alcance_m": "La nota dice 'más de 5 m'; usamos 5,0 m."
+  }
+}

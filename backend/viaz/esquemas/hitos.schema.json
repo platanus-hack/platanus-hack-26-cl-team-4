@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "hitos.json",
+  "description": "Iteración de cada hito del entrenamiento. Elige los checkpoints de los clips (RF-INT-13).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "primer_exito",
+    "exito_50",
+    "umbral_alcanzado",
+    "mejor_recompensa",
+    "mejor_tasa_exito",
+    "ultima_iteracion"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "primer_exito": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "exito_50": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "umbral_alcanzado": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "mejor_recompensa": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "mejor_tasa_exito": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "ultima_iteracion": {
+      "type": "integer"
+    }
+  }
+}

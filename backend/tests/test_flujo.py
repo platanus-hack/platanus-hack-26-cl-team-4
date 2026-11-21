@@ -33,7 +33,7 @@ def entorno_local(tmp_path):
     puerto = _puerto_libre()
     url = f"http://127.0.0.1:{puerto}"
     cfg = Config(db_url=f"sqlite:///{tmp_path / 'viaz.db'}", dir_local=tmp_path / "archivos", url_publica=url,
-                 agentes="fijo", worker_token="t", espera_trabajo_s=60)
+                 agentes="fijo", worker_token="t", espera_trabajo_s=60, flujo="planificador")
     servidor = uvicorn.Server(uvicorn.Config(create_app(cfg), host="127.0.0.1", port=puerto, log_level="warning"))
     threading.Thread(target=servidor.run, daemon=True).start()
     for _ in range(100):
@@ -51,7 +51,7 @@ def entorno_local(tmp_path):
     def worker():
         s = requests.Session()
         while not parar.is_set():
-            if not runner.ciclo(url, "t", "simulado", "", s):
+            if not runner.ciclo(url, "t", "simulado", "", s, dir_pod=tmp_path / "pod"):
                 time.sleep(0.1)
 
     for f in (orq, worker):

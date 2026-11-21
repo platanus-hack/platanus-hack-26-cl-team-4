@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "nota": "Catálogo de piezas que el agente constructor puede usar. VERIFICAR en el pod: nombres de módulos, medidas y joints cambian entre versiones de Isaac Lab. verificado=false hasta que alguien lo cargue en Isaac Lab.",
+  "brazos": {
+    "ur10": {
+      "nombre": "Universal Robots UR10",
+      "alcance_m": 1.3,
+      "carga_util_kg": 10,
+      "articulaciones": ["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"],
+      "isaaclab_cfg": { "modulo": "isaaclab_assets.robots.universal_robots", "nombre": "UR10_CFG" },
+      "tareas_ejemplo": ["Isaac-Stack-Cube-UR10-Long-Suction-IK-Rel-v0"],
+      "verificado": false
+    },
+    "franka_panda": {
+      "nombre": "Franka Emika Panda",
+      "alcance_m": 0.855,
+      "carga_util_kg": 3,
+      "articulaciones": ["panda_joint1", "panda_joint2", "panda_joint3", "panda_joint4", "panda_joint5", "panda_joint6", "panda_joint7"],
+      "isaaclab_cfg": { "modulo": "isaaclab_assets.robots.franka", "nombre": "FRANKA_PANDA_CFG" },
+      "tareas_ejemplo": ["Isaac-Lift-Cube-Franka-v0"],
+      "verificado": false
+    }
+  },
+  "efectores": {
+    "ventosa_larga": { "tipo": "ventosa", "largo_m": 0.25, "masa_kg": 1.5, "para": ["ur10"], "verificado": false },
+    "ventosa_corta": { "tipo": "ventosa", "largo_m": 0.12, "masa_kg": 1.0, "para": ["ur10"], "verificado": false },
+    "pinza_paralela": { "tipo": "pinza", "largo_m": 0.1, "masa_kg": 0.7, "para": ["franka_panda"], "verificado": false }
+  },
+  "bases": {
+    "base_movil_simple": {
+      "tipo": "movil",
+      "descripcion": "Caja de 1,6 × 1,0 × 0,6 m sobre 4 ruedas (backend/viaz/urdf.py). La mueve el controlador programado.",
+      "altura_cubierta_m": 0.8,
+      "verificado": true
+    },
+    "ridgeback": {
+      "tipo": "movil",
+      "descripcion": "Clearpath Ridgeback. Existe en Isaac Sim con Franka y con UR5; no confirmado como configuración de Isaac Lab.",
+      "altura_cubierta_m": 0.3,
+      "verificado": false
+    }
+  }
+}
