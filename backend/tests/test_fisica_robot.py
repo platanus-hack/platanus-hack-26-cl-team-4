@@ -100,8 +100,6 @@ def test_el_alcance_necesario_depende_del_robot(entorno, leapting):
     assert agentes.eleccion_por_reglas(entorno, catalogo.cargar())["id"] == "leapting-mmr"
 
 
-# ---------- robots que no tienen la forma del Leapting ----------
-
 NUCLEO = {"largo_m": 2.0, "ancho_m": 1.2, "masa_kg": 500, "altura_cubierta_m": 0.9, "traccion": "ruedas"}
 
 
@@ -140,7 +138,6 @@ def test_la_ficha_del_bison_trae_las_medidas_publicadas():
     assert (f["largo_m"], f["ancho_m"], f["masa_kg"], f["traccion"]) == (5.2, 2.1, 9000, "orugas")
     assert bison["fuente"] == {"url": "https://www.pv-magazine.com/2026/07/17/ai-powered-9-ton-tracked-robot-for-large-scale-pv-construction/",
                                "consultado": "2026-11-21"}
-    # lo que Relu no publica queda declarado como estimado
     assert {"fisica.altura_cubierta_m", "fisica.brazo_x_m", "fisica.gabinete"} <= set(bison["estimados"])
     assert not {"remolque_largo_m", "ventosa_largo_m", "brazo_grosor_m"} & set(f)
 
@@ -153,7 +150,6 @@ def test_el_urdf_del_bison_usa_sus_medidas():
     assert "oruga_0" in texto and "oruga_1" in texto and "gabinete" in texto
     assert "remolque" not in texto and "rueda" not in texto
     _inercias_validas(texto)
-    # la pila va sobre la propia cubierta, en el extremo contrario al gabinete
     g = urdf.geometria(bison["alcance_m"], bison["fisica"])
     assert g["montaje_x_m"] < 0 < g["pila_x_m"] < bison["fisica"]["largo_m"] / 2
 

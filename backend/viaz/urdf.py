@@ -68,7 +68,7 @@ class Vehiculo:
     gabinete: tuple[float, float] | None = None   # largo y alto del gabinete trasero, sobre la cubierta
     ventosa: tuple[float, float] = VENTOSA  # marco de ventosas en X e Y
     remolque: tuple[float, float] | None = None   # largo y masa del remolque de paneles
-    rueda_xy: tuple[float, float] = (0.55, 0.55)  # centro de las ruedas desde el centro de la base (solo `ruedas`)
+    rueda_xy: tuple[float, float] = (0.55, 0.55)
 
 
 def vehiculo(fisica: dict | None) -> Vehiculo:
@@ -76,7 +76,7 @@ def vehiculo(fisica: dict | None) -> Vehiculo:
     if not fisica:
         return Vehiculo()
     largo, ancho = fisica["largo_m"], fisica["ancho_m"]
-    montaje_x = fisica.get("brazo_x_m", round(largo * MONTAJE_X / BASE[0], 3))   # sin dato: misma fracción del largo
+    montaje_x = fisica.get("brazo_x_m", _montaje_x_generico(largo))
     grosor = fisica.get("brazo_grosor_m")
     gabinete = _par(fisica, "gabinete_largo_m", "gabinete_alto_m")
     remolque = _par(fisica, "remolque_largo_m", "remolque_masa_kg")
@@ -87,12 +87,15 @@ def vehiculo(fisica: dict | None) -> Vehiculo:
         brazo_lado=grosor or BRAZO_LADO, antebrazo_lado=fisica.get("antebrazo_grosor_m", ANTEBRAZO_LADO),
         traccion=fisica["traccion"], masa_kg=fisica["masa_kg"],
         gabinete=gabinete, ventosa=_par(fisica, "ventosa_largo_m", "ventosa_ancho_m") or VENTOSA, remolque=remolque,
-        rueda_xy=(round(largo / 2 - RUEDA_R, 4), round(ancho / 2 - RUEDA_ANCHO / 2, 4)))   # dentro de la base
+        rueda_xy=(round(largo / 2 - RUEDA_R, 4), round(ancho / 2 - RUEDA_ANCHO / 2, 4)))
+
+
+def _montaje_x_generico(largo: float) -> float:
+    return round(largo * MONTAJE_X / BASE[0], 3)
 
 
 def _par(fisica: dict, a: str, b: str) -> tuple[float, float] | None:
-    """Campos que van juntos (robot.schema.json, dependentRequired): los dos o ninguno."""
-    return (fisica[a], fisica[b]) if a in fisica else None
+    return (fisica[a], fisica[b]) if a in fisica and b in fisica else None
 
 
 def _pila_x(fisica: dict, montaje_x: float, gabinete: tuple | None, remolque: tuple | None) -> float:
@@ -102,10 +105,12 @@ def _pila_x(fisica: dict, montaje_x: float, gabinete: tuple | None, remolque: tu
         return round(largo / 2 + ENGANCHE_M + remolque[0] / 2, 4)
     if "pila_x_m" in fisica:
         return fisica["pila_x_m"]
-    # Sin remolque, la pila va sobre la cubierta, entre el brazo y el extremo libre. El gabinete va atrás: con
-    # gabinete, el extremo libre es el de adelante; sin gabinete, el más lejano al brazo.
-    extremo = largo / 2 if gabinete or montaje_x < 0 else -largo / 2
-    return round((montaje_x + extremo) / 2, 4)
+    return round((montaje_x + _extremo_libre(largo, montaje_x, gabinete)) / 2, 4)
+
+
+def _extremo_libre(largo: float, montaje_x: float, gabinete: tuple | None) -> float:
+    gabinete_atras = gabinete is not None
+    return largo / 2 if gabinete_atras or montaje_x < 0 else -largo / 2
 
 
 def geometria(alcance_m: float, fisica: dict | None = None) -> dict:
@@ -145,7 +150,7 @@ def _masa_cilindro(r, h):
 
 
 def _fijas(v: Vehiculo) -> list[dict]:
-    """Piezas rígidas pegadas a base_link, con su unión (posición y giro del origen). Aquí se decide qué piezas hay."""
+    """Piezas rígidas pegadas a base_link, con su unión (posición y giro del origen)."""
     return [*(_ruedas(v) if v.traccion == "ruedas" else _orugas(v)),
             *(_gabinete(v) if v.gabinete else []),
             *(_remolque(v) if v.remolque else [])]
