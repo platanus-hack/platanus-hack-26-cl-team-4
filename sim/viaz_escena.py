@@ -65,7 +65,7 @@ def soporte_pila(entorno: dict, geometria: dict | None = None) -> dict:
     slot = plan.slots(entorno, 1)[0]
     if geometria:
         x = slot[0] - geometria["montaje_x_m"] + geometria["pila_x_m"]
-        y, alto = plan.distancia_pasillo(entorno), geometria["cubierta_z_m"]
+        y, alto = plan.distancia_pasillo(entorno, geometria), geometria["cubierta_z_m"]
     else:
         x, y, alto = slot[0], p["largo_m"] + SEPARACION_ACOPIO_M, PALLET_ALTO_M
     return {"nombre": "soporte", "tam_m": (p["ancho_m"], p["largo_m"], alto),
@@ -460,7 +460,7 @@ def construir_cfg_entrenamiento(desc: dict, num_envs: int, env_spacing: float = 
     texturas: carpeta de los PNG. "auto" la saca de carpeta_texturas() (se hace una vez por pod). None: colores planos.
     Con texturas la escena se ve como el demo (docs/escena-isaac.md, "Materiales visuales del demo") y solo cambia lo
     que se ve: colisiones, materiales de fricción y masas son los mismos. Los materiales, los cerros, el llano y el cielo
-    son uno para todo el stage. Por copia solo hay un vidrio de celdas en el panel que se instala y en el de arriba de la pila.
+    son uno para todo el stage. Por copia hay un vidrio de celdas en cada panel: el que se instala y los de la pila.
     """
     import isaaclab.sim as sim_utils
     from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
@@ -496,10 +496,9 @@ def construir_cfg_entrenamiento(desc: dict, num_envs: int, env_spacing: float = 
     for c in desc["postes"]:
         setattr(cfg, c["nombre"], _fijo_cfg(f"{{ENV_REGEX_NS}}/{c['nombre'].capitalize()}", c, generar_escena.COLOR_POSTE,
                                             aspecto="poste", carpeta=carpeta))
-    for k, p in enumerate(desc["pila"]):
-        # Solo la cara de arriba de la pila se ve: las de abajo quedan tapadas por el panel de encima.
-        setattr(cfg, p["nombre"], _panel_cfg(f"{{ENV_REGEX_NS}}/{p['nombre'].capitalize()}", p, carpeta,
-                                             vidrio=k == len(desc["pila"]) - 1))
+    for p in desc["pila"]:
+        # Todos llevan vidrio: en la secuencia de paneles (RF-INT-18) cada uno queda arriba de la pila o instalado.
+        setattr(cfg, p["nombre"], _panel_cfg(f"{{ENV_REGEX_NS}}/{p['nombre'].capitalize()}", p, carpeta, vidrio=True))
     if desc["soporte"]:
         cfg.soporte = _fijo_cfg("{ENV_REGEX_NS}/Soporte", desc["soporte"], COLOR_SOPORTE, aspecto="madera", carpeta=carpeta)
     if carpeta:

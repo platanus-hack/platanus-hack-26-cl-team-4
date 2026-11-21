@@ -186,7 +186,7 @@ def test_pila_con_clon_va_donde_el_robot_la_lleva(entorno, clon):
     con_robot = viaz_escena.describir(entorno, 1, clon=clon, n_pila=2, con_robot=True)
 
     x_base = plan.slots(entorno, 1)[0][0] - g["montaje_x_m"]
-    assert sin_robot["soporte"]["pos_m"][:2] == pytest.approx((x_base + g["pila_x_m"], plan.distancia_pasillo(entorno)))
+    assert sin_robot["soporte"]["pos_m"][:2] == pytest.approx((x_base + g["pila_x_m"], plan.distancia_pasillo(entorno, g)))
     assert sin_robot["pila"][0]["pos_inicial_m"][2] == pytest.approx(g["cubierta_z_m"] + fisica.PANEL_ESPESOR_M / 2)
     assert con_robot["soporte"] is None                     # con el robot, la pila descansa en su base
     assert con_robot["pila"] == sin_robot["pila"]
