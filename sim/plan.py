@@ -56,10 +56,14 @@ def slots(entorno: dict, n: int) -> list[list[float]]:
     return [[round(INICIO_X + p["ancho_m"] / 2 + k * (p["ancho_m"] + HOLGURA_SLOT), 3), 0.0, round(z, 3)] for k in range(n)]
 
 
-def cantidad(entorno: dict, tarea: dict) -> int:
+def caben(entorno: dict) -> int:
+    """Cuántos paneles caben en una fila."""
     p = entorno["panel"]
-    caben = int((entorno["filas"]["largo_m"] - INICIO_X) // (p["ancho_m"] + HOLGURA_SLOT))
-    return max(0, min(tarea["objetivo"]["paneles"], tarea["pila_paneles"]["cantidad"], caben))
+    return int((entorno["filas"]["largo_m"] - INICIO_X) // (p["ancho_m"] + HOLGURA_SLOT))
+
+
+def cantidad(entorno: dict, tarea: dict) -> int:
+    return max(0, min(tarea["objetivo"]["paneles"], tarea["pila_paneles"]["cantidad"], caben(entorno)))
 
 
 def poses(entorno: dict, geo: dict) -> dict:

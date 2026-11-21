@@ -36,6 +36,8 @@ def esquema_agente_entorno() -> dict:
     """Lo que devuelve el modelo: entorno.json sin los campos del orquestador.
     `confianza` va como lista porque structured outputs no acepta objetos con claves libres."""
     esq = sin_campos(esquema("entorno"), ["version", "videos", "escena_usd", "fondo_reconstruido_usd"])
+    # La fricción del suelo no se ve en un video: la escribe el equipo o sale del tipo de suelo (sim/fisica.py).
+    esq["properties"]["terreno"]["properties"].pop("friccion", None)
     esq["properties"]["confianza"] = {"type": "array", "items": {
         "type": "object", "additionalProperties": False, "required": ["campo", "valor"],
         "properties": {"campo": {"type": "string"}, "valor": {"type": "number"}}}}

@@ -22,7 +22,7 @@ export interface Entorno {
   filas: { cantidad: number; largo_m: number; separacion_m: number };
   estructura: { tipo: string; altura_m: number; inclinacion_grados: number };
   panel: { largo_m: number; ancho_m: number; peso_kg: number };
-  terreno: { pendiente_grados: number; suelo: string };
+  terreno: { pendiente_grados: number; suelo: string; friccion?: number };
 }
 
 export interface Robot {
