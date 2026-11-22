@@ -120,14 +120,14 @@ def exigir_pipeline(entorno: dict, tarea: dict | None = None) -> None:
     """Entorno y Tarea sirven para cualquier espacio y tarea; Robot → Inteligencia todavía solo existe para algunos.
     Se llama después de escribir tarea.json: la corrida deja entorno.json, escena.usd y tarea.json antes de cortar."""
     listos = "entorno.json, escena.usd" + (" y tarea.json" if tarea else "")
-    if entorno["tipo"] not in agentes.TIPOS_CON_PIPELINE:
+    if not agentes.perfil_de(entorno["tipo"]).con_simulacion:
         raise agentes.ErrorAgente(
             f"{listos} listos para '{entorno['tipo']}', pero las etapas siguientes "
-            f"solo soportan: {', '.join(sorted(agentes.TIPOS_CON_PIPELINE))}")
-    if tarea and tarea["tarea"] not in agentes.TAREAS_CON_PIPELINE:
+            f"solo soportan: {', '.join(agentes.perfiles.tipos_con_simulacion())}")
+    if tarea and not agentes.perfil_de_tarea(tarea["tarea"]).con_simulacion:
         raise agentes.ErrorAgente(
             f"{listos} listos para la tarea '{tarea['tarea']}', pero las etapas siguientes "
-            f"solo simulan: {', '.join(sorted(agentes.TAREAS_CON_PIPELINE))}")
+            f"solo simulan: {', '.join(agentes.perfiles.tareas_con_simulacion())}")
 
 
 def tolerancias(tarea: dict) -> tuple[float, float, str]:

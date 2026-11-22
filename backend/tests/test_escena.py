@@ -248,3 +248,7 @@ def test_hombro_aguanta_panel_con_brazo_extendido(entorno):
     torque = fisica.GRAVEDAD * (piezas["brazo"] * l1 / 2 + piezas["antebrazo"] * (l1 + l2 / 2)
                                 + (piezas["efector"] + entorno["panel"]["peso_kg"]) * (l1 + l2 + g["muneca_m"]))
     assert torque < urdf.ESFUERZO_NM["shoulder_lift"]
+
+
+def test_cada_escena_propia_tiene_perfil_de_entorno():
+    assert set(generar_escena.ESCENAS) <= set(agentes.PERFILES_ENTORNO)

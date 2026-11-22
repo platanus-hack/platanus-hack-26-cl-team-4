@@ -17,7 +17,7 @@ from ..config import TOPE_FINALISTAS, validar_max_finalistas
 from ..esquemas import esquema, sin_campos
 from . import perfiles, seleccion
 from .base import ErrorAgente, frames_de_videos, pedir_json, validado
-from .perfiles import alcance_necesario
+from .perfiles import PERFILES_ENTORNO, PERFILES_TAREA, alcance_necesario, perfil_de, perfil_de_tarea
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 PROMPTS = Path(__file__).resolve().parent / "prompts"
@@ -35,17 +35,8 @@ def _fixture(nombre: str) -> dict:
 # ---------- 1. Entorno ----------
 
 SISTEMA_ENTORNO = _prompt("entorno")
-# Campos de entorno.json que sim/medir_entorno.py puede medir en los videos (medidas_entorno.json).
-CAMPOS_MEDIBLES = ("filas.cantidad", "filas.separacion_m", "filas.largo_m", "estructura.tipo", "estructura.altura_m",
-                   "estructura.inclinacion_grados", "panel.largo_m", "panel.ancho_m", "terreno.pendiente_grados")
 CONFIANZA_MIN_MEDIDA = 0.4      # bajo esto la medida no manda: el agente decide (y lo anota)
 CONFIANZA_MAX_ESTIMADA = 0.7    # un dato que nadie midió no pasa de esta confianza
-
-# Perfiles: bloques extra que solo existen para un tipo de espacio. El agente mapea cualquier espacio (sala,
-# bodega, taller...); la medición 3D (sim/medir_geometria.py) y las etapas Tarea → Inteligencia todavía solo
-# saben trabajar con parque_solar (sim/plan.py, urdf.py, web).
-PERFILES = {"parque_solar": ("filas", "estructura", "panel")}
-TIPOS_CON_PIPELINE = {"parque_solar"}
 
 
 def esquema_agente_entorno() -> dict:
@@ -56,8 +47,8 @@ def esquema_agente_entorno() -> dict:
     esq = sin_campos(esquema("entorno"), ["version", "videos", "escena_usd", "fondo_reconstruido_usd", "mediciones"])
     for k in ("if", "then", "else"):
         esq.pop(k, None)
-    for campos in PERFILES.values():
-        for c in campos:
+    for perfil in PERFILES_ENTORNO.values():
+        for c in perfil.bloques_propios:
             esq["properties"][c] = {"anyOf": [esq["properties"][c], {"type": "null"}]}
             esq["required"].append(c)
     # La fricción del suelo no se ve en un video: la escribe el equipo o sale del tipo de suelo (sim/fisica.py).
@@ -66,9 +57,10 @@ def esquema_agente_entorno() -> dict:
         "type": "object", "additionalProperties": False, "required": ["campo", "valor"],
         "properties": {"campo": {"type": "string"}, "valor": {"type": "number"}}}}
     # Cada dato que el agente deja distinto de lo medido lleva su razón. Sin razón, el código vuelve a lo medido.
+    medibles = [c for p in PERFILES_ENTORNO.values() for c in p.campos_medibles]
     esq["properties"]["ajustes"] = {"type": "array", "items": {
         "type": "object", "additionalProperties": False, "required": ["campo", "razon"],
-        "properties": {"campo": {"enum": list(CAMPOS_MEDIBLES)}, "razon": {"type": "string"}}}}
+        "properties": {"campo": {"enum": medibles}, "razon": {"type": "string"}}}}
     esq["required"] = [*esq["required"], "ajustes"]
     return esq
 
@@ -106,8 +98,8 @@ def aplicar_medidas(datos: dict, medidas: dict | None, ajustes: list[dict] | Non
     Devuelve datos con `mediciones` (qué se midió y qué se ajustó). Sin medidas, solo limita la confianza.
     """
     confianza = dict(datos.get("confianza") or {})
-    # Las medidas 3D son del perfil parque_solar (filas, estructura, panel). En otro tipo no aplican.
-    if datos.get("tipo") != "parque_solar":
+    medibles = perfil_de(datos.get("tipo")).campos_medibles
+    if not medibles:
         medidas = None
     if not medidas or not medidas.get("disponible"):
         datos["confianza"] = {k: min(v, CONFIANZA_MAX_ESTIMADA) for k, v in confianza.items()}
@@ -115,7 +107,7 @@ def aplicar_medidas(datos: dict, medidas: dict | None, ajustes: list[dict] | Non
     razones = {a["campo"]: a["razon"].strip() for a in (ajustes or []) if a.get("razon", "").strip()}
     medidos, aplicados, avisos = [], [], list(medidas.get("avisos", []))
     for campo, m in medidas["campos"].items():
-        if campo not in CAMPOS_MEDIBLES or m.get("confianza", 0) < CONFIANZA_MIN_MEDIDA:
+        if campo not in medibles or m.get("confianza", 0) < CONFIANZA_MIN_MEDIDA:
             continue
         final = _leer(datos, campo)
         if _distinto(campo, final, m):
@@ -141,9 +133,9 @@ def normalizar_entorno(datos: dict) -> dict:
     datos = copy.deepcopy(datos)
     if isinstance(datos.get("confianza"), list):
         datos["confianza"] = {c["campo"]: c["valor"] for c in datos["confianza"]}
-    propios = PERFILES.get(datos.get("tipo"), ())
-    for campos in PERFILES.values():
-        for c in campos:
+    propios = perfil_de(datos.get("tipo")).bloques_propios
+    for perfil in PERFILES_ENTORNO.values():
+        for c in perfil.bloques_propios:
             if c not in propios or datos.get(c) is None:
                 datos.pop(c, None)
     return datos
@@ -176,11 +168,6 @@ def entorno(modo: str, modelo: str, proyecto: dict, frames: list[dict] | None,
 
 SISTEMA_TAREA = _prompt("tarea")
 
-# Perfiles de tarea: bloques extra que solo existen para un tipo. Las etapas Robot → Inteligencia
-# todavía solo saben simular instalar_panel (sim/plan.py, sim/rl/).
-PERFILES_TAREA = {"instalar_panel": ("pila_paneles",)}
-TAREAS_CON_PIPELINE = {"instalar_panel"}
-ENTORNO_DE_TAREA = {"instalar_panel": "parque_solar"}   # tareas que solo tienen sentido en un tipo de espacio
 TAREAS_MANIPULACION = {"instalar_panel", "tomar_y_dejar", "transportar", "ordenar"}
 RESTRICCIONES_CON_VALOR = {"velocidad_max_m_s", "distancia_personas_m", "fuerza_max_n"}
 INTENTOS_TAREA = 2   # si la respuesta no calza con entorno.json, el agente recibe los problemas y reintenta una vez
@@ -193,8 +180,8 @@ def esquema_agente_tarea() -> dict:
     esq = sin_campos(esquema("tarea"), ["version", *CAMPOS_DEL_CODIGO])
     for k in ("if", "then", "else", "$defs"):
         esq.pop(k, None)
-    for campos in PERFILES_TAREA.values():
-        for c in campos:
+    for perfil in PERFILES_TAREA.values():
+        for c in perfil.bloques_propios:
             esq["properties"][c] = {"anyOf": [esq["properties"][c], {"type": "null"}]}
             esq["required"].append(c)
     return esq
@@ -203,9 +190,9 @@ def esquema_agente_tarea() -> dict:
 def normalizar_tarea(datos: dict) -> dict:
     """Respuesta del modelo → forma del contrato: sin perfiles que no aplican."""
     datos = copy.deepcopy(datos)
-    propios = PERFILES_TAREA.get(datos.get("tarea"), ())
-    for campos in PERFILES_TAREA.values():
-        for c in campos:
+    propios = perfil_de_tarea(datos.get("tarea")).bloques_propios
+    for perfil in PERFILES_TAREA.values():
+        for c in perfil.bloques_propios:
             if c not in propios or datos.get(c) is None:
                 datos.pop(c, None)
     return datos
@@ -247,8 +234,9 @@ def problemas_tarea(t: dict, entorno_json: dict) -> list[str]:
     La geometría (soporte, encaje, despeje, techo) la revisa viaz/geometria.py desde completar_tarea()."""
     problemas = []
     tipo = t["tarea"]
-    if tipo in ENTORNO_DE_TAREA and entorno_json["tipo"] != ENTORNO_DE_TAREA[tipo]:
-        problemas.append(f"la tarea {tipo} necesita un entorno {ENTORNO_DE_TAREA[tipo]}, y el entorno es {entorno_json['tipo']}")
+    requerido = perfil_de_tarea(tipo).entorno_requerido
+    if requerido is not None and entorno_json["tipo"] != requerido:
+        problemas.append(f"la tarea {tipo} necesita un entorno {requerido}, y el entorno es {entorno_json['tipo']}")
     elementos = {e["nombre"]: e for e in entorno_json.get("elementos", [])}
     for parte in ("objeto", "origen", "destino"):
         nombre = t[parte]["elemento"]
@@ -305,7 +293,7 @@ def tarea(modo: str, modelo: str, proyecto: dict, entorno_json: dict, frames: li
     """tarea.json para el espacio de entorno.json. El código revisa que calce con el entorno; si no calza,
     el agente recibe los problemas y reintenta (hasta INTENTOS_TAREA)."""
     if modo == "fijo":
-        datos = _fixture("tarea" if entorno_json["tipo"] == "parque_solar" else "tarea_sala")
+        datos = _fixture(perfil_de(entorno_json["tipo"]).fixture_tarea)
         return validar_tarea(datos, entorno_json)
     problemas: list[str] = []
     descripcion = proyecto["descripcion"] or ""

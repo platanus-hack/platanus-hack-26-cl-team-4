@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from viaz import agentes
-from viaz.esquemas import para_api, validar
+from viaz.esquemas import esquema, para_api, validar
 
 RAIZ = Path(__file__).resolve().parents[2]
 PROYECTO = {"nombre": "Parque de prueba", "descripcion": "", "videos": ["proyectos/p1/videos/recorrido.mp4"]}
@@ -122,6 +122,18 @@ def test_esquema_del_agente_sirve_para_la_api():
     esq = agentes.esquema_agente_entorno()
     assert "mediciones" not in esq["properties"]
     para_api(esq)   # no debe fallar
+
+
+def test_un_tipo_sin_perfil_recibe_el_perfil_generico():
+    perfil = agentes.perfil_de("bodega")
+    assert perfil.con_simulacion is False
+    assert perfil.bloques_propios == ()
+    assert perfil.campos_medibles == ()
+
+
+def test_campos_medibles_solares_son_los_del_esquema_de_medidas():
+    enum = esquema("medidas_entorno")["properties"]["campos"]["propertyNames"]["enum"]
+    assert list(agentes.perfil_de("parque_solar").campos_medibles) == enum
 
 
 def test_runner_simulado_no_mide(tmp_path):

@@ -1,11 +1,12 @@
 """Paso 1 de la selección v3: perfiles de dominio. Traducen entorno.json y tarea.json a requisitos.json.
 
-Un perfil es una función pura (entorno, tarea, fichas) -> requisitos. La selección solo lee requisitos.json:
-el vocabulario del dominio (panel, tubo, parque) vive aquí y en ningún otro paso.
+Cada PerfilEntorno trae un ConstructorRequisitos: una función pura (entorno, tarea, fichas) -> requisitos.
+La selección solo lee requisitos.json: el vocabulario del dominio (panel, tubo, parque) vive aquí y en ningún otro paso.
 """
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from typing import Callable
 
 from .. import urdf
@@ -13,7 +14,7 @@ from ..esquemas import esquema
 from .base import ErrorAgente, validado
 from .seleccion import preferencias
 
-Perfil = Callable[[dict, dict, list[dict]], dict]
+ConstructorRequisitos = Callable[[dict, dict, list[dict]], dict]
 
 
 # ---------- Perfil solar ----------
@@ -72,15 +73,66 @@ def perfil_solar(entorno_json: dict, tarea_json: dict, fichas: list[dict]) -> di
 
 # ---------- Registro ----------
 
-PERFILES: dict[str, Perfil] = {"solar": perfil_solar}
-DOMINIO_POR_TIPO_DE_ENTORNO = {"parque_solar": "solar"}
+@dataclass(frozen=True)
+class PerfilEntorno:
+    tipo: str
+    bloques_propios: tuple[str, ...]
+    campos_medibles: tuple[str, ...]
+    requisitos: ConstructorRequisitos | None
+    fixture_tarea: str
+    con_simulacion: bool
+
+
+@dataclass(frozen=True)
+class PerfilTarea:
+    tarea: str
+    bloques_propios: tuple[str, ...]
+    entorno_requerido: str | None
+    con_simulacion: bool
+
+
+PERFILES_ENTORNO: dict[str, PerfilEntorno] = {
+    "parque_solar": PerfilEntorno(
+        tipo="parque_solar",
+        bloques_propios=("filas", "estructura", "panel"),
+        campos_medibles=("filas.cantidad", "filas.separacion_m", "filas.largo_m", "estructura.tipo",
+                         "estructura.altura_m", "estructura.inclinacion_grados", "panel.largo_m", "panel.ancho_m",
+                         "terreno.pendiente_grados"),
+        requisitos=perfil_solar,
+        fixture_tarea="tarea",
+        con_simulacion=True,
+    ),
+}
+ENTORNO_GENERICO = PerfilEntorno("generico", (), (), None, "tarea_sala", False)
+
+PERFILES_TAREA: dict[str, PerfilTarea] = {
+    "instalar_panel": PerfilTarea("instalar_panel", ("pila_paneles",), "parque_solar", True),
+}
+TAREA_GENERICA = PerfilTarea("generica", (), None, False)
+
+
+def perfil_de(tipo: str | None) -> PerfilEntorno:
+    return PERFILES_ENTORNO.get(tipo or "", ENTORNO_GENERICO)
+
+
+def perfil_de_tarea(tarea: str | None) -> PerfilTarea:
+    return PERFILES_TAREA.get(tarea or "", TAREA_GENERICA)
+
+
+def tipos_con_simulacion() -> list[str]:
+    return sorted(t for t, p in PERFILES_ENTORNO.items() if p.con_simulacion)
+
+
+def tareas_con_simulacion() -> list[str]:
+    return sorted(t for t, p in PERFILES_TAREA.items() if p.con_simulacion)
 
 
 def requisitos(entorno_json: dict, tarea_json: dict, fichas: list[dict]) -> dict:
     """requisitos.json validado, con el perfil que corresponde a entorno.tipo."""
     tipo = str(entorno_json.get("tipo"))
-    dominio = DOMINIO_POR_TIPO_DE_ENTORNO.get(tipo)
-    if dominio is None:
+    constructor = perfil_de(tipo).requisitos
+    if constructor is None:
+        con_perfil = sorted(t for t, p in PERFILES_ENTORNO.items() if p.requisitos is not None)
         raise ErrorAgente(f"no hay perfil de dominio para entornos tipo '{tipo}'. "
-                          f"Tipos con perfil: {', '.join(sorted(DOMINIO_POR_TIPO_DE_ENTORNO))}")
-    return validado("requisitos", PERFILES[dominio](entorno_json, tarea_json, fichas))
+                          f"Tipos con perfil: {', '.join(con_perfil)}")
+    return validado("requisitos", constructor(entorno_json, tarea_json, fichas))
