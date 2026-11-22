@@ -24,3 +24,9 @@ Estándar completo: [`docs/calidad-virtualizacion.md`](docs/calidad-virtualizaci
 - Requerimientos: [`docs/requerimientos.md`](docs/requerimientos.md). Contrato del entorno RL: [`docs/contrato-entorno-rl.md`](docs/contrato-entorno-rl.md).
 - Escribir documentación en español, con frases cortas y tablas o diagramas Mermaid antes que párrafos largos.
 - No subir secretos (claves, webhooks, tokens) al repositorio.
+
+## Acceso al pod GPU
+
+- Conéctate solo con `ssh viaz-pod`. El alias vive en el `~/.ssh/config` de cada persona ([`docs/infraestructura.md`](docs/infraestructura.md) §4).
+- Nunca escribas el host, el puerto, el usuario ni la llave de la instancia en el repo, en un commit ni en un PR.
+- Los agentes del pipeline no se conectan al pod: el runner pide los trabajos a la API. Si el alias no existe, pregunta a la persona. No busques la dirección.
