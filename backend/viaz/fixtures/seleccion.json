@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "requisitos": "requisitos.json",
+  "busqueda": {
+    "estado": "omitida",
+    "detalle": "La búsqueda web todavía no existe: los candidatos son solo los del catálogo.",
+    "invalidas": []
+  },
+  "encontrados": [],
+  "descartados": [
+    {
+      "id": "trinatracker-buildex-e",
+      "fallas": [
+        "alcance de 2.5 m menor que el necesario (2.95 m)"
+      ]
+    }
+  ],
+  "finalistas": [
+    {
+      "id": "leapting-mmr",
+      "puesto": 1,
+      "justificacion": "LEAPTING MMR (robot de montaje con navegación automática) carga 100 kg y la tarea pide al menos 32 kg. Su alcance de 3.1 m cubre los 2.53 m que necesita. Tiene el núcleo de fisica. Ninguna spec de selección es estimada. Aviso: terreno.friccion tiene confianza 0,5: es un valor supuesto, no medido. (Elección por reglas, sin LLM.)"
+    },
+    {
+      "id": "relu-bison",
+      "puesto": 2,
+      "justificacion": "Bison (robot de instalación fotovoltaica) carga 50 kg y la tarea pide al menos 32 kg. Su alcance de 5.0 m cubre los 2.86 m que necesita. Tiene el núcleo de fisica. El fabricante no publica efector, alcance_m: esos valores son estimaciones. Queda en el puesto 2 por las preferencias, en este orden: un robot real antes que uno ficticio, menos specs en estimados, mayor margen de carga útil y de alcance sobre el mínimo, mayor velocidad de base. Aviso: terreno.friccion tiene confianza 0,5: es un valor supuesto, no medido. (Elección por reglas, sin LLM.)"
+    }
+  ],
+  "alternativas": [
+    {
+      "id": "aes-maximo",
+      "por_que_no": "sin el núcleo de fisica (largo_m, ancho_m, masa_kg, altura_cubierta_m, traccion); además carga_util_kg, alcance_m, velocidad_base_m_s, efector son estimados"
+    },
+    {
+      "id": "viaz-instalador-ficticio",
+      "por_que_no": "sin el núcleo de fisica (largo_m, ancho_m, masa_kg, altura_cubierta_m, traccion); ficticio"
+    }
+  ]
+}

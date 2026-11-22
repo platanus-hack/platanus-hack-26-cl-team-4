@@ -32,12 +32,40 @@ flowchart LR
 
 ## `entorno.json` (etapa 1)
 
+Sirve para **cualquier espacio**: un núcleo genérico más perfiles opcionales por `tipo`. El parque solar es el perfil del demo.
+
+Espacio genérico (ejemplo completo en [`fixtures/entorno_sala.json`](../backend/viaz/fixtures/entorno_sala.json)):
+
+```json
+{
+  "version": 1,
+  "tipo": "sala",
+  "descripcion": "Sala pequeña con una mesa central y un estante.",
+  "videos": ["sala-1.mp4"],
+  "espacio": { "interior": true, "largo_m": 5, "ancho_m": 4, "alto_m": 2.5 },
+  "terreno": { "pendiente_grados": 0, "suelo": "baldosa" },
+  "elementos": [
+    { "nombre": "mesa_central", "categoria": "superficie_trabajo", "forma": "caja",
+      "dimensiones_m": { "largo_m": 1.8, "ancho_m": 0.9, "alto_m": 0.75 },
+      "posicion_m": { "x_m": 2.5, "y_m": 2.0, "z_m": 0 }, "rotacion_grados": 0, "masa_kg": 40, "fijo": true }
+  ],
+  "escena_usd": "escena.usd",
+  "fondo_reconstruido_usd": null,
+  "confianza": { "espacio.largo_m": 0.8, "elementos.mesa_central": 0.8 }
+}
+```
+
+Parque solar (perfil del demo): el mismo núcleo, más `filas`, `estructura` y `panel`:
+
 ```json
 {
   "version": 1,
   "tipo": "parque_solar",
+  "descripcion": "Sector de un parque solar con trackers de un eje.",
   "videos": ["planta-1.mp4"],
+  "espacio": { "interior": false, "largo_m": 40, "ancho_m": 22, "alto_m": null },
   "terreno": { "pendiente_grados": 2, "suelo": "tierra_compactada", "friccion": 0.6 },
+  "elementos": [],
   "filas": { "cantidad": 3, "largo_m": 30, "separacion_m": 6 },
   "estructura": { "tipo": "tracker_1_eje", "altura_m": 1.5, "inclinacion_grados": 0 },
   "panel": { "largo_m": 2.38, "ancho_m": 1.13, "peso_kg": 32 },
@@ -47,7 +75,13 @@ flowchart LR
 }
 ```
 
-- **Del agente:** el agente llena todo menos `version`, `videos`, `escena_usd` y `fondo_reconstruido_usd`. Esos los pone el orquestador.
+- **`tipo`:** snake_case libre (`sala`, `bodega`, `taller`, `linea_produccion`, `parque_solar`, `otro`...).
+- **Perfiles:** `filas`, `estructura` y `panel` son obligatorios si `tipo` es `parque_solar` y prohibidos en cualquier otro tipo.
+- **Marco genérico:** origen en una esquina del espacio, a nivel del suelo. X a lo largo, Y a lo ancho, Z arriba. En `parque_solar` manda el marco de las filas (sección "Escena").
+- **`elementos`:** cajas o cilindros verticales. `posicion_m` es el centro de la cara inferior; `rotacion_grados` gira sobre Z. Las paredes no van aquí: `generar_escena` las crea si `espacio.interior`.
+- **Física de los elementos:** `fijo: true` es un colisionador inamovible; `fijo: false` con `masa_kg` es un cuerpo rígido. Las `abertura` no llevan colisión.
+- **Etapas siguientes:** hoy Tarea → Inteligencia solo soportan `parque_solar`. Con otro `tipo`, la corrida deja `entorno.json` y `escena.usd` y termina en `error` con un mensaje claro.
+- **Del agente:** el agente llena todo menos `version`, `videos`, `escena_usd` y `fondo_reconstruido_usd`. Esos los pone el orquestador. Los perfiles que no aplican vuelven como `null` y el orquestador los quita.
 - **`confianza` en el agente:** el agente la devuelve como lista `[{campo, valor}]`, porque structured outputs no acepta objetos con claves libres. El orquestador la convierte en objeto.
 - **`escena.usd`:** texto USDA. Lo genera el trabajo de GPU `generar_escena`.
 - **`terreno.friccion`:** opcional, de 0,1 a 1,5. Es el coeficiente de fricción del suelo que usa la física (material de PhysX). El agente Entorno no lo llena. Si falta, `sim/fisica.py` usa el valor del tipo de `suelo`, o 0,6 si no conoce ese tipo. En el parque del demo es un valor estimado: por eso su `confianza` es 0,5.
@@ -88,6 +122,20 @@ flowchart LR
 
 - **Del agente:** el agente devuelve solo `id`, `justificacion` y `alternativas`. El `id` es un `enum` con los ids del catálogo.
 - **Specs:** todas las specs salen de [`backend/viaz/catalogo/robots/`](../backend/viaz/catalogo/robots/), nunca del modelo.
+- **Campos opcionales nuevos (contrato v3):** `origen` vale `catalogo` o `busqueda`, y sin el campo vale `catalogo`. `capacidades` lista las tareas que el robot hace según su fuente. Ningún código los lee todavía.
+
+## Selección v3: `requisitos.json`, `seleccion.json`, `comparacion.json`
+
+> **Estado:** la etapa robot de los dos flujos escribe `requisitos.json` y `seleccion.json` ([`agentes.seleccionar()`](../backend/viaz/agentes/__init__.py)). Nadie escribe `comparacion.json` todavía. Detalle en [`agentes/seleccion-robot.md`](agentes/seleccion-robot.md).
+
+| Archivo | Lo escribe | Contenido | Esquema | Ejemplo |
+|---|---|---|---|---|
+| `requisitos.json` | Perfil de dominio (código) | Objeto, carga mínima, efectores y tipos aceptados, movilidad, pendiente, alcance mínimo por robot, preferencias, advertencias | [`requisitos.schema.json`](../backend/viaz/esquemas/requisitos.schema.json) | [`fixtures/requisitos.json`](../backend/viaz/fixtures/requisitos.json) |
+| `seleccion.json` | Código + agente de selección | Estado de la búsqueda, encontrados, descartados con fallas, 1 a 3 finalistas, alternativas | [`seleccion.schema.json`](../backend/viaz/esquemas/seleccion.schema.json) | [`fixtures/seleccion.json`](../backend/viaz/fixtures/seleccion.json) |
+| `comparacion.json` | Código (regla) + agente (explicación) | Ganador, regla, condiciones comunes, ranking con fidelidad, qué compara y qué no | [`comparacion.schema.json`](../backend/viaz/esquemas/comparacion.schema.json) | [`fixtures/comparacion.json`](../backend/viaz/fixtures/comparacion.json) (métricas ilustrativas) |
+
+- **Un `robot.json` por finalista,** con el formato de arriba. Hoy la corrida guarda solo el del finalista 1. Las corridas hijas, una por finalista, no existen todavía.
+- **`robot.json → alternativas`:** lista a cada otro candidato: los otros finalistas (`finalista N`), las alternativas (su `por_que_no`) y los descartados (sus fallas).
 
 ## `clon.json` (etapa 4) + `robot.urdf` + `validacion.json`
 
@@ -108,6 +156,7 @@ flowchart LR
 
 - **Generación:** el clon lo arma código determinista ([`backend/viaz/urdf.py`](../backend/viaz/urdf.py)): una base con ruedas y un brazo de 6 ejes escalado al alcance del robot.
 - **`geometria`:** tiene las medidas que usa el plan ([`sim/plan.py`](../sim/plan.py)). Coinciden con `robot.urdf`.
+- **`fidelidad` (opcional, contrato v3):** `generico` (base genérica), `medido` (usa `fisica` de la ficha) o `verificado` (`medido`, sin `fisica.*` estimados, y pasó `validar_robot` y la rúbrica). Ningún código lo escribe todavía.
 - **Articulaciones de `robot.urdf`:** `shoulder_pan`, `shoulder_lift`, `elbow`, `wrist_1`, `wrist_2` y `wrist_3`. El link de la ventosa se llama `efector`.
 - **`validacion.json`:** sale del trabajo `validar_clon` con el formato `{"ok", "problemas": [], "fuente", "paneles_planificados"}`. Si `ok` es `false`, la corrida pasa a `error`.
 

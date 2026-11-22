@@ -105,6 +105,20 @@
         }
       }
     },
+    "origen": {
+      "description": "De dónde viene la ficha. Sin el campo, `catalogo`. Una ficha `busqueda` vive en el almacén de la corrida hasta que un PR la pasa a catalogo/robots/.",
+      "enum": [
+        "catalogo",
+        "busqueda"
+      ]
+    },
+    "capacidades": {
+      "description": "Tareas que el robot hace según su fuente (por ejemplo, instalar_panel).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "estimados": {
       "description": "Specs que el fabricante NO publica y que estimamos, con el motivo. El agente y la web deben decirlo.",
       "type": "object",
@@ -113,25 +127,24 @@
       }
     },
     "fisica": {
-      "description": "Medidas físicas propias del robot. Con este bloque, el clon usa estas medidas en vez de la base genérica (backend/viaz/urdf.py). Lo que el fabricante no publica va también en `estimados`.",
+      "description": "Medidas físicas propias del robot. Con este bloque, el clon usa estas medidas en vez de la base genérica (backend/viaz/urdf.py). El núcleo es obligatorio; el resto es opcional y, si falta, el clon usa el valor genérico o no dibuja la pieza. Lo que el fabricante no publica va también en `estimados`.",
       "type": "object",
       "additionalProperties": false,
       "required": [
         "largo_m",
         "ancho_m",
         "masa_kg",
-        "traccion",
         "altura_cubierta_m",
-        "brazo_x_m",
-        "gabinete_largo_m",
-        "gabinete_alto_m",
-        "brazo_grosor_m",
-        "antebrazo_grosor_m",
-        "ventosa_largo_m",
-        "ventosa_ancho_m",
-        "remolque_largo_m",
-        "remolque_masa_kg"
+        "traccion"
       ],
+      "dependentRequired": {
+        "gabinete_largo_m": ["gabinete_alto_m"],
+        "gabinete_alto_m": ["gabinete_largo_m"],
+        "ventosa_largo_m": ["ventosa_ancho_m"],
+        "ventosa_ancho_m": ["ventosa_largo_m"],
+        "remolque_largo_m": ["remolque_masa_kg"],
+        "remolque_masa_kg": ["remolque_largo_m"]
+      },
       "properties": {
         "largo_m": {
           "type": "number",
@@ -148,8 +161,13 @@
         },
         "traccion": {
           "enum": [
-            "orugas"
+            "orugas",
+            "ruedas"
           ]
+        },
+        "pila_x_m": {
+          "type": "number",
+          "description": "Centro de la pila de paneles sobre la cubierta, desde el centro del vehículo. Positivo hacia adelante. Solo sin remolque; sin el campo, la pila va en la parte libre de la cubierta, lejos del gabinete."
         },
         "altura_cubierta_m": {
           "type": "number",

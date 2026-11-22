@@ -10,7 +10,8 @@ from jsonschema import Draft202012Validator
 
 DIR = Path(__file__).parent / "esquemas"
 NOMBRES = ("entorno", "tarea", "robot", "clon", "resultado", "trayectoria",
-           "metricas", "evaluacion", "ensamblaje", "monitoreo", "hitos", "curva")
+           "metricas", "evaluacion", "ensamblaje", "monitoreo", "hitos", "curva", "medidas_entorno",
+           "requisitos", "seleccion", "comparacion")
 
 # Restricciones que los structured outputs de la API no aceptan. Se validan igual en local.
 _NO_SOPORTADAS = {"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minItems", "maxItems",

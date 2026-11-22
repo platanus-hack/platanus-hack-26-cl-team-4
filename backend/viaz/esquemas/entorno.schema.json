@@ -1,27 +1,82 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "entorno.json",
+  "description": "Gemelo paramétrico de cualquier espacio: núcleo genérico (espacio + elementos) y perfiles opcionales por tipo. Hoy el único perfil es parque_solar (filas, estructura, panel).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "tipo", "videos", "terreno", "filas", "estructura", "panel", "escena_usd", "fondo_reconstruido_usd", "confianza"],
+  "required": ["version", "tipo", "descripcion", "videos", "espacio", "terreno", "elementos", "escena_usd", "fondo_reconstruido_usd", "confianza"],
   "properties": {
     "version": { "const": 1 },
-    "tipo": { "enum": ["parque_solar"] },
+    "tipo": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Categoría del espacio en snake_case: parque_solar, sala, oficina, bodega, taller, linea_produccion, cocina, exterior, otro..." },
+    "descripcion": { "type": "string", "description": "Resumen corto del espacio, en español de Chile." },
     "videos": { "type": "array", "items": { "type": "string" } },
+    "espacio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interior", "largo_m", "ancho_m", "alto_m"],
+      "description": "Caja que contiene el sector modelado. Origen en una esquina a nivel del suelo; X a lo largo, Y a lo ancho, Z arriba.",
+      "properties": {
+        "interior": { "type": "boolean" },
+        "largo_m": { "type": "number", "minimum": 0.5, "maximum": 2000 },
+        "ancho_m": { "type": "number", "minimum": 0.5, "maximum": 2000 },
+        "alto_m": { "type": ["number", "null"], "minimum": 1, "maximum": 50, "description": "Altura libre hasta el techo. null si no hay techo." }
+      }
+    },
     "terreno": {
       "type": "object",
       "additionalProperties": false,
       "required": ["pendiente_grados", "suelo"],
       "properties": {
         "pendiente_grados": { "type": "number", "minimum": 0, "maximum": 30 },
-        "suelo": { "type": "string" },
+        "suelo": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
         "friccion": { "type": "number", "minimum": 0.1, "maximum": 1.5 }
+      }
+    },
+    "elementos": {
+      "type": "array",
+      "maxItems": 60,
+      "description": "Objetos relevantes para un robot, aproximados como primitivas. Paredes no: las pone el generador si espacio.interior es true.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["nombre", "categoria", "forma", "dimensiones_m", "posicion_m", "rotacion_grados", "masa_kg", "fijo"],
+        "properties": {
+          "nombre": { "type": "string" },
+          "categoria": { "enum": ["estructura", "mueble", "maquina", "superficie_trabajo", "contenedor", "objeto_manipulable", "obstaculo", "abertura", "otro"] },
+          "forma": { "enum": ["caja", "cilindro"] },
+          "dimensiones_m": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["largo_m", "ancho_m", "alto_m"],
+            "description": "Caja: largo en X, ancho en Y, alto en Z (antes de rotar). Cilindro vertical: largo = ancho = diámetro.",
+            "properties": {
+              "largo_m": { "type": "number", "minimum": 0.01, "maximum": 500 },
+              "ancho_m": { "type": "number", "minimum": 0.01, "maximum": 500 },
+              "alto_m": { "type": "number", "minimum": 0.01, "maximum": 50 }
+            }
+          },
+          "posicion_m": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x_m", "y_m", "z_m"],
+            "description": "Centro de la cara inferior del objeto, en el marco de espacio.",
+            "properties": {
+              "x_m": { "type": "number" },
+              "y_m": { "type": "number" },
+              "z_m": { "type": "number", "minimum": 0 }
+            }
+          },
+          "rotacion_grados": { "type": "number", "minimum": -180, "maximum": 180, "description": "Giro sobre Z." },
+          "masa_kg": { "type": ["number", "null"], "minimum": 0, "description": "null si no se puede estimar." },
+          "fijo": { "type": "boolean", "description": "true: anclado o demasiado pesado para moverlo. false: un robot podría moverlo." }
+        }
       }
     },
     "filas": {
       "type": "object",
       "additionalProperties": false,
       "required": ["cantidad", "largo_m", "separacion_m"],
+      "description": "Perfil parque_solar.",
       "properties": {
         "cantidad": { "type": "integer", "minimum": 1, "maximum": 20 },
         "largo_m": { "type": "number", "minimum": 5, "maximum": 500 },
@@ -32,6 +87,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["tipo", "altura_m", "inclinacion_grados"],
+      "description": "Perfil parque_solar.",
       "properties": {
         "tipo": { "enum": ["tracker_1_eje", "fijo"] },
         "altura_m": { "type": "number", "minimum": 0.5, "maximum": 4 },
@@ -42,6 +98,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["largo_m", "ancho_m", "peso_kg"],
+      "description": "Perfil parque_solar.",
       "properties": {
         "largo_m": { "type": "number", "minimum": 0.5, "maximum": 3 },
         "ancho_m": { "type": "number", "minimum": 0.5, "maximum": 2 },
@@ -50,6 +107,34 @@
     },
     "escena_usd": { "type": "string" },
     "fondo_reconstruido_usd": { "type": ["string", "null"] },
-    "confianza": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 } }
-  }
+    "confianza": { "type": "object", "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 } },
+    "mediciones": {
+      "description": "Opcional. De dónde sale cada dato: medido en los videos (medidas_entorno.json) o estimado por el agente.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fuente", "medidos", "ajustes"],
+      "properties": {
+        "fuente": { "type": "string" },
+        "medidos": { "type": "array", "items": { "type": "string" } },
+        "ajustes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["campo", "medido", "final", "razon"],
+            "properties": {
+              "campo": { "type": "string" },
+              "medido": { "type": ["number", "string"] },
+              "final": { "type": ["number", "string"] },
+              "razon": { "type": "string" }
+            }
+          }
+        },
+        "avisos": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "if": { "properties": { "tipo": { "const": "parque_solar" } } },
+  "then": { "required": ["filas", "estructura", "panel"] },
+  "else": { "not": { "anyOf": [{ "required": ["filas"] }, { "required": ["estructura"] }, { "required": ["panel"] }] } }
 }

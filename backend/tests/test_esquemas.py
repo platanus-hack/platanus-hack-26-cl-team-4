@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from viaz import agentes, catalogo, urdf
+from viaz.agentes import seleccion
 from viaz.esquemas import NOMBRES, ErrorEsquema, esquema, para_api, sin_campos, validar
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -59,6 +60,30 @@ def test_fixtures_y_catalogo_cumplen_el_contrato():
     assert all(r["ficticio"] or r["fuente"]["url"] for r in robots.values())
 
 
+def _fixture(nombre):
+    return json.loads((agentes.FIXTURES / f"{nombre}.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("nombre", ["requisitos", "seleccion", "comparacion"])
+def test_fixtures_de_seleccion_v3_cumplen_su_esquema(nombre):
+    validar(nombre, _fixture(nombre))
+
+
+def test_fixtures_de_seleccion_v3_son_coherentes_con_el_catalogo():
+    robots = catalogo.cargar()
+    e, req, sel, comp = (_fixture(n) for n in ("entorno", "requisitos", "seleccion", "comparacion"))
+    assert {f["id"]: f["alcance_min_m"] for f in req["por_robot"]} == {
+        i: agentes.alcance_necesario(e, r) for i, r in robots.items()}
+    candidatos = [f["id"] for f in sel["finalistas"]] + [a["id"] for a in sel["alternativas"]]
+    assert sorted(candidatos + [d["id"] for d in sel["descartados"]]) == sorted(robots)
+    assert {d["id"]: d["fallas"] for d in sel["descartados"]} == {
+        i: seleccion.fallas(r, req) for i, r in robots.items() if seleccion.fallas(r, req)}
+    nucleo = {"largo_m", "ancho_m", "masa_kg", "altura_cubierta_m", "traccion"}
+    assert all(nucleo <= set(robots[f["id"]].get("fisica", {})) for f in sel["finalistas"])
+    assert comp["ganador"] == sel["finalistas"][0]["id"]
+    assert {f["id"] for f in comp["ranking"]} == {f["id"] for f in sel["finalistas"]}
+
+
 def test_validar_rechaza_datos_fuera_de_contrato():
     with pytest.raises(ErrorEsquema):
         validar("tarea", {"version": 1})
@@ -70,14 +95,14 @@ def test_validar_rechaza_datos_fuera_de_contrato():
 def test_robot_fijo_toma_las_specs_del_catalogo():
     e = json.loads((agentes.FIXTURES / "entorno.json").read_text(encoding="utf-8"))
     t = json.loads((agentes.FIXTURES / "tarea.json").read_text(encoding="utf-8"))
-    r = agentes.robot("fijo", "x", e, t, catalogo.cargar())
+    r = agentes.seleccionar("fijo", "x", e, t, catalogo.cargar()).robots_por_puesto[0]
     assert r["carga_util_kg"] == catalogo.cargar()[r["id"]]["carga_util_kg"]
 
 
 def test_plan_llega_a_la_estructura_y_a_la_pila():
     e = json.loads((agentes.FIXTURES / "entorno.json").read_text(encoding="utf-8"))
     t = json.loads((agentes.FIXTURES / "tarea.json").read_text(encoding="utf-8"))
-    clon, texto_urdf = agentes.clon(agentes.robot("fijo", "x", e, t, catalogo.cargar()))
+    clon, texto_urdf = agentes.clon(agentes.seleccionar("fijo", "x", e, t, catalogo.cargar()).robots_por_puesto[0])
     assert plan.validar(e, t, clon)["ok"]
     tray = plan.generar(e, t, clon)
     validar("trayectoria", tray)
@@ -91,3 +116,62 @@ def test_escena_tiene_una_fila_por_entorno():
     usda = generar_escena.escena_usda(e)
     assert usda.startswith("#usda 1.0")
     assert usda.count('_Tubo"') == e["filas"]["cantidad"]
+
+
+# ---------- Entorno genérico (cualquier espacio, no solo parque solar) ----------
+
+def _fixture(nombre):
+    return json.loads((agentes.FIXTURES / f"{nombre}.json").read_text(encoding="utf-8"))
+
+
+def test_entorno_generico_cumple_el_contrato_sin_perfil_solar():
+    sala = validar("entorno", _fixture("entorno_sala"))
+    assert sala["tipo"] == "sala" and "filas" not in sala
+
+
+def test_perfil_solar_es_obligatorio_solo_en_parque_solar():
+    solar = _fixture("entorno")
+    del solar["panel"]
+    with pytest.raises(ErrorEsquema):
+        validar("entorno", solar)
+    sala = _fixture("entorno_sala")
+    sala["filas"] = _fixture("entorno")["filas"]
+    with pytest.raises(ErrorEsquema):
+        validar("entorno", sala)
+
+
+def test_normalizar_entorno_quita_perfiles_nulos_y_arma_confianza():
+    resp = {k: v for k, v in _fixture("entorno_sala").items()
+            if k not in ("version", "videos", "escena_usd", "fondo_reconstruido_usd")}
+    resp.update(filas=None, estructura=None, panel=None,
+                confianza=[{"campo": "espacio.largo_m", "valor": 0.8}])
+    datos = agentes.normalizar_entorno(resp)
+    assert not {"filas", "estructura", "panel"} & set(datos)
+    assert datos["confianza"] == {"espacio.largo_m": 0.8}
+
+
+def test_escena_generica_tiene_paredes_y_elementos():
+    sala = _fixture("entorno_sala")
+    usda = generar_escena.escena_usda(sala)
+    assert usda.count('"Pared_') == 4
+    solidos = [el for el in sala["elementos"] if el["categoria"] != "abertura"]
+    assert usda.count('"E0') == len(solidos)
+    assert "def Cylinder" in usda
+    movibles = [el for el in solidos if not el["fijo"] and el["masa_kg"]]
+    assert usda.count("physics:mass") == len(movibles)
+    assert "_Tubo" not in usda
+
+
+def test_medidas_solares_no_se_aplican_a_otro_tipo():
+    medidas = {"version": 1, "disponible": True, "fuente": "x", "frames": 1, "avisos": [],
+               "campos": {"filas.cantidad": {"valor": 4, "error": 0, "confianza": 0.9, "metodo": "m", "muestras": 1}}}
+    sala = agentes.aplicar_medidas(_fixture("entorno_sala"), medidas)
+    assert "filas" not in sala and "mediciones" not in sala
+    validar("entorno", sala)
+
+
+def test_orquestador_corta_tipos_sin_pipeline():
+    from viaz import orquestador
+    orquestador.exigir_pipeline(_fixture("entorno"))
+    with pytest.raises(agentes.ErrorAgente, match="sala"):
+        orquestador.exigir_pipeline(_fixture("entorno_sala"))

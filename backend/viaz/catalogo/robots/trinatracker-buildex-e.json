@@ -13,9 +13,25 @@
     "url": "https://www.pv-magazine.com/2025/08/26/trinabot-offers-installation-robots-for-large-pv-projects/",
     "consultado": "2026-11-21"
   },
+  "fisica": {
+    "largo_m": 4.98,
+    "ancho_m": 2.47,
+    "masa_kg": 8000,
+    "traccion": "orugas",
+    "altura_cubierta_m": 0.85,
+    "brazo_x_m": 0.75,
+    "gabinete_largo_m": 2.3,
+    "gabinete_alto_m": 1.4
+  },
   "estimados": {
     "carga_util_kg": "No publicada. Instala módulos estándar de gran formato (~30 kg); estimamos 35 kg.",
     "alcance_m": "No publicado. Monta módulos con borde inferior entre 0,5 y 2,2 m en trackers; estimamos 2,5 m.",
-    "efector": "No publicado; los robots de instalación de módulos usan ventosas."
+    "efector": "El texto dice 'adaptive gripping'. El render muestra un marco con ventosas.",
+    "fisica.dimensiones": "4,98 × 2,47 × 2,28 m y 8 t según la ficha de Trinabot, leída por el índice del buscador; la página no cargó el 2026-11-21. pv magazine 2025 dice 9 t.",
+    "fisica.traccion": "No está en el texto. Los renders del fabricante muestran orugas.",
+    "fisica.altura_cubierta_m": "No publicada. Medida en el render de Trinabot (pv magazine 2025), con un módulo de 2,38 m como escala: 0,85 m ± 0,25 m. El render parece el modelo S.",
+    "fisica.brazo_x_m": "No publicado. En el render, el pedestal está a 0,75 m ± 0,4 m detrás del centro, del lado de la horquilla. El render pone el gabinete adelante y el clon lo pone atrás (x negativo), por eso el valor es +0,75: el brazo queda en la mitad sin gabinete.",
+    "fisica.gabinete": "No publicado. En el render: 2,3 m ± 0,4 m de largo y 1,4 m ± 0,3 m sobre la cubierta; su techo calza con el alto publicado de 2,28 m.",
+    "fisica.pila": "El robot real lleva el pallet en una horquilla propia, fuera del vehículo. El esquema no tiene un campo para eso: sin `pila_x_m`, el clon pone la pila sobre la cubierta, entre el brazo y el extremo sin gabinete (1,62 m adelante del centro)."
   }
 }

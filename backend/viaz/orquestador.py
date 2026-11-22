@@ -90,6 +90,75 @@ class Corrida:
         raise agentes.ErrorAgente(f"el sim runner no terminó {tipo} en {espera:.0f} s (¿pod apagado?)")
 
 
+def medir_videos(c: Corrida, cfg: Config, store: alm.Almacen, proyecto: dict) -> tuple[dict | None, bytes | None]:
+    """Trabajo de GPU medir_entorno sobre los videos del proyecto (sim/medir_entorno.py). Sin VIAZ_MEDIR: (None, None).
+
+    Copia los videos a la carpeta de la corrida (el pod solo baja archivos de la corrida). Si el pod falla, el
+    agente sigue sin medidas: la corrida no se cae por la medición.
+    """
+    claves = [v for v in proyecto["videos"] if store.existe(v)]
+    if not cfg.medir or not claves:
+        return None, None
+    nombres = []
+    for i, clave in enumerate(claves):
+        nombre = f"video_{i}{Path(clave).suffix or '.mp4'}"
+        store.escribir(alm.clave_corrida(c.id, nombre), store.leer(clave), "video/mp4")
+        nombres.append(nombre)
+    parametros = {"frames": 64, "altura_camara_m": cfg.altura_camara_m,
+                  **({"largo_panel_m": cfg.largo_panel_m} if cfg.largo_panel_m else {}),
+                  **({"escala_panel_m": cfg.escala_panel_m} if cfg.escala_panel_m else {})}
+    try:
+        c.trabajo_gpu("medir_entorno", nombres, ["medidas_entorno.json", "medidas_vista.png"], parametros, espera_s=1800)
+        medidas = validar("medidas_entorno", c.leer_json("medidas_entorno.json"))
+    except (agentes.ErrorAgente, ValueError) as e:
+        log.warning("corrida %s: la medición falló, el agente sigue sin medidas: %s", c.id, e)
+        return {"version": 1, "disponible": False, "fuente": "medir_entorno", "frames": 0, "campos": {},
+                "avisos": [], "error": str(e)[:500]}, None
+    clave_vista = alm.clave_corrida(c.id, "medidas_vista.png")
+    vista = store.leer(clave_vista) if medidas.get("disponible") and store.existe(clave_vista) else None
+    log.info("corrida %s: medí %s campos en %s frames (%s)", c.id, len(medidas["campos"]), medidas["frames"], medidas["fuente"])
+    return medidas, vista
+
+
+def analizar_entorno(c: Corrida, cfg: Config, store: alm.Almacen, proyecto: dict) -> tuple[dict, list | None, list[str]]:
+    """Agente Entorno: mide los videos (si VIAZ_MEDIR) y arma entorno.json. Devuelve (entorno, frames, artefactos)."""
+    medidas, vista = medir_videos(c, cfg, store, proyecto)
+    frames = None
+    if cfg.agentes == "claude":
+        videos = [store.leer(v) for v in proyecto["videos"] if store.existe(v)]
+        frames = agentes.frames_de_videos(videos) if videos else None
+    entorno = agentes.entorno(cfg.agentes, cfg.modelo, proyecto, frames, medidas, vista)
+    c.escribir("entorno.json", entorno)
+    artefactos = []
+    if medidas is not None:
+        artefactos.append("medidas_entorno.json")
+        if vista is not None:
+            artefactos.append("medidas_vista.png")
+    return entorno, frames, artefactos
+
+
+def elegir_robot(c: Corrida, cfg: Config, entorno: dict, tarea: dict) -> dict:
+    """Etapa robot (selección v3, pasos 1, 3 y 4)."""
+    c.etapa("robot", "en_curso", estado_corrida="eligiendo_robot")
+    r = agentes.seleccionar(cfg.agentes, cfg.modelo, entorno, tarea, catalogo.cargar(), cfg.max_finalistas)
+    c.escribir("requisitos.json", r.requisitos)
+    c.escribir("seleccion.json", r.seleccion)
+    primero, *sin_correr = r.robots_por_puesto
+    c.escribir("robot.json", primero)
+    log.info("corrida %s: sigue con %s; finalistas sin correr: %s", c.id, primero["id"],
+             ", ".join(x["id"] for x in sin_correr) or "ninguno")
+    c.etapa("robot", "listo", ["requisitos.json", "seleccion.json", "robot.json"])
+    return primero
+
+
+def exigir_pipeline(entorno: dict) -> None:
+    """El mapeo sirve para cualquier espacio; Tarea → Inteligencia todavía solo existe para algunos tipos."""
+    if entorno["tipo"] not in agentes.TIPOS_CON_PIPELINE:
+        raise agentes.ErrorAgente(
+            f"entorno.json y escena.usd listos para '{entorno['tipo']}', pero las etapas siguientes "
+            f"solo soportan: {', '.join(sorted(agentes.TIPOS_CON_PIPELINE))}")
+
+
 def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     if cfg.flujo == "rl":
         return procesar_rl(cfg, eng, store, fila)
@@ -100,14 +169,10 @@ def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
 
     # 1 y 2. Entorno y tarea (comparten los frames de los videos)
     c.etapa("entorno", "en_curso", estado_corrida="analizando_entorno")
-    frames = None
-    if modo == "claude":
-        videos = [store.leer(v) for v in proyecto["videos"] if store.existe(v)]
-        frames = agentes.frames_de_videos(videos) if videos else None
-    entorno = agentes.entorno(modo, modelo, proyecto, frames)
-    c.escribir("entorno.json", entorno)
+    entorno, frames, artefactos = analizar_entorno(c, cfg, store, proyecto)
     c.trabajo_gpu("generar_escena", ["entorno.json"], ["escena.usd"])
-    c.etapa("entorno", "listo", ["entorno.json", "escena.usd"])
+    c.etapa("entorno", "listo", ["entorno.json", "escena.usd", *artefactos])
+    exigir_pipeline(entorno)
 
     c.etapa("tarea", "en_curso")
     tarea = agentes.tarea(modo, modelo, proyecto, entorno, frames)
@@ -115,10 +180,7 @@ def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     c.etapa("tarea", "listo", ["tarea.json"])
 
     # 3. Robot
-    c.etapa("robot", "en_curso", estado_corrida="eligiendo_robot")
-    robot = agentes.robot(modo, modelo, entorno, tarea, catalogo.cargar())
-    c.escribir("robot.json", robot)
-    c.etapa("robot", "listo", ["robot.json"])
+    robot = elegir_robot(c, cfg, entorno, tarea)
 
     # 4. Clon
     c.etapa("clon", "en_curso", estado_corrida="clonando")
@@ -271,13 +333,18 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     with eng.connect() as cx:
         proyecto = dict(cx.execute(select(db.proyectos).where(db.proyectos.c.id == c.proyecto_id)).mappings().first())
 
-    # 1. Entorno escrito a mano + escena
+    # 1. Entorno + escena. Con VIAZ_MEDIR y videos, lo mide el agente Entorno; si no, se lee a mano (RF-MAP-11).
     c.etapa("entorno", "en_curso", estado_corrida="analizando_entorno")
-    entorno = _manual(cfg.entorno_manual, "entorno")
-    entorno["videos"] = [v.rsplit("/", 1)[1] for v in proyecto["videos"]] or entorno.get("videos", [])
-    c.escribir("entorno.json", validar("entorno", entorno))
+    artefactos: list[str] = []
+    if cfg.medir and proyecto["videos"] and not cfg.entorno_manual:
+        entorno, _, artefactos = analizar_entorno(c, cfg, store, proyecto)
+    else:
+        entorno = _manual(cfg.entorno_manual, "entorno")
+        entorno["videos"] = [v.rsplit("/", 1)[1] for v in proyecto["videos"]] or entorno.get("videos", [])
+        c.escribir("entorno.json", validar("entorno", entorno))
     c.trabajo_gpu("generar_escena", ["entorno.json"], ["escena.usd"])
-    c.etapa("entorno", "listo", ["entorno.json", "escena.usd"])
+    c.etapa("entorno", "listo", ["entorno.json", "escena.usd", *artefactos])
+    exigir_pipeline(entorno)
 
     # 2. Tarea escrita a mano
     c.etapa("tarea", "en_curso")
@@ -286,10 +353,7 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     c.etapa("tarea", "listo", ["tarea.json"])
 
     # 3. Selección de robot
-    c.etapa("robot", "en_curso", estado_corrida="eligiendo_robot")
-    robot = agentes.robot(cfg.agentes, cfg.modelo, entorno, tarea, catalogo.cargar())
-    c.escribir("robot.json", robot)
-    c.etapa("robot", "listo", ["robot.json"])
+    robot = elegir_robot(c, cfg, entorno, tarea)
 
     # 4. Agente constructor
     c.etapa("clon", "en_curso", estado_corrida="clonando")
