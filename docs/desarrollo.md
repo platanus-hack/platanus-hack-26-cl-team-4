@@ -140,7 +140,7 @@ VIAZ_DIR_POD=/workspace/viaz python worker-gpu/runner.py --modo isaac
 
 - **Fuentes para los rótulos:** `apt-get install -y fonts-dejavu-core` (si no, el texto del video sale sin tildes).
 - **Si Isaac todavía no funciona:** `--modo simulado` en el pod mantiene vivo el flujo.
-- **Estado de los scripts:** `sim/validar_clon.py`, `sim/ejecutar_tarea.py` y `sim/isaac_comun.py` **no se han probado en Isaac**. Escribí la API de Isaac Sim 5.x de memoria, así que el primer error real va a salir ahí.
+- **Estado de los scripts:** `sim/validar_clon.py`, `sim/ejecutar_tarea.py` y `sim/isaac_comun.py` son del flujo `planificador` (legado) y **no se han probado en Isaac**. El flujo `rl` usa `sim/tareas.py`, `sim/rl/` y `sim/animar/`. Su estado está en [`estado.md`](estado.md).
 
 ### 5. Corrida de respaldo para el pitch
 1. Correr una corrida completa en producción y anotar su id.

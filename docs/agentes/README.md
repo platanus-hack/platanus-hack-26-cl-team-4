@@ -8,9 +8,11 @@
 
 ```mermaid
 flowchart LR
-  H["Equipo:<br/>entorno.json + tarea.json<br/>a mano"] --> ROB["Agente de<br/>selección de robot"]
+  ENT["Agente Mapeo de entorno<br/>(o entorno.json a mano)"] --> TAR["Agente Tarea<br/>(o tarea.json a mano)"]
+  TAR --> ROB["Agente de<br/>selección de robot"]
+  H["Equipo"]
   CAT[(Catálogo de robots)] --> ROB
-  WEBB["Búsqueda web<br/>(v3, no existe)"] -.-> ROB
+  WEBB["Agente Búsqueda<br/>web con citas"] -.-> ROB
   ROB -->|"robot.json<br/>(v3: uno por finalista)"| CON["Agente constructor<br/>Isaac Lab"]
   ASS[(Catálogo de assets<br/>Isaac Lab)] --> CON
   CON -->|robot_cfg.py + robot.usd| RL["Entrenamiento RL<br/>pod 5090"]
@@ -26,8 +28,8 @@ flowchart LR
 | Constructor del robot en Isaac Lab | [`constructor-robot.md`](constructor-robot.md) | LLM + plantilla + pod | [`constructor.md`](../../backend/viaz/agentes/prompts/constructor.md) | RF-CLO-01..08 | **Sí (Must)** | Implementado ([`robot_cfg.py`](../../backend/viaz/robot_cfg.py)). `crear_articulacion_cfg()` sin probar en Isaac |
 | Monitor del entrenamiento | [`monitor-entrenamiento.md`](monitor-entrenamiento.md) | LLM + reglas | [`monitor.md`](../../backend/viaz/agentes/prompts/monitor.md) | RF-MON-01..10 | **Sí (Must)** | Implementado ([`monitor.py`](../../backend/viaz/monitor.py)). Discord sin probar con un webhook real |
 | MCP de Isaac Sim | [`mcp-isaac-sim.md`](mcp-isaac-sim.md) | LLM con herramientas MCP | En el contrato, §5 | Depuración | Opcional | Por definir el servidor |
-| Mapeo de entorno (cualquier espacio) | [`mapeo-terreno.md`](mapeo-terreno.md) | LLM con visión | [`entorno.md`](../../backend/viaz/agentes/prompts/entorno.md) | RF-MAP-01..04 | No (Could): el entorno va a mano | Implementado |
-| Tarea (cualquier tarea) | [`tarea.md`](tarea.md) | LLM con visión + reglas | [`tarea.md`](../../backend/viaz/agentes/prompts/tarea.md) | RF-TAR-01 | No (Could): la tarea va a mano | Implementado |
+| Mapeo de entorno (cualquier espacio) | [`mapeo-terreno.md`](mapeo-terreno.md) | LLM con visión | [`entorno.md`](../../backend/viaz/agentes/prompts/entorno.md) | RF-MAP-01..04 | Sí, en el flujo `rl` con videos y modo `claude`. Si no, el entorno va a mano | Implementado |
+| Tarea (cualquier tarea) | [`tarea.md`](tarea.md) | LLM con visión + reglas | [`tarea.md`](../../backend/viaz/agentes/prompts/tarea.md) | RF-TAR-01 | Sí, con `VIAZ_TAREA_AGENTE=1` (`render.yaml`). Si no, la tarea va a mano | Implementado |
 
 ## 2. Formato común de un contrato
 
@@ -73,8 +75,9 @@ flowchart LR
 
 ### Orquestador ([`orquestador.py`](../../backend/viaz/orquestador.py))
 
-- **Hoy:** corre Entorno → Tarea → Robot → Clon determinista → `ejecutar_tarea` con planificador.
-- **Para el demo:** lee `entorno.json` y `tarea.json` a mano, corre Robot → Constructor → `entrenar` → `evaluar`, y el monitor en paralelo.
+- **Flujo `rl` (por defecto, `VIAZ_FLUJO` en [`config.py`](../../backend/viaz/config.py)):** Mapeo de entorno → Tarea → Selección de robot → Constructor → `validar_robot` → `entrenar` (con el Monitor) → `grabar_clips` → `evaluar`. Con 2 o 3 finalistas, una corrida hija por finalista y después Comparación.
+- **Entorno y tarea a mano:** sin videos o con `VIAZ_ENTORNO_MANUAL`, el entorno se lee a mano. Sin `VIAZ_TAREA_AGENTE=1`, la tarea se lee a mano. `render.yaml` enciende el agente Tarea.
+- **Flujo `planificador` (legado):** Entorno → Tarea → Selección → clon determinista → `ejecutar_tarea` con plan fijo. Sin Constructor, RL, Monitor ni Comparación.
 
 ## 5. Estado del código frente a los requerimientos
 

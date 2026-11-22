@@ -1,67 +1,90 @@
 # Arquitectura de VIAZ
 
-> Estado: **propuesta** para que el equipo la revise. Lo marcado **[Por definir]** lo decide el equipo.
-> Contrato entre etapas y API: [`contrato-datos.md`](contrato-datos.md). Qué es VIAZ: [`../READMEVIAZ.md`](../READMEVIAZ.md).
+> Describe lo que existe hoy en `main`. Qué está probado y qué no: [`estado.md`](estado.md) (única fuente del estado).
+> Contrato entre etapas y API: [`contrato-datos.md`](contrato-datos.md). Qué es VIAZ: [`../README.md`](../README.md).
 > Requerimientos (MoSCoW + ISO): [`requerimientos.md`](requerimientos.md). Ciclo de desarrollo: [`ciclo-desarrollo.md`](ciclo-desarrollo.md). Versiones del pod: [`infraestructura.md`](infraestructura.md).
 
 ## 1. Qué construimos
 
-VIAZ es una **aplicación web**. El cliente sube videos de su planta.
-Agentes en la nube virtualizan la planta, eligen un robot real, lo clonan y le ponen inteligencia en Isaac Lab.
-La web le entrega al cliente la virtualización: un visor 3D y un video del robot trabajando en su planta.
+VIAZ es una **aplicación web**. El cliente sube videos y una descripción de su lugar de trabajo.
+Agentes de Claude describen el lugar y la tarea, y eligen un robot real de un catálogo.
+El código arma un clon simulado del robot y lo entrena con RL (aprendizaje por refuerzo) en NVIDIA Isaac Lab.
+La web muestra el robot elegido, los videos y las métricas.
 
-**Alcance:** cualquier lugar de trabajo y cualquier tarea de manipulación. Lo propio de cada rubro vive en un perfil de dominio ([`requerimientos.md`](requerimientos.md) §4.0).
-**Caso de referencia 1:** un megaparque solar. El robot instala paneles en las estructuras. El caso 2 está **[Por definir]**.
+**Alcance:** cualquier lugar de trabajo y cualquier tarea. Lo propio de cada rubro vive en un perfil de dominio ([`requerimientos.md`](requerimientos.md) §4.0, [`backend/viaz/agentes/perfiles.py`](../backend/viaz/agentes/perfiles.py)).
+
+| Caso | Lugar | Tarea (`PERFILES_TAREA`) | Entorno RL |
+|---|---|---|---|
+| 1 | Megaparque solar | `instalar_panel`: tomar un panel y dejarlo en la estructura | [`sim/rl/`](../sim/rl/) |
+| 2 | Sala de eventos (la del pitch) | `animar_evento`: el humanoide Unitree H1 recorre la sala | [`sim/animar/`](../sim/animar/) |
+| 3 | Sala u oficina | Tomar una caja y dejarla en un estante | No existe. Solo fixtures de ejemplo |
+
+[`sim/tareas.py`](../sim/tareas.py) lee `tarea.json → tarea` y llama a la carpeta de esa tarea (`CARPETAS`). El runner y el orquestador no saben qué tarea es.
+
+## 2. Flujo por defecto: `rl`
+
+`VIAZ_FLUJO` vale `rl` por defecto ([`backend/viaz/config.py`](../backend/viaz/config.py), campo `flujo`). El código está en `procesar_rl` y `entrenar_y_evaluar` ([`backend/viaz/orquestador.py`](../backend/viaz/orquestador.py)).
 
 ```mermaid
 flowchart LR
-  V[Videos de la planta] --> E[1. Entorno]
-  V --> T[2. Tarea]
-  E -->|entorno.json + escena.usd| R[3. Robot]
-  T -->|tarea.json| R
-  CAT[(Catálogo de robots reales)] --> R
-  R -->|robot.json| C[4. Clon]
-  C -->|clon.json + robot.usd| I[5. Inteligencia]
-  E --> I
-  T --> I
-  I -->|resultado.json + trayectoria.json + video| D[6. Virtualización en la web]
+  V[Videos + descripción] --> E[1. Mapeo de entorno]
+  E -->|entorno.json| ESC[Generar escena<br/>GPU]
+  E --> T[2. Tarea]
+  V --> T
+  T -->|tarea.json| S[3. Selección de robot]
+  CAT[(Catálogo)] --> S
+  B[Búsqueda web] --> S
+  S -->|1 a 3 finalistas| C[4. Constructor]
+  C -->|robot_cfg.py + clon.json| VAL[validar_robot<br/>GPU]
+  VAL -.->|si falla, otro intento| C
+  VAL --> RL[5. entrenar<br/>GPU]
+  M[Monitor] -.->|vigila| RL
+  RL --> EV[6. grabar_clips + evaluar<br/>GPU]
+  EV --> CMP[Comparación<br/>si hay 2 o más finalistas]
+  EV --> W[Web]
+  CMP --> W
 ```
 
-| # | Etapa | Dónde corre | Salida | Qué hace |
-|---|---|---|---|---|
-| 1 | **Entorno** | Render (análisis) + GPU (escena) | `entorno.json`, `escena.usd` | Saca parámetros de la planta desde los videos y genera la escena 3D |
-| 2 | **Tarea** | Render | `tarea.json` | Define qué hace el robot y cómo se mide |
-| 3 | **Robot** | Render | `robot.json` | Elige el robot real que mejor calza y justifica la elección |
-| 4 | **Clon** | Render (diseño) + GPU (validación) | `clon.json`, `robot.usd`, `robot.urdf` | Arma el modelo simulado con medidas, alcance y carga del robot real |
-| 5 | **Inteligencia** | GPU | `resultado.json`, `trayectoria.json`, `video.mp4` | Ejecuta la tarea en Isaac Lab, la mide y la graba |
-| 6 | **Virtualización** | Vercel | Visor 3D + video | Muestra al cliente el robot trabajando en su planta |
+| # | Agente o paso | Quién lo hace | Salida |
+|---|---|---|---|
+| 1 | **Mapeo de entorno** | Claude con visión (`prompts/entorno.md`). Corre si hay videos, no hay `VIAZ_ENTORNO_MANUAL` y está `VIAZ_MEDIR` o `VIAZ_AGENTES=claude`. Si no, se lee el entorno a mano | `entorno.json`, `escena.usd` |
+| 2 | **Tarea** | Claude con visión (`prompts/tarea.md`), con `VIAZ_TAREA_AGENTE=1`. Si no, se lee a mano | `tarea.json` |
+| 3 | **Selección de robot** | Código (requisitos y descarte por reglas, `agentes/seleccion.py`) + Claude (`prompts/robot.md`) | `requisitos.json`, `seleccion.json` |
+| 3b | **Búsqueda** | Claude con búsqueda web y citas (`agentes/busqueda.py`, `prompts/busqueda.md`, `prompts/busqueda_fichas.md`). Solo en modo `claude` con `VIAZ_BUSQUEDA=1` | Fichas nuevas en el catálogo |
+| 4 | **Constructor** | Claude (`prompts/constructor.md`), hasta `VIAZ_INTENTOS_CONSTRUCTOR` intentos. Después, ensamblaje por defecto sin LLM. Si el robot trae `modelo_sim` (hoy el H1), usa ese modelo sin agente | `robot_cfg.py`, `clon.json`, `robot.urdf` |
+| 5 | **Entrenamiento** | Isaac Lab en el pod (trabajo `entrenar`) | `curva.json`, `checkpoints.json` |
+| — | **Monitor** | Claude (`prompts/monitor.md`) con cupo `VIAZ_MONITOR_MAX_LLAMADAS`. Después, reglas ([`monitor.py`](../backend/viaz/monitor.py)) | `monitoreo.jsonl`, `hitos.json` |
+| 6 | **Evaluación** | Isaac Lab (`grabar_clips`, `evaluar`) | `resultado.json`, `evaluacion.json`, videos |
+| — | **Comparación** | El código elige al ganador. Claude escribe la explicación (`prompts/comparacion.md`, [`comparacion.py`](../backend/viaz/comparacion.py)) | `comparacion.json` |
 
-## 2. Infraestructura
+- **Finalistas:** con 2 o 3, cada uno corre en una corrida hija ([`hijas.py`](../backend/viaz/hijas.py)).
+- **Código determinista, sin LLM:** el clon paramétrico ([`urdf.py`](../backend/viaz/urdf.py)), las reglas del robot ([`robot_cfg.py`](../backend/viaz/robot_cfg.py)), el descarte de la selección y el ganador de la comparación.
+
+### Flujo antiguo: `planificador` (legado)
+
+Con `VIAZ_FLUJO=planificador`, `procesar` corre Entorno → Tarea → Selección → clon determinista (`agentes.clon`) → `validar_clon` → `ejecutar_tarea`. Este último reproduce un plan fijo ([`sim/plan.py`](../sim/plan.py)). No corre Constructor, RL, Monitor ni Comparación. Queda como respaldo y no es el flujo del demo.
+
+## 3. Infraestructura
 
 Ningún computador del equipo corre Isaac Sim: tenemos 2 Mac y 1 Windows ARM.
-Por eso la simulación corre en una **RTX 5090 arrendada en la nube**. Todo lo demás corre en Vercel y Render.
+Por eso la simulación corre en una **RTX 5090 arrendada en Vast.ai** ([`infraestructura.md`](infraestructura.md)).
 
 ```mermaid
 flowchart TB
   U[Navegador del cliente]
-
   subgraph VER[Vercel]
-    WEB[Web Next.js<br/>subida + progreso + visor 3D]
+    WEB[Web Next.js<br/>subida + progreso + videos]
   end
-
-  subgraph REN[Render · US$50 de crédito]
-    API[API FastAPI<br/>Web Service]
-    ORQ[Orquestador de agentes<br/>Background Worker]
+  subgraph REN[Render]
+    API[API FastAPI]
+    ORQ[Orquestador]
     DB[(Postgres<br/>proyectos, corridas, cola)]
   end
-
-  subgraph GPU[Nube GPU · RTX 5090]
-    RUN[Sim runner<br/>Isaac Sim + Isaac Lab headless]
+  subgraph GPU[Pod GPU · RTX 5090]
+    RUN[worker-gpu/runner.py<br/>Isaac Sim + Isaac Lab]
   end
-
-  S3[(Almacenamiento de objetos<br/>Cloudflare R2)]
+  S3[(Cloudflare R2)]
   CL[Claude API]
-
   U --> WEB
   WEB -->|REST| API
   U -->|sube videos con URL firmada| S3
@@ -69,56 +92,61 @@ flowchart TB
   ORQ --> DB
   ORQ --> CL
   RUN -->|toma trabajos por HTTPS| API
-  RUN -->|sube USD, video, trayectoria| S3
+  RUN -->|sube resultados| S3
   WEB -->|lee artefactos| S3
 ```
 
-| Pieza | Servicio | Por qué |
-|---|---|---|
-| **Web** | Vercel, Next.js | Deploy gratis y la URL pública que pide el hack |
-| **API** | Render Web Service, Python FastAPI | Mismo lenguaje que Isaac Lab y los agentes |
-| **Orquestador** | Render Background Worker, Python | Corre los agentes sin límite de tiempo por request |
-| **Base de datos y cola** | Render Postgres | Una sola pieza para estado y cola de trabajos, sin Redis |
-| **Archivos** | Cloudflare R2 | Videos y USD pesan mucho, y R2 no cobra egreso. Alternativa: Vercel Blob |
-| **Simulación** | RTX 5090 en RunPod o Vast.ai **[Por definir]** | Isaac Sim necesita GPU NVIDIA RTX |
-| **LLM** | Claude API | Visión para los videos y tool use para los agentes |
+- **Diseño de deploy:** [`render.yaml`](../render.yaml). Si el deploy existe hoy: [`estado.md`](estado.md).
+- **Sin Render ni R2:** [`worker-gpu/pod/todo_en_el_pod.sh`](../worker-gpu/pod/todo_en_el_pod.sh) levanta API, orquestador y `runner.py --modo isaac` en el pod.
 
 ### Decisiones clave
-- **El worker GPU tira trabajos de la API (pull).** El pod no expone puertos. Si el pod se reinicia, retoma la cola.
-- **La cola vive en Postgres.** El worker toma trabajos con `SELECT … FOR UPDATE SKIP LOCKED`.
-- **Los archivos no pasan por Render.** El navegador y el pod suben directo a R2 con URLs firmadas.
-- **Progreso en la web por polling** cada 2 s a `GET /corridas/{id}`. Es más simple que WebSockets.
-- **La clave de Claude vive solo en Render.** El pod GPU no la necesita.
+- **El worker GPU tira trabajos de la API (pull).** El pod no expone puertos. La cola vive en Postgres (`SELECT … FOR UPDATE SKIP LOCKED`). Si el pod se reinicia, retoma la cola.
+- **Los archivos no pasan por Render.** El navegador y el pod suben directo a R2 con URLs firmadas. La web pide el progreso por polling a `GET /corridas/{id}`.
+- **La clave de Claude vive solo en el orquestador.** El pod GPU no la necesita.
 
-## 3. Flujo de una corrida
+### Valores por defecto: `config.py` frente a `render.yaml`
+
+| Variable | `config.py` (local) | `render.yaml` (demo) |
+|---|---|---|
+| `VIAZ_AGENTES` | `fijo` | `claude` |
+| `VIAZ_MAX_FINALISTAS` | 3 (`TOPE_FINALISTAS` del esquema `seleccion`) | 1 |
+| `VIAZ_HORAS_ENTRENAMIENTO` | 4 | 1 |
+| `VIAZ_MONITOR_S` | 600 | 1800 |
+| `VIAZ_MONITOR_MAX_LLAMADAS` | 12 | 6 |
+| `VIAZ_TAREA_AGENTE` | 0 | 1 |
+
+`config.py` sirve para desarrollar sin servicios externos. `render.yaml` fija la primera corrida real ([`pendientes-corrida-real.md`](pendientes-corrida-real.md), problemas 9 y 12). Por eso una corrida local sin variables corre hasta 3 finalistas de 4 h, uno tras otro (12 h de GPU).
+
+## 4. Flujo de una corrida
 
 ```mermaid
 sequenceDiagram
-  participant W as Web (Vercel)
-  participant A as API (Render)
-  participant O as Orquestador (Render)
+  participant W as Web
+  participant A as API
+  participant O as Orquestador
   participant C as Claude
-  participant G as Sim runner (5090)
+  participant G as Pod GPU
   participant S as R2
   W->>A: POST /proyectos
   A-->>W: id + URL firmada
   W->>S: sube videos
   W->>A: POST /proyectos/{id}/corridas
-  O->>C: Entorno y Tarea (frames de los videos)
+  O->>C: Mapeo de entorno y Tarea (frames)
   C-->>O: entorno.json, tarea.json
   O->>A: encola "generar_escena"
   G->>A: toma trabajo
   G->>S: escena.usd
-  O->>C: Robot (catálogo + requisitos)
-  C-->>O: robot.json
-  O->>C: Clon
-  C-->>O: clon.json
-  O->>A: encola "validar_clon" y luego "ejecutar_tarea"
-  G->>S: robot.usd, resultado.json, trayectoria.json, video.mp4
-  loop cada 2 s
+  O->>C: Selección (requisitos + catálogo)
+  C-->>O: seleccion.json
+  O->>C: Constructor
+  C-->>O: ensamblaje
+  O->>A: encola "validar_robot", "entrenar", "grabar_clips", "evaluar"
+  G->>S: resultado.json, evaluacion.json, videos
+  O->>C: Monitor (mientras entrena)
+  loop polling
     W->>A: GET /corridas/{id}
   end
-  W->>S: lee artefactos y muestra el visor
+  W->>S: lee artefactos
 ```
 
 ```mermaid
@@ -127,138 +155,111 @@ stateDiagram-v2
   en_cola --> analizando_entorno
   analizando_entorno --> eligiendo_robot
   eligiendo_robot --> clonando
-  clonando --> simulando
-  simulando --> listo
+  clonando --> entrenando
+  entrenando --> evaluando
+  evaluando --> listo
   analizando_entorno --> error
   eligiendo_robot --> error
   clonando --> error
-  simulando --> error
+  entrenando --> error
+  evaluando --> error
   listo --> [*]
 ```
 
-## 4. Agentes
+El flujo `planificador` usa el estado `simulando` en vez de `entrenando` y `evaluando`.
 
-> Contratos e instrucciones de cada agente: [`agentes/`](agentes/README.md).
+## 5. Agentes
 
-- **Un agente por etapa:** cada uno tiene su prompt, sus herramientas y su archivo de salida. Solo leen archivos del contrato.
-- **Modelo:** Claude Opus 5.5 (`VIAZ_MODELO`). Las respuestas usan structured outputs (`output_config.format`) con el JSON Schema de la etapa, y `fallbacks: "default"` por si el modelo rechaza la consulta.
-- **Modo `fijo`:** `VIAZ_AGENTES=fijo` devuelve fixtures, para desarrollar el flujo sin gastar API.
-- **Videos a frames:** el orquestador extrae 1 frame cada 3 s (máx. 8) con `ffmpeg` y se los manda a los agentes Entorno y Tarea.
-- **Robot:** el agente elige un `id` del catálogo y justifica. Las specs se copian del catálogo, nunca del modelo.
-- **Clon:** es código determinista, sin LLM ([`backend/viaz/urdf.py`](../backend/viaz/urdf.py)). Después el trabajo `validar_clon` lo revisa en la escena.
-- **Validación:** cada salida se valida contra su JSON Schema. Si falla, la corrida pasa a `error` con el motivo. **[Por hacer]** reintentar la etapa 1 vez.
-- **Re-ejecución:** cada etapa lee solo archivos. Así se puede repetir una etapa sin correr las anteriores.
+> Contratos e instrucciones de cada agente: [`agentes/`](agentes/README.md). Prompts: [`backend/viaz/agentes/prompts/`](../backend/viaz/agentes/prompts/).
 
-## 5. Simulación en la 5090
+- **Un archivo de salida por agente.** Cada agente lee solo archivos del contrato. Así se puede repetir una etapa sin correr las anteriores.
+- **Modelo:** Claude Opus 5.5 (`VIAZ_MODELO`). Todas las llamadas pasan por `pedir_json` ([`agentes/base.py`](../backend/viaz/agentes/base.py)): structured outputs con el JSON Schema de la etapa, streaming y `fallbacks: "default"`.
+- **Errores de la API:** `pedir_json` reintenta 3 veces los errores pasajeros (esperas `ESPERAS_S`: 5, 20 y 60 s). Si sigue fallando, lanza `ErrorAgente`.
+- **Validación:** cada salida se valida contra su JSON Schema. Si falla, la corrida pasa a `error` con el motivo. Una etapa completa no se reintenta. Solo el Constructor tiene varios intentos.
+- **Modo `fijo`:** `VIAZ_AGENTES=fijo` devuelve fixtures, para desarrollar sin gastar API.
+- **Videos a frames:** el orquestador extrae 1 frame cada 3 s (máx. 8) con `ffmpeg` para Mapeo de entorno y Tarea.
+- **Selección:** las specs del robot se copian del catálogo, nunca del modelo.
+- **Chequeo previo:** en modo `claude`, `comprobar_claude` prueba la clave al arrancar. Si falla, el orquestador sale con código 2.
+- **Fuente:** `monitoreo.jsonl` y `comparacion.json` dicen si la salida vino de Claude o de las reglas.
 
-Escena física (capas, masas, fricción y prueba de física): [`escena-isaac.md`](escena-isaac.md).
+## 6. Simulación en el pod
 
-### Sim runner
-- **Programa Python** en el pod. Toma trabajos de la API, corre scripts de `sim/` en Isaac Sim headless y sube los resultados a R2.
-- **Tipos de trabajo:** `generar_escena`, `validar_clon`, `ejecutar_tarea` y `entrenar_subtarea`.
-- **Un trabajo a la vez.** Isaac Sim usa casi toda la GPU.
+Escena física (capas, masas, fricción y prueba de física): [`escena-isaac.md`](escena-isaac.md). Contrato del entorno RL: [`contrato-entorno-rl.md`](contrato-entorno-rl.md).
+
+### Runner
+- [`worker-gpu/runner.py`](../worker-gpu/runner.py) toma trabajos de la API, de a uno, corre scripts de `sim/` y sube los resultados.
+- **Trabajos del flujo `rl`:** `generar_escena`, `medir_entorno`, `validar_robot`, `entrenar`, `grabar_clips` y `evaluar`.
+- **Trabajos del flujo `planificador`:** `validar_clon` y `ejecutar_tarea`.
+- **Modo `isaac`:** exige `VIAZ_CMD_ENTRENAR`, `VIAZ_CMD_EVALUAR`, `VIAZ_CMD_GRABAR_CLIP` y `VIAZ_CMD_VALIDAR_ROBOT`. Los cuatro pasan por `sim/tareas.py`.
+- **Modo `simulado`:** usa [`sim/rl_simulado.py`](../sim/rl_simulado.py). **Inventa las métricas y los videos.** Sirve solo para desarrollar en un Mac.
 
 ### Qué hace cada script
-- **`generar_escena`** ([`sim/generar_escena.py`](../sim/generar_escena.py)): crea `escena.usd` (USDA) desde `entorno.json`, con suelo, tubos y postes, todo con colisión. Es Python puro.
-- **`validar_clon`** ([`sim/validar_clon.py`](../sim/validar_clon.py)): importa `robot.urdf` en la escena. Revisa las 6 articulaciones y que el plan alcance la pila y la estructura.
-- **`ejecutar_tarea`** ([`sim/ejecutar_tarea.py`](../sim/ejecutar_tarea.py)):
-  - **v0:** reproduce el plan de [`sim/plan.py`](../sim/plan.py) con física, mide dónde quedó cada panel y graba `video.mp4`.
-  - **Siguiente versión:** planificador (cuRobo o RMPflow) en vez del plan fijo.
-- **`entrenar_subtarea`:** RL con PPO en Isaac Lab para una sub-tarea, por ejemplo alinear el panel. Es opcional y **[Por hacer]**.
-- **Modo `simulado`:** el runner hace la validación y la trayectoria solo con `sim/plan.py`, sin Isaac. Sirve para desarrollar en un Mac.
-- **Sin probar:** los scripts de Isaac **no se han probado en Isaac**. Probarlos en el pod es lo primero.
+- **`generar_escena`** ([`sim/generar_escena.py`](../sim/generar_escena.py)): crea `escena.usd` (USDA) desde `entorno.json`. Es Python puro.
+- **`sim/rl/`:** entorno Isaac Lab de `instalar_panel` (entrenar, evaluar, grabar clip, validar robot).
+- **`sim/animar/`:** entorno Isaac Lab de `animar_evento` (humanoide H1, PPO con `rsl_rl`).
+- **Legado:** [`sim/validar_clon.py`](../sim/validar_clon.py) y [`sim/ejecutar_tarea.py`](../sim/ejecutar_tarea.py), solo del flujo `planificador`.
 
-### Puesta en marcha del pod (primera hora del hack)
-1. Arrendar la 5090 con un **volumen persistente**. Ahí quedan el caché de shaders de Isaac y los assets.
-2. Usar la imagen oficial de Isaac Sim (`nvcr.io/nvidia/isaac-sim`) en una versión con soporte para RTX 50 (Blackwell) **[Por definir: verificar versión]**.
-3. Correr un ejemplo headless de Isaac Lab. Si falla, cambiar de proveedor **antes** de escribir código de simulación.
-4. Desarrollar en el pod por SSH (VS Code Remote o Cursor). Para ver la GUI, usar el livestream WebRTC de Isaac Sim, solo para depurar.
-5. **Apagar el pod cuando nadie lo use.** El volumen se conserva.
+Qué scripts se probaron en Isaac y con qué resultado: [`estado.md`](estado.md).
 
-## 6. Virtualización en la web
+### Operación del pod
+- Instalación: [`worker-gpu/pod/instalar.sh`](../worker-gpu/pod/instalar.sh). Prueba de humo: [`worker-gpu/pod/humo.sh`](../worker-gpu/pod/humo.sh). Acceso solo con `ssh viaz-pod` ([`infraestructura.md`](infraestructura.md) §4).
+- **Apagar el pod cuando nadie lo use.** El volumen persistente conserva el caché de shaders y los assets.
 
-- **Visor 3D** con three.js (react-three-fiber) en el navegador.
-- **Escena:** la web la genera desde `entorno.json`, con las mismas reglas que `generar_escena`. No hace falta convertir USD a formato web.
-- **Robot:** la web carga `robot.urdf` con `urdf-loader`.
-- **Movimiento:** la web reproduce `trayectoria.json`. El cliente puede pausar, mover la cámara y ver la escena desde cualquier ángulo.
-- **Video:** `video.mp4` renderizado en Isaac, como respaldo y para el pitch.
-- **Panel lateral:** robot elegido y su justificación, diferencias del clon con el real, y métricas.
+## 7. Web
 
-## 7. Estructura del repo
+[`web/`](../web/) (Next.js 15 con react-three-fiber) muestra la subida de videos, el progreso, el robot elegido con su justificación, las diferencias del clon con el real, los videos y las métricas. El visor 3D genera la escena desde `entorno.json`, con las mismas reglas que `generar_escena`.
+
+## 8. Estructura del repo
 
 ```
-docs/                         arquitectura, contrato de datos, desarrollo y deploy
-backend/viaz/api.py           FastAPI en Render: proyectos, corridas, cola y URLs firmadas
-backend/viaz/orquestador.py   Background Worker en Render: corre los agentes en orden
-backend/viaz/agentes/         prompt y lógica de cada agente (Entorno, Tarea, Robot, Clon)
+docs/                         arquitectura, contratos, desarrollo, estado
+backend/viaz/api.py           FastAPI: proyectos, corridas, cola y URLs firmadas
+backend/viaz/orquestador.py   corre los agentes en orden (flujos rl y planificador)
+backend/viaz/agentes/         lógica y prompts de los agentes, perfiles de dominio
 backend/viaz/esquemas/        JSON Schema de cada archivo del contrato
-backend/viaz/catalogo/robots/ catálogo de robots reales (un JSON por robot)
+backend/viaz/catalogo/robots/ catálogo de robots (un JSON por robot)
 backend/viaz/urdf.py          clon paramétrico del robot
-backend/tests/                flujo de punta a punta y contrato
-worker-gpu/runner.py          sim runner: toma trabajos y ejecuta scripts de sim/
-sim/                          plan de la tarea (Python puro) y scripts de Isaac Sim
-web/                          Next.js en Vercel: subida, progreso y visor 3D
+backend/tests/                tests del backend
+worker-gpu/runner.py          runner: toma trabajos y ejecuta scripts de sim/
+worker-gpu/pod/               instalador, prueba de humo y corrida en el pod
+sim/                          escena, entornos RL (rl/, animar/) y scripts de Isaac
+web/                          Next.js: subida, progreso, videos y visor 3D
 render.yaml                   blueprint de Render: API, orquestador y Postgres
 ```
 
 Cómo correr todo en local y desplegar: [`desarrollo.md`](desarrollo.md).
 
-## 8. Costos estimados
+## 9. Quién hace qué
+
+| Área | Carpetas | Responsable |
+|---|---|---|
+| Web, deploy y pitch | `web/` | **[Por definir]** |
+| API, orquestador y agentes | `backend/` | **[Por definir]** |
+| Pod GPU, runner y entornos RL | `worker-gpu/`, `sim/` | **[Por definir]** |
+
+Lo abierto está en [`estado.md`](estado.md). Un cambio en `contrato-datos.md` o en `backend/viaz/esquemas/` se avisa a todo el equipo antes del merge.
+
+## 10. Costos estimados
 
 | Servicio | Plan | Costo |
 |---|---|---|
 | Vercel | Hobby | US$0 |
-| Render Web Service (API) | Starter, para que no se duerma | ~US$7/mes |
-| Render Background Worker | Starter | ~US$7/mes |
-| Render Postgres | Basic 256 MB | ~US$6/mes |
+| Render: API, Background Worker y Postgres | Starter, Starter, Basic 256 MB | ~US$7 + ~US$7 + ~US$6 al mes |
 | Cloudflare R2 | Plan gratis (10 GB) | US$0 |
-| RTX 5090 | Por hora, en pod | **[Por verificar]**: comparar precios de RunPod y Vast.ai el día del hack |
-| Claude API | Por uso | **[Por definir]**: créditos del hack o cuenta propia |
+| RTX 5090 | Por hora, en pod | [`investigacion-isaac-gpu.md`](investigacion-isaac-gpu.md); horas por fase en [`plan-entrenamiento.md`](plan-entrenamiento.md) |
+| Claude API | Por uso | Depende de la corrida |
 
-- **Render:** unos US$20 al mes, dentro del crédito de US$50.
-- **GPU:** el costo depende de las horas encendidas. Apagar el pod es la principal forma de ahorrar.
-- **Horas de GPU por fase:** [`plan-entrenamiento.md`](plan-entrenamiento.md) estima unas 3 a 5 h en total, con entrenamiento por lotes y el pod apagado entre fases.
+## 11. Corrida de respaldo para el pitch
 
-## 9. Quién hace qué **[Por definir]**
+`GET /corridas/demo` muestra la corrida cuyo id está en `VIAZ_CORRIDA_DEMO` ([`backend/viaz/api.py`](../backend/viaz/api.py)), aunque el pod esté apagado. Si esa corrida existe: [`estado.md`](estado.md).
 
-| Área | Carpetas | Responsable |
-|---|---|---|
-| Web y visor 3D, deploy y pitch | `web/` | **[Por definir]** |
-| API, orquestador y agentes 2, 3 y 4 | `api/`, `orquestador/`, `agentes/`, `data/robots/` | **[Por definir]** |
-| Pod GPU, sim runner y agentes 1 y 5 | `worker-gpu/`, `sim/` | **[Por definir]** |
-
-- Un cambio en `contrato-datos.md` o en `esquemas/` se avisa a todo el equipo antes del merge.
-- Las tres áreas trabajan en paralelo desde el inicio: el contrato fija las interfaces.
-
-## 10. Plan por checkpoint
-
-```mermaid
-timeline
-  title Hitos del hack
-  Checkpoint 1 (sáb 11:00) : Pod con Isaac corriendo un ejemplo : API + Postgres en Render y web en Vercel : Flujo de punta a punta con salidas fijas
-  Checkpoint 2 (sáb 23:00) : Escena procedural desde un video real : Robot elegido y clon validado en el pod : Visor 3D reproduce la trayectoria
-  Freeze (dom 05:00) : El clon hace la tarea en la escena de cada caso : Video, métricas y corrida de demo guardada : Pitch
-```
-
-- **Regla:** primero el flujo completo con datos fijos, después cambiar cada etapa por la real.
-- **Corrida de respaldo:** se guarda una corrida completa de cada caso de referencia en R2. Si el pod falla en el pitch, la web la muestra igual.
-
-## 11. Riesgos
+## 12. Riesgos
 
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
-| Isaac no arranca en el pod (driver, Vulkan o versión sin soporte para la 5090) | Sin simulación | Probarlo en la primera hora; tener un segundo proveedor listo |
-| El pod se cae o se acaba el saldo | Se corta el demo | Volumen persistente + corrida de respaldo en R2 |
-| RL no converge | No hay robot funcionando | El planificador hace la tarea; RL es un extra |
-| La escena web no calza con la de Isaac | El visor muestra otra cosa | Las dos se generan desde el mismo `entorno.json` con las mismas reglas |
-| Render free se duerme | Primera carga lenta en el pitch | Plan Starter para la API |
+| El pod se cae o se acaba el saldo | Se corta el demo | Volumen persistente + corrida de respaldo |
+| RL no converge | No hay robot funcionando | Bajo 50 % de éxito, `resultado.json` lo anota (plan B con planificador, RF-INT-01) |
+| Claude falla a mitad de la corrida | Etapa sin respuesta | Reintentos en `pedir_json`; Monitor y Comparación caen a reglas y lo marcan en `fuente` |
+| La escena web no calza con la de Isaac | El visor muestra otra cosa | Las dos salen del mismo `entorno.json` con las mismas reglas |
 | Datos de robots desactualizados | Cifras falsas en el pitch | Cada robot del catálogo cita su fuente y su fecha |
-| "Demo fiel" sobrevendido | Pierde credibilidad | Mostrar métricas y diferencias con el real |
-
-## 12. Preguntas abiertas
-
-- ¿RunPod o Vast.ai? ¿Quién crea la cuenta y carga el saldo?
-- ¿De dónde salen los créditos de la Claude API?
-- ¿Tenemos videos reales de cada caso de referencia (parque solar y caso 2) o usamos videos públicos?
-- ¿Qué robot usamos de referencia para el demo?
-- ¿Quién es responsable de cada área de la §9?
+| "Demo fiel" sobrevendido | Pierde credibilidad | Mostrar métricas, diferencias con el real y el estado en [`estado.md`](estado.md) |

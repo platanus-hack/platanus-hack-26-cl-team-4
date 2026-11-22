@@ -18,27 +18,31 @@
 | 8 | `max_tokens` fijo | Streaming; tope por agente (`MAX_TOKENS_AGENTE`, Entorno 48 000) y `VIAZ_MAX_TOKENS`; el log avisa si una salida pasa el 80 % | Hecho. Las cifras reales salen del script de humo |
 | 9 | `render.yaml` en `fijo` | `VIAZ_AGENTES=claude`, 1 finalista, 1 h, monitor cada 30 min con cupo de 6, agente Tarea | Hecho. **Sin clave cargada en Render, el orquestador no arranca** (a propósito) |
 | 10 | El pod no alcanza el almacén local | `worker-gpu/pod/todo_en_el_pod.sh`: API, orquestador y runner en el pod, sin R2 | Hecho y probado (corridas `5e72191bab0c` y la del script). Render + R2 sigue pendiente de credenciales |
-| 11 | Worker Isaac sin preparar | Doc con `VIAZ_CMD_GRABAR_CLIP`; los comandos pasan por `sim/tareas.py`; escena con texturas (`VIAZ_PYTHON_ESCENA`) | Hecho y probado de punta a punta en Isaac |
+| 11 | Worker Isaac sin preparar | Doc con `VIAZ_CMD_GRABAR_CLIP` (`e8dfc22`); los comandos pasan por `sim/tareas.py`; escena con texturas (`VIAZ_PYTHON_ESCENA`); `todo_en_el_pod.sh` lanza `runner.py --modo isaac` (`be82426`) | Hecho en el código. Una corrida de punta a punta en Isaac lanzada por el orquestador no tiene log ni artefacto en el repo: ver [`estado.md`](estado.md) |
 | 12 | Más de 12 h y gasto sin tope | Valores del demo en `render.yaml`; cupo de chequeos del monitor con Claude (`VIAZ_MONITOR_MAX_LLAMADAS`, por defecto 12) | Hecho. Sin tope de gasto en dólares |
 | 13 | El Monitor puede trabar la espera | Tiempo tope = mitad de `VIAZ_MONITOR_S` (mínimo 10 s); tolerancias desde `tarea.json` | Hecho y probado |
 | — | Tolerancia fina fija de 2 cm y 2° | Sale del perfil de la tarea (`PerfilTarea.tolerancia_fina`); `animar_evento` no tiene | Hecho y probado |
 
-**Resumen**
-1. Hoy ningún flujo corre todos los agentes juntos: `rl` salta Tarea (y Entorno sin `VIAZ_MEDIR`), y `planificador` salta Constructor, RL, Monitor y Comparación.
-2. Con clave de API (A), el código ya usa la API documentada. Falta probarla con el modelo real, manejar sus errores y desplegarla.
-3. Con suscripción (B), el backend no tiene cómo autenticarse. Hace falta un adaptador a `claude -p` o al Agent SDK.
-4. Los términos permiten B solo como uso personal de Claude Code. B no sirve para Render ni para un producto.
-5. Tres agentes (Búsqueda, Monitor, Comparación) caen a reglas sin avisar. Una corrida puede terminar "lista" sin que Claude haya respondido.
+**Resumen** (después de `be82426`)
+1. El flujo `rl` corre todos los agentes en una corrida: Entorno con videos en modo `claude` y Tarea con `VIAZ_TAREA_AGENTE=1` (`orquestador.py`, `procesar_rl`). `render.yaml` enciende los dos.
+2. Con clave de API (A), los errores de la API salen como `ErrorAgente` y los pasajeros se reintentan 3 veces. Falta probar los prompts con el modelo real (problema 7A).
+3. Con suscripción (B), el backend se autentica con el Agent SDK (`VIAZ_CLAUDE=suscripcion`). Solo se probó con un SDK falso.
+4. Los términos permiten B solo como uso local. El código rechaza B en Render y si también hay `ANTHROPIC_API_KEY`.
+5. Búsqueda, Monitor y Comparación ya no fallan en silencio: hay chequeo previo, y `monitoreo.jsonl` y `comparacion.json` dicen su `fuente`. La web todavía no muestra la fuente.
+
+Las secciones 1 a 13 de abajo describen el problema **antes** del arreglo. La solución elegida está en la tabla de arriba.
 
 ## Estado honesto
 
+El estado de todo el proyecto está en [`estado.md`](estado.md). Esta tabla cubre solo la corrida con Claude.
+
 | Estado | Qué |
 |---|---|
-| Real y probado | `pytest` del backend: 323 passed, 1 skipped (falta torch), 1 xfailed. Todo en modo `fijo` o con `pedir_json` reemplazado por `monkeypatch`. El pod responde por `ssh viaz-pod`. |
-| Sin probar | Cualquier llamada real a Claude: los 8 prompts de `backend/viaz/agentes/prompts/` y los esquemas que manda `para_api`. |
-| Sin probar | La web en esta sesión. Una corrida con `runner.py --modo isaac` lanzada por el orquestador. |
+| Real y probado | Los arreglos de los 13 problemas, en modo `fijo` o con Claude reemplazado por `monkeypatch`. `pytest` del backend: 359 passed, 7 skipped (faltan `pxr` o `torch`), 1 xfailed, medido el 2026-11-22 en Mac con Python 3.13. |
+| Sin probar | Cualquier llamada real a Claude: los 8 prompts de `backend/viaz/agentes/prompts/` y los esquemas que manda `para_api` (problema 7A, falta la clave). El adaptador de suscripción con el SDK real. |
+| Sin probar en el repo | Una corrida con `runner.py --modo isaac` lanzada por el orquestador (problema 11): no hay log ni artefacto versionado. |
 | De relleno | `sim/rl_simulado.py` inventa la curva de entrenamiento y los videos (`sim/rl_simulado.py:8-9`). |
-| No existe | Una corrida de punta a punta con `VIAZ_AGENTES=claude`. La autenticación con suscripción en el backend. `ANTHROPIC_API_KEY` o `ANTHROPIC_AUTH_TOKEN` en la sesión de trabajo. |
+| No existe | Una corrida de punta a punta con `VIAZ_AGENTES=claude`. El deploy en Render + R2 (faltan credenciales, problema 10). |
 
 ## Índice
 
@@ -364,5 +368,5 @@
 
 ## Fuera de alcance
 
-- **Dominio:** solo `parque_solar` tiene perfil de entorno y solo `instalar_panel` tiene perfil de tarea, los dos con simulación (`perfiles.py:94-110`). Si el agente Entorno devuelve otro `tipo`, `exigir_pipeline` corta la corrida después de `tarea.json` (`orquestador.py:119-130`).
+- **Dominio:** solo `parque_solar` tiene perfil de entorno con simulación. Hay dos perfiles de tarea, `instalar_panel` y `animar_evento` (`PERFILES_TAREA` en `perfiles.py`). Si el agente Entorno devuelve otro `tipo`, `exigir_pipeline` corta la corrida después de `tarea.json` (`orquestador.py:119-130`).
 - El aviso de Discord dice siempre `instalar_panel` (`monitor.py:192`). El clon del flujo `planificador` solo existe para `base_movil_brazo` (`agentes/__init__.py:384-385`).
