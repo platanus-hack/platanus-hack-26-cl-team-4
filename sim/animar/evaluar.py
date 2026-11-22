@@ -59,6 +59,7 @@ def tanda(c, a, n: int, video: Path | None) -> list[dict]:
         cam = comun.Camarografo(env, c)
         cam.mover(*comun.inicio(c)[:2], saltar=True)
         grabacion.descartar_inicio(env)
+    reloj = comun.Reloj(env.step_dt)
     pasos_max = int(env.max_episode_length) + 5
     extra = int(EXTRA_S / env.step_dt)
     restantes = None
@@ -74,7 +75,8 @@ def tanda(c, a, n: int, video: Path | None) -> list[dict]:
         if grab:
             x, y = pos[0].tolist()
             cam.mover(x, y)
-            grab.cuadro(env.render())
+            if reloj.toca():
+                grab.cuadro(env.render())
         if bool(listo.all()):
             restantes = extra if restantes is None else restantes - 1
             if restantes <= 0 or not grab:

@@ -48,6 +48,20 @@ FUERZA_CHOQUE_N = 30.0        # fuerza de contacto en una pieza que no es un pie
 HOLGURA_ALTURA_M = 0.1        # el robot cabe si su punto más alto queda esta distancia bajo el techo
 
 
+class Reloj:
+    """Graba a velocidad real: la simulación avanza a 1/step_dt pasos por segundo y el video va a FPS cuadros."""
+
+    def __init__(self, step_dt: float, fps: int = 30):
+        self.step_dt, self.fps, self.t, self.cuadros = step_dt, fps, 0.0, 0
+
+    def toca(self) -> bool:
+        self.t += self.step_dt
+        if self.t * self.fps >= self.cuadros + 1:
+            self.cuadros += 1
+            return True
+        return False
+
+
 def ruta(spec: str):
     modulo, nombre = spec.split(":")
     return getattr(importlib.import_module(modulo), nombre)

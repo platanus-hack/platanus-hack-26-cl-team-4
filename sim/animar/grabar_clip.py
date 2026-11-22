@@ -46,8 +46,9 @@ def grabar(a) -> dict:
     cam.mover(*comun.inicio(c)[:2], saltar=True)
     grabacion.descartar_inicio(env)
     if a.grilla:   # vista general de la sala antes de seguir al robot
-        for _ in range(int(GRILLA_S / env.step_dt)):
+        for _ in range(int(GRILLA_S * 30)):
             salida.cuadro(env.render())
+    reloj = comun.Reloj(env.step_dt)
     for _ in range(int(a.segundos / env.step_dt)):
         coreo.actualizar()
         with torch.inference_mode():
@@ -55,7 +56,8 @@ def grabar(a) -> dict:
         pos, _ = coreo.posicion()
         x, y = pos[0].tolist()
         cam.mover(x, y)
-        salida.cuadro(env.render())
+        if reloj.toca():
+            salida.cuadro(env.render())
     info = salida.cerrar()
     print(json.dumps(info), flush=True)
     return {"ok": True, **info}
