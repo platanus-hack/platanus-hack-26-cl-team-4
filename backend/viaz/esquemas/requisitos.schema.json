@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "requisitos.json",
+  "description": "Lo que la tarea pide del robot, sin vocabulario del dominio. Lo escribe un perfil de dominio (código, sin LLM) desde entorno.json y tarea.json. Contrato v3 de selección (docs/agentes/seleccion-robot.md).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "dominio",
+    "tarea",
+    "objeto",
+    "carga_min_kg",
+    "efectores_aceptados",
+    "tipos_aceptados",
+    "movilidad",
+    "pendiente_grados",
+    "por_robot",
+    "preferencias",
+    "advertencias"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "dominio": {
+      "description": "Nombre del perfil de dominio que escribió este archivo. Hoy solo existe `solar`.",
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "tarea": {
+      "description": "Copia de tarea.json → tarea.",
+      "type": "string"
+    },
+    "objeto": {
+      "description": "Lo que el robot manipula. null si la tarea no manipula un objeto (por ejemplo, inspección).",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "nombre",
+        "largo_m",
+        "ancho_m",
+        "peso_kg"
+      ],
+      "properties": {
+        "nombre": {
+          "type": "string"
+        },
+        "largo_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "ancho_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0
+        },
+        "peso_kg": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "carga_min_kg": {
+      "description": "Carga útil mínima obligatoria. 0 si la tarea no carga nada.",
+      "type": "number",
+      "minimum": 0
+    },
+    "efectores_aceptados": {
+      "description": "Valores de robot.json → efector que sirven para la tarea.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "tipos_aceptados": {
+      "description": "Valores de robot.json → tipo que sirven. El perfil solar lo deriva de movilidad y pendiente_grados.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "movilidad": {
+      "enum": [
+        "fija",
+        "movil",
+        "cualquiera"
+      ]
+    },
+    "pendiente_grados": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 90
+    },
+    "por_robot": {
+      "description": "Requisitos que dependen del tamaño de cada robot candidato. Una fila por ficha (catálogo y encontrados).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "alcance_min_m"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "alcance_min_m": {
+            "description": "Alcance mínimo que necesita este robot. null si el dominio no exige alcance.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "preferencias": {
+      "description": "Criterios no obligatorios, en orden de importancia (el primero pesa más).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "criterio",
+          "descripcion"
+        ],
+        "properties": {
+          "criterio": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "descripcion": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "advertencias": {
+      "description": "Avisos que la selección debe repetir. Por ejemplo, un dato del entorno con confianza menor a 1.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

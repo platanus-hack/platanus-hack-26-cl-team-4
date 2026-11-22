@@ -1,12 +1,13 @@
 # Especificación de requerimientos de VIAZ
 
-> Estado: **borrador v0.8** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
+> Estado: **borrador v0.9** (2026-11-21). Basado en [`arquitectura.md`](arquitectura.md), [`contrato-datos.md`](contrato-datos.md), [`agentes/`](agentes/README.md) y el [README](../README.md).
 > Estructura según ISO/IEC/IEEE 29148. Prioridades según el método **MoSCoW**. Calidad según ISO/IEC 25010.
 > **Cambio de v0.4:** el demo usa un entorno escrito a mano y una política entrenada con RL. El mapeo desde video pasa a Could.
 > **Cambio de v0.5:** base móvil con navegación programada y RL en el brazo; meta de 90 % a 5 cm y 5° en 100 episodios; tiempo fijo; avisos por Discord.
 > **Cambio de v0.6:** la web explica el flujo teórico (subir videos → extraer entorno → robot → entrenamiento) sin usarlo en vivo. El pitch muestra los resultados precalculados del parque de referencia.
 > **Cambio de v0.7:** los clips del video acelerado se graban desde checkpoints, no durante el entrenamiento (RF-INT-13, RF-MON-06). La GPU es una RTX en un host con driver 580, no solo una 5090 ([`investigacion-isaac-gpu.md`](investigacion-isaac-gpu.md)).
 > **Cambio de v0.8:** el parque del demo tiene 2 filas en el desierto de Atacama. El entrenamiento usa una escena chica con un tramo de tubo, y el demo usa el parque completo (RF-MAP-06, RF-MAP-12..15). La física del RL agarra con unión fija, usa los límites del robot real y varía masa y fricción (RF-INT-22..25).
+> **Cambio de v0.9:** contrato v3 de selección: requisitos por perfil de dominio, búsqueda web de robots, hasta 3 finalistas comparados en corridas hijas, `fidelidad` del clon y reuso de modelos comprobados (RF-ROB-08..12, RF-CLO-10..11, RF-ORQ-07..08). Prioridad **S** hasta que el equipo decida.
 > Lo marcado **[Por definir]** lo decide el equipo. Cada requerimiento tiene un ID: cítalo en issues, PRs y pruebas.
 
 ## Índice
@@ -111,7 +112,7 @@ flowchart LR
 
 | Tipo | Must | Should | Could | Won't |
 |---|---|---|---|---|
-| Funcionales | 56 | 24 | 18 | — |
+| Funcionales | 56 | 33 | 18 | — |
 | No funcionales | 14 | 6 | 0 | — |
 | Fuera del alcance | — | — | — | 11 |
 
@@ -162,13 +163,18 @@ flowchart LR
 
 | ID | Requerimiento | MoSCoW |
 |---|---|---|
-| RF-ROB-01 | El catálogo tiene entre 5 y 10 robots reales de instalación solar, un JSON por robot | **M** |
+| RF-ROB-01 | El catálogo tiene entre 5 y 10 robots reales que hacen la tarea del cliente (en el demo, instalación solar), un JSON por robot. Crece con los robots que encuentra la búsqueda, por PR | **M** |
 | RF-ROB-02 | Cada robot del catálogo cita `fuente.url` y `fuente.consultado` (fecha ISO 8601) | **M** |
-| RF-ROB-03 | El agente elige solo robots del catálogo. `robot.json.id` coincide con un archivo existente | **M** |
+| RF-ROB-03 | El agente elige solo entre fichas que pasan la validación de `robot.schema.json`: del catálogo, o encontradas por la búsqueda con `fuente.url` y `fuente.consultado`. `robot.json.id` coincide con una de esas fichas | **M** |
 | RF-ROB-04 | `robot.json` justifica la elección con datos de `entorno.json` y `tarea.json` (ej.: peso del panel vs carga útil) | **M** |
 | RF-ROB-05 | `robot.json` lista al menos 2 alternativas descartadas con su motivo | **S** |
 | RF-ROB-06 | El catálogo incluye al menos un robot de origen chino comprable en Chile | **S** |
 | RF-ROB-07 | Cada robot del catálogo lista en `normas` las normas de seguridad que declara su fabricante | **C** |
+| RF-ROB-08 | Un perfil de dominio (código, sin LLM) escribe `requisitos.json` desde `entorno.json` y `tarea.json`. La selección lee solo `requisitos.json`. Las reglas solares de hoy forman el perfil `solar` | **S** |
+| RF-ROB-09 | Un paso de búsqueda web, acotado en robots y tiempo, trae fichas de robots reales que no están en el catálogo, con `origen: "busqueda"` y lo no publicado en `estimados`. El código rechaza y registra las fichas inválidas. Si la búsqueda falla, la selección sigue con el catálogo | **S** |
+| RF-ROB-10 | El código descarta cada candidato que no cumple un requisito obligatorio y lista sus fallas en `seleccion.json → descartados` | **S** |
+| RF-ROB-11 | El agente devuelve de 1 a 3 finalistas (`VIAZ_MAX_FINALISTAS`, por defecto 3) y las demás fichas válidas como alternativas con `por_que_no`. Si ninguna pasa las reglas, devuelve un solo finalista y lo dice en la primera oración | **S** |
+| RF-ROB-12 | Para ser finalista, la ficha tiene el núcleo de `fisica`: `largo_m`, `ancho_m`, `masa_kg`, `altura_cubierta_m` y `traccion`. Sin él, el robot queda como alternativa y la web muestra el motivo | **S** |
 
 ### 4.4 Agente constructor del robot en Isaac Lab (`agentes/`, `sim/`)
 
@@ -183,6 +189,8 @@ flowchart LR
 | RF-CLO-07 | Si el agente no logra un robot válido en 3 intentos, el sistema usa el clon determinista de `urdf.py` | **S** |
 | RF-CLO-08 | El agente entrega `robot.urdf` con los mismos joints, para el visor web | **C** |
 | RF-CLO-09 | `validar_robot` graba la construcción de cada intento: la escena vacía, las piezas que aparecen (base, brazo, ventosa) y una prueba de alcance. El runner rotula cada intento, agrega una tarjeta por cada intento rechazado por reglas y los une en `construccion.mp4` | **M** |
+| RF-CLO-10 | `clon.json` declara `fidelidad`: `generico`, `medido` o `verificado` | **S** |
+| RF-CLO-11 | Si el robot tiene un modelo comprobado (pasó `validar_robot` y la rúbrica de calidad) con la misma ficha y el mismo catálogo de assets, el sistema lo reutiliza sin el agente constructor. Siempre corre un chequeo corto en la escena. La política entrenada no se reutiliza | **S** |
 
 ### 4.5 Entrenamiento RL de instalar el panel (`sim/`, pod GPU RTX)
 
@@ -258,6 +266,8 @@ flowchart LR
 | RF-ORQ-03 | Si una salida no valida, el orquestador reintenta la etapa 1 vez. Si falla otra vez, la corrida pasa a `error` | **S** |
 | RF-ORQ-04 | El orquestador repite una sola etapa con los archivos ya guardados | **S** |
 | RF-ORQ-06 | El orquestador registra cada llamada a Claude y al runner: etapa, duración, tokens y resultado | **S** |
+| RF-ORQ-07 | El orquestador corre una corrida hija por finalista con `procesar_rl` y el robot fijo. Todas usan la misma escena, las mismas horas de entrenamiento y las mismas semillas | **S** |
+| RF-ORQ-08 | El código elige el ganador con una regla sobre `evaluacion.json` (primero tasa de éxito, luego tiempo de ciclo) y escribe `comparacion.json`. El LLM solo explica. El resultado muestra la fidelidad de cada clon, avisa si difiere y dice qué no compara la simulación | **S** |
 | RF-API-01 | `POST /proyectos` crea el proyecto y devuelve las URLs firmadas de subida | **C** |
 | RF-API-02 | `POST /proyectos/{id}/corridas` crea una corrida y la encola | **C** |
 
