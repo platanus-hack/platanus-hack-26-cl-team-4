@@ -104,6 +104,20 @@
       "minimum": 0,
       "maximum": 90
     },
+    "ancho_max_m": {
+      "description": "Ancho máximo del robot para pasar por el espacio libre de la tarea (fisica.ancho_m). null u omitido: sin límite.",
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "requiere_modelo_sim": {
+      "description": "true si la simulación de esta tarea solo corre con un modelo del robot publicado para Isaac Lab (robot.json → modelo_sim). Es un límite de VIAZ hoy, no de la tarea.",
+      "type": "boolean"
+    },
+    "capacidades_deseadas": {
+      "description": "Capacidades que la tarea agradece (robot.json → capacidades). Es una preferencia, no un filtro: el agente de selección decide.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "por_robot": {
       "description": "Requisitos que dependen del tamaño de cada robot candidato. Una fila por ficha (catálogo y encontrados).",
       "type": "array",

@@ -55,6 +55,9 @@ PREFERENCIAS: dict[str, Preferencia] = {
     "menos_specs_estimadas": Preferencia("Menos specs en estimados", lambda f, r: len(specs_estimadas(f))),
     "mayor_margen_carga_alcance": Preferencia("Mayor margen de carga útil y de alcance sobre el mínimo", _margen),
     "mayor_velocidad_base": Preferencia("Mayor velocidad de base", lambda f, r: -f["velocidad_base_m_s"]),
+    "capacidades_de_la_tarea": Preferencia(
+        "Más capacidades declaradas por la fuente que la tarea agradece (requisitos.capacidades_deseadas)",
+        lambda f, r: -len(set(f.get("capacidades") or []) & set(r.get("capacidades_deseadas") or []))),
 }
 
 
@@ -94,6 +97,11 @@ def fallas(ficha: dict, requisitos: dict) -> list[str]:
     minimo = alcance_min(ficha, requisitos)
     if minimo is not None and ficha["alcance_m"] < minimo:
         f.append(f"alcance de {ficha['alcance_m']} m menor que el necesario ({minimo} m)")
+    if requisitos.get("requiere_modelo_sim") and not ficha.get("modelo_sim"):
+        f.append("sin modelo publicado para Isaac Lab (modelo_sim): VIAZ todavía no puede simularlo en esta tarea")
+    ancho, maximo = (ficha.get("fisica") or {}).get("ancho_m"), requisitos.get("ancho_max_m")
+    if ancho is not None and maximo is not None and ancho > maximo:
+        f.append(f"ancho de {ancho} m mayor que el espacio libre de la tarea ({maximo} m)")
     return f
 
 

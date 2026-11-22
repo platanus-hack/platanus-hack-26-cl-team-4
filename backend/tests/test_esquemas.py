@@ -170,8 +170,10 @@ def test_medidas_solares_no_se_aplican_a_otro_tipo():
     validar("entorno", sala)
 
 
-def test_orquestador_corta_tipos_sin_pipeline():
+def test_orquestador_corta_las_tareas_sin_perfil_y_deja_pasar_las_que_sirven_en_cualquier_lugar():
     from viaz import orquestador
-    orquestador.exigir_pipeline(_fixture("entorno"))
-    with pytest.raises(agentes.ErrorAgente, match="sala"):
-        orquestador.exigir_pipeline(_fixture("entorno_sala"))
+    orquestador.exigir_pipeline(_fixture("entorno"), _fixture("tarea"))
+    with pytest.raises(agentes.ErrorAgente, match="tomar_y_dejar"):
+        orquestador.exigir_pipeline(_fixture("entorno_sala"), _fixture("tarea_sala"))
+    # animar_evento no pide un tipo de entorno: corre en la sala del pitch y en cualquier otra
+    orquestador.exigir_pipeline(_fixture("entorno_evento"), _fixture("tarea_animar"))

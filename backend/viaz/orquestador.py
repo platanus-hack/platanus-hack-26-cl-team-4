@@ -117,17 +117,25 @@ def elegir_robot(c: Corrida, cfg: Config, entorno: dict, tarea: dict) -> list[di
 
 
 def exigir_pipeline(entorno: dict, tarea: dict | None = None) -> None:
-    """Entorno y Tarea sirven para cualquier espacio y tarea; Robot → Inteligencia todavía solo existe para algunos.
-    Se llama después de escribir tarea.json: la corrida deja entorno.json, escena.usd y tarea.json antes de cortar."""
+    """Entorno y Tarea sirven para cualquier espacio y tarea; Robot → Inteligencia corre solo si la tarea tiene su
+    perfil con simulación (RF-GEN-06). Se llama después de escribir tarea.json: la corrida deja entorno.json,
+    escena.usd y tarea.json antes de cortar."""
+    if agentes.perfiles.simulable(entorno, tarea):
+        return
     listos = "entorno.json, escena.usd" + (" y tarea.json" if tarea else "")
-    if not agentes.perfil_de(entorno["tipo"]).con_simulacion:
+    if tarea is None:
         raise agentes.ErrorAgente(
             f"{listos} listos para '{entorno['tipo']}', pero las etapas siguientes "
             f"solo soportan: {', '.join(agentes.perfiles.tipos_con_simulacion())}")
-    if tarea and not agentes.perfil_de_tarea(tarea["tarea"]).con_simulacion:
+    pt = agentes.perfil_de_tarea(tarea["tarea"])
+    if pt.con_simulacion:
         raise agentes.ErrorAgente(
-            f"{listos} listos para la tarea '{tarea['tarea']}', pero las etapas siguientes "
-            f"solo simulan: {', '.join(agentes.perfiles.tareas_con_simulacion())}")
+            f"{listos} listos, pero la tarea '{tarea['tarea']}' solo se simula en entornos "
+            f"'{pt.entorno_requerido}' y el entorno es '{entorno['tipo']}'")
+    raise agentes.ErrorAgente(
+        f"{listos} listos para la tarea '{tarea['tarea']}', pero las etapas siguientes "
+        f"solo simulan: {', '.join(agentes.perfiles.tareas_con_simulacion())}. "
+        f"Falta el perfil de la tarea '{tarea['tarea']}' (backend/viaz/agentes/perfiles.py y sim/tareas.py)")
 
 
 def tolerancias(tarea: dict) -> tuple[float, float, str]:
@@ -200,12 +208,12 @@ def _manual(ruta: str, fixture: str) -> dict:
 class Vigia:
     """Corre el monitor mientras el pod entrena: lee métricas de la API, escribe monitoreo.jsonl y hitos.json, avisa."""
 
-    def __init__(self, c: Corrida, cfg: Config, etiqueta: str = ""):
-        self.c, self.cfg = c, cfg
+    def __init__(self, c: Corrida, cfg: Config, etiqueta: str = "", tarea: dict | None = None):
+        self.c, self.cfg, self.tarea = c, cfg, tarea
         self.todas: list[dict] = []
         self.chequeos: list[dict] = []
         self.hitos_antes: dict = {}
-        self.avisador = monitor.Avisador(cfg.discord_webhook, etiqueta=etiqueta)
+        self.avisador = monitor.Avisador(cfg.discord_webhook, etiqueta=etiqueta, tarea=tarea)
         self.proximo = time.monotonic() + cfg.monitor_s
 
     def _nuevas(self) -> list[dict]:
@@ -225,7 +233,7 @@ class Vigia:
         if not self.todas:
             return None
         ch = monitor.chequear(self.cfg.agentes, self.cfg.modelo, nuevas, self.todas, self.chequeos,
-                              self.cfg.horas_entrenamiento, self.hitos_antes)
+                              self.cfg.horas_entrenamiento, self.hitos_antes, self.tarea)
         if forzar and ch["estado"] != "terminado":
             ch = {**ch, "estado": "terminado", "hito": "fin", "recomendacion": "detener",
                   "detalle": f"Terminó el entrenamiento. Mejor éxito: {monitor.hitos(self.todas)['mejor_tasa_exito'] or 0:.0%}. "
@@ -266,6 +274,8 @@ def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: 
     """Agente constructor con hasta N intentos (RF-CLO-05). Si no logra un robot válido, usa el ensamblaje
     por defecto, sin LLM (RF-CLO-07). Antes prueba el modelo comprobado de este robot, si existe (RF-CLO-10/11):
     pasa por las mismas reglas y por validar_robot con la escena de esta corrida. Devuelve los artefactos."""
+    if robot.get("modelo_sim"):
+        return construir_desde_modelo(c, robot)
     assets = rc.cargar_assets()
     necesario = agentes.alcance_necesario(entorno, robot)
     clave_modelo = modelos.clave(robot, assets)
@@ -322,6 +332,39 @@ def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: 
     raise agentes.ErrorAgente(f"no se pudo construir un robot válido: {problemas}")
 
 
+def construir_desde_modelo(c: Corrida, robot: dict) -> list[str]:
+    """Clon = el modelo del robot publicado para Isaac Lab (robot.json → modelo_sim). Sin agente constructor ni
+    ensamblaje: el modelo ya trae la cinemática, las masas y los límites del fabricante. Pasa igual por validar_robot
+    en la escena de esta corrida (RF-CLO-05/06), una sola vez: si falla, no hay otro intento que probar."""
+    m = robot["modelo_sim"]
+    modulo, objeto = m["cfg"].split(":")
+    clon = {
+        "version": 1, "robot_id": robot["id"], "usd": m["usd"], "urdf": None, "modelo": m,
+        "escala": {"alcance_m": robot["alcance_m"], "carga_util_kg": robot["carga_util_kg"]},
+        "diferencias_con_real": [
+            f"modelo publicado para Isaac Lab ({m['cfg']}), no medido por VIAZ",
+            "los actuadores son los del modelo de Isaac Lab, no los del firmware del fabricante",
+            *[f"{k}: estimado ({v})" for k, v in (robot.get("estimados") or {}).items()][:3],
+        ],
+        "validado_en_escena": False,
+    }
+    c.escribir("robot_cfg.py", f'"""Clon de {robot['id']}: el modelo publicado en Isaac Lab, sin ensamblaje (robot.json → modelo_sim)."""\n'
+                               f"from {modulo} import {objeto} as ROBOT_CFG  # noqa: F401\n\n"
+                               f"MODELO = {json.dumps(m, ensure_ascii=False)}\n")
+    c.escribir("clon.json", validar("clon", clon))
+    titulo = f"Modelo de Isaac Lab: {robot['nombre']}"
+    c.trabajo_gpu("validar_robot", ["entorno.json", "tarea.json", "escena.usd", "robot_cfg.py", "clon.json"],
+                  ["validacion.json", "construccion.mp4"], {"intento": 1, "etiqueta": titulo, "pieza": m["cfg"],
+                                                            "rechazados": []})
+    v = c.leer_json("validacion.json")
+    if not v.get("ok"):
+        raise agentes.ErrorAgente(f"el modelo {m['cfg']} no pasó validar_robot: {v.get('problemas')}")
+    clon["validado_en_escena"] = True
+    c.escribir("clon.json", validar("clon", clon))
+    log.info("corrida %s: robot desde el modelo de Isaac Lab %s", c.id, m["cfg"])
+    return ["robot_cfg.py", "clon.json", "validacion.json"] + (["construccion.mp4"] if c.existe("construccion.mp4") else [])
+
+
 def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     c = Corrida(cfg, eng, store, fila)
     with eng.connect() as cx:
@@ -369,7 +412,7 @@ def entrenar_y_evaluar(c: Corrida, cfg: Config, robot: dict, entorno: dict, tare
 
     # 5. Entrenamiento (con el monitor), clips y evaluación
     c.etapa("inteligencia", "en_curso", estado_corrida="entrenando")
-    vigia = Vigia(c, cfg, etiqueta)
+    vigia = Vigia(c, cfg, etiqueta, tarea)
     latido_s = max(1.0, min(300.0, cfg.monitor_s / 2))
     c.trabajo_gpu("entrenar", ENTRADAS_RL, ["curva.json", "checkpoints.json"],
                   {"horas": cfg.horas_entrenamiento, "tolerancia_pos_m": tol_pos, "tolerancia_ang_grados": tol_ang, "latido_s": latido_s},

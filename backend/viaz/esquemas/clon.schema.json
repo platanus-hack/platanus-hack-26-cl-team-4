@@ -8,9 +8,7 @@
     "robot_id",
     "usd",
     "urdf",
-    "piezas",
     "escala",
-    "geometria",
     "diferencias_con_real",
     "validado_en_escena"
   ],
@@ -28,7 +26,19 @@
       ]
     },
     "urdf": {
-      "type": "string"
+      "description": "robot.urdf del clon. null si el clon es un modelo del fabricante sin URDF propio.",
+      "type": ["string", "null"]
+    },
+    "modelo": {
+      "description": "Clon que es el modelo publicado del robot para Isaac Lab (fabricante o NVIDIA), en vez de un ensamblaje de piezas. Sin piezas ni geometría de brazo.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fuente", "cfg", "usd"],
+      "properties": {
+        "fuente": { "enum": ["isaac_lab"] },
+        "cfg": { "type": "string", "description": "módulo:objeto del ArticulationCfg (ej.: isaaclab_assets.robots.unitree:H1_CFG)" },
+        "usd": { "type": "string", "description": "Ruta del USD en los assets de Isaac (Isaac/...)" }
+      }
     },
     "piezas": {
       "type": "object",
@@ -160,5 +170,7 @@
         }
       }
     }
-  }
+  },
+  "if": { "not": { "required": ["modelo"] } },
+  "then": { "required": ["piezas", "geometria"] }
 }

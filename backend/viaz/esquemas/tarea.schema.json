@@ -86,6 +86,34 @@
         }
       }
     },
+    "animacion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["puntos", "coreografia", "velocidad_m_s", "distancia_publico_m"],
+      "description": "Perfil animar_evento. El robot camina por los puntos en orden y en cada uno hace la coreografía. Coordenadas en el marco de entorno.json: origen en una esquina, a nivel del suelo.",
+      "properties": {
+        "puntos": {
+          "type": "array", "minItems": 1, "maxItems": 20,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["nombre", "x_m", "y_m"],
+            "properties": { "nombre": { "type": "string" }, "x_m": { "type": "number" }, "y_m": { "type": "number" } }
+          }
+        },
+        "coreografia": {
+          "type": "array", "minItems": 1, "maxItems": 40,
+          "description": "Pasos que se repiten en cada punto. La política de caminata los ejecuta como comandos de velocidad.",
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["movimiento", "duracion_s"],
+            "properties": {
+              "movimiento": { "enum": ["avanzar", "retroceder", "lateral_izq", "lateral_der", "girar_izq", "girar_der", "quieto"] },
+              "duracion_s": { "type": "number", "minimum": 0.2, "maximum": 20 }
+            }
+          }
+        },
+        "velocidad_m_s": { "type": ["number", "null"], "minimum": 0.1, "maximum": 1.5, "description": "Velocidad de caminata entre puntos. null: 0,6 m/s." },
+        "distancia_publico_m": { "type": ["number", "null"], "minimum": 0, "maximum": 10, "description": "Distancia mínima a sillas, mesas y paredes. null: 0,5 m." }
+      }
+    },
     "pila_paneles": {
       "type": "object",
       "additionalProperties": false,
@@ -128,7 +156,16 @@
       }
     }
   },
-  "if": { "properties": { "tarea": { "const": "instalar_panel" } } },
-  "then": { "required": ["pila_paneles"] },
-  "else": { "not": { "required": ["pila_paneles"] } }
+  "allOf": [
+    {
+      "if": { "properties": { "tarea": { "const": "instalar_panel" } } },
+      "then": { "required": ["pila_paneles"] },
+      "else": { "not": { "required": ["pila_paneles"] } }
+    },
+    {
+      "if": { "properties": { "tarea": { "const": "animar_evento" } } },
+      "then": { "required": ["animacion"] },
+      "else": { "not": { "required": ["animacion"] } }
+    }
+  ]
 }

@@ -13,6 +13,11 @@
     "url": "https://www.unitree.com/h1",
     "consultado": "2026-11-21"
   },
+  "modelo_sim": {
+    "fuente": "isaac_lab",
+    "cfg": "isaaclab_assets.robots.unitree:H1_CFG",
+    "usd": "Isaac/IsaacLab/Robots/Unitree/H1/h1.usd"
+  },
   "capacidades": ["caminar", "transportar"],
   "evidencia": {
     "tipo": {

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "tarea": "animar_evento",
+  "descripcion": "Un humanoide recorre la sala desde el frente de la tarima hasta la zona libre del ventanal y en cada parada baila una coreografía corta para el público",
+  "proposito": "Animar la fiesta del evento sin chocar con las sillas, la tarima ni las personas",
+  "pedido": {
+    "origen": "cliente",
+    "preguntas": []
+  },
+  "objeto": { "elemento": null, "descripcion": "el público del evento: no se manipula", "masa_kg": null },
+  "origen": { "elemento": null, "descripcion": "frente a la tarima, entre la tarima y la primera fila", "altura_m": null },
+  "destino": { "elemento": null, "descripcion": "zona libre frente al ventanal", "altura_m": null },
+  "objetivo": { "cantidad": 1, "ciclo_s": 90 },
+  "criterios_exito": { "tolerancia_pos_m": 0.5, "tolerancia_ang_grados": 30, "sin_choques": true, "tiempo_max_s": 180 },
+  "restricciones": [
+    { "tipo": "no_chocar", "valor": null, "detalle": "no tocar sillas, tarima, graderías ni personas" },
+    { "tipo": "distancia_personas_m", "valor": 0.5, "detalle": "mantener medio metro de las sillas, donde está el público" },
+    { "tipo": "velocidad_max_m_s", "valor": 1.0, "detalle": "caminar a paso tranquilo dentro de una sala con gente" }
+  ],
+  "animacion": {
+    "puntos": [
+      { "nombre": "frente_tarima", "x_m": 4.0, "y_m": 6.0 },
+      { "nombre": "esquina_pasillo", "x_m": 4.0, "y_m": 1.3 },
+      { "nombre": "fin_pasillo", "x_m": 12.8, "y_m": 1.3 },
+      { "nombre": "pista", "x_m": 14.5, "y_m": 6.0 }
+    ],
+    "coreografia": [
+      { "movimiento": "girar_izq", "duracion_s": 2.0 },
+      { "movimiento": "lateral_der", "duracion_s": 1.5 },
+      { "movimiento": "lateral_izq", "duracion_s": 1.5 },
+      { "movimiento": "girar_der", "duracion_s": 2.0 },
+      { "movimiento": "quieto", "duracion_s": 1.0 }
+    ],
+    "velocidad_m_s": 0.6,
+    "distancia_publico_m": 0.5
+  }
+}

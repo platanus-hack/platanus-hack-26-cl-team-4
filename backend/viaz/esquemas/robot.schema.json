@@ -114,6 +114,17 @@
         "busqueda"
       ]
     },
+    "modelo_sim": {
+      "description": "Modelo del robot publicado para Isaac Lab (fabricante o NVIDIA). Si existe, el clon lo usa y no pasa por el agente constructor.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fuente", "cfg", "usd"],
+      "properties": {
+        "fuente": { "enum": ["isaac_lab"] },
+        "cfg": { "type": "string" },
+        "usd": { "type": "string" }
+      }
+    },
     "capacidades": {
       "description": "Tareas que el robot hace según su fuente (por ejemplo, instalar_panel).",
       "type": "array",

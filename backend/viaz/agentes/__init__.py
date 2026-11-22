@@ -178,7 +178,7 @@ def esquema_agente_tarea() -> dict:
     """Lo que devuelve el modelo: tarea.json sin `version`. Los perfiles van siempre, pero aceptan null.
     Sin if/then/else: la API no los acepta; la regla de perfiles se valida en local."""
     esq = sin_campos(esquema("tarea"), ["version", *CAMPOS_DEL_CODIGO])
-    for k in ("if", "then", "else", "$defs"):
+    for k in ("if", "then", "else", "allOf", "$defs"):
         esq.pop(k, None)
     for perfil in PERFILES_TAREA.values():
         for c in perfil.bloques_propios:
@@ -253,6 +253,9 @@ def problemas_tarea(t: dict, entorno_json: dict) -> list[str]:
     if "pila_paneles" in t and t["objetivo"]["cantidad"] > t["pila_paneles"]["cantidad"]:
         problemas.append(f"objetivo.cantidad ({t['objetivo']['cantidad']}) es mayor que la pila "
                          f"({t['pila_paneles']['cantidad']})")
+    propias = perfil_de_tarea(tipo).problemas
+    if propias is not None:
+        problemas += propias(t, entorno_json)
     tmax = t["criterios_exito"]["tiempo_max_s"]
     if tmax is not None and tmax < t["objetivo"]["ciclo_s"]:
         problemas.append(f"criterios_exito.tiempo_max_s ({tmax}) es menor que objetivo.ciclo_s ({t['objetivo']['ciclo_s']})")

@@ -139,8 +139,24 @@ def esquema_agente() -> dict:
     return esq
 
 
+def meta_de(tarea: dict | None) -> str:
+    """La meta de la corrida en una línea, desde tarea.json (RF-MON-11). Sin tarea: la del caso de referencia 1."""
+    if not tarea:
+        return "instalar_panel: 90 % de éxito a 5 cm y 5°"
+    ce = tarea["criterios_exito"]
+    return (f"{tarea['tarea']} ({tarea['descripcion']}): 90 % de éxito a {ce['tolerancia_pos_m'] * 100:g} cm y "
+            f"{ce['tolerancia_ang_grados']:g}°")
+
+
+def tolerancia_de(tarea: dict | None) -> str:
+    if not tarea:
+        return "5 cm, 5°"
+    ce = tarea["criterios_exito"]
+    return f"{ce['tolerancia_pos_m'] * 100:g} cm, {ce['tolerancia_ang_grados']:g}°"
+
+
 def chequear(modo: str, modelo: str, nuevas: list[dict], todas: list[dict], previos: list[dict], horas_max: float,
-             hitos_antes: dict | None = None) -> dict:
+             hitos_antes: dict | None = None, tarea: dict | None = None) -> dict:
     """Un chequeo. En modo claude, si Claude falla, usa las reglas: el monitor nunca frena el entrenamiento."""
     reglas = chequeo_reglas(nuevas, todas, previos, horas_max, hitos_antes)
     if modo != "claude" or reglas["estado"] == "divergiendo" and "NaN" in reglas["detalle"]:
@@ -148,7 +164,7 @@ def chequear(modo: str, modelo: str, nuevas: list[dict], todas: list[dict], prev
     try:
         from .agentes.base import pedir_json
         from .agentes import _prompt
-        texto = (f"Meta: 90 % de éxito a 5 cm y 5°. Tiempo máximo: {horas_max} h.\n"
+        texto = (f"Tarea y meta: {meta_de(tarea)}. Tiempo máximo: {horas_max} h.\n"
                  f"Métricas nuevas ({len(nuevas)} iteraciones):\n{json.dumps(nuevas[-200:], ensure_ascii=False)}\n\n"
                  f"Chequeos anteriores:\n{json.dumps(previos[-5:], ensure_ascii=False)}\n\n"
                  f"Hitos calculados por el sistema: {json.dumps(hitos(todas), ensure_ascii=False)}\n"
@@ -173,6 +189,7 @@ class Avisador:
     ultimo: dict[str, float] = field(default_factory=dict)
     enviados: list[str] = field(default_factory=list)  # para tests y registro
     etiqueta: str = ""
+    tarea: dict | None = None
 
     def tipo_de(self, c: dict) -> str | None:
         if c["estado"] == "divergiendo":
@@ -189,14 +206,14 @@ class Avisador:
         tipo = self.tipo_de(c) or "hito"
         e = c["evidencia"]
         titulo = {"hito": f"HITO: {c['hito']}", "fin": "FIN DEL ENTRENAMIENTO"}.get(tipo, c["estado"].upper())
-        lineas = [f"{EMOJI[tipo]} VIAZ · entrenamiento instalar_panel · {titulo}"
+        lineas = [f"{EMOJI[tipo]} VIAZ · entrenamiento {(self.tarea or {}).get('tarea', 'instalar_panel')} · {titulo}"
                   + (f" · {self.etiqueta}" if self.etiqueta else ""),
                   f"Iteración {c['iteracion']} · {e['tiempo_usado_h']} h de {horas_max} h"]
         if e["recompensa_media"] is not None:
             lineas.append(f"Recompensa media: {e['recompensa_media']:.1f}"
                           + (f" ({e['tendencia_recompensa']:+.0%} en la ventana)" if e["tendencia_recompensa"] is not None else ""))
         if e["tasa_exito"] is not None:
-            lineas.append(f"Tasa de éxito (5 cm, 5°): {e['tasa_exito']:.0%}")
+            lineas.append(f"Tasa de éxito ({tolerancia_de(self.tarea)}): {e['tasa_exito']:.0%}")
         lineas.append(c["detalle"])
         if c["recomendacion"] in ("ajustar", "detener") and tipo != "nan":
             lineas.append(f"Recomendación: {c['recomendacion']}"
