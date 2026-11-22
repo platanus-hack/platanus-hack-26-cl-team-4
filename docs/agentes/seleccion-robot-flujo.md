@@ -84,11 +84,12 @@ flowchart TD
 | Decisión | Quién decide | Por qué |
 |---|---|---|
 | ¿Cumple los requisitos obligatorios? | Código | Es una comparación de números. Se puede probar |
-| ¿Tiene el núcleo de `fisica`? | Código | Sin largo, ancho, masa, altura de cubierta y tracción, el clon sería una caja genérica |
+| ¿Tiene el núcleo de `fisica`? | Código | Sin largo, ancho, masa, altura de cubierta y tracción, el clon usa la base genérica. Por eso un candidato con núcleo va antes que uno sin núcleo |
 | Orden entre los que pasan | Agente | Pesa margen, ritmo y datos estimados. Es un juicio |
 | Tope de 3 | Código | Cada finalista cuesta un entrenamiento completo |
 
 - Si ningún candidato cumple los requisitos obligatorios, pasa uno solo: el que falla menos. La justificación lo dice en la primera oración.
+- Si algunos cumplen pero ninguno tiene el núcleo de `fisica`, pasa uno solo: el primero por las preferencias. El clon usa la base genérica y la justificación lo dice en la primera oración. Los demás quedan como alternativas. Así un dominio nuevo, sin robots medidos, igual corre.
 - **Llega en:** PR 2.
 
 ## 5. Cada finalista hace el recorrido completo

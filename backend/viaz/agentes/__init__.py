@@ -8,12 +8,15 @@ from __future__ import annotations
 import base64
 import copy
 import json
-import math
 from pathlib import Path
+from typing import NamedTuple
 
 from .. import geometria, urdf
+from ..config import TOPE_FINALISTAS, validar_max_finalistas
 from ..esquemas import esquema, sin_campos
+from . import perfiles, seleccion
 from .base import ErrorAgente, frames_de_videos, pedir_json, validado
+from .perfiles import alcance_necesario
 
 FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 PROMPTS = Path(__file__).resolve().parent / "prompts"
@@ -316,95 +319,66 @@ def tarea(modo: str, modelo: str, proyecto: dict, entorno_json: dict, frames: li
     raise ErrorAgente("tarea.json no calza con entorno.json: " + "; ".join(problemas))
 
 
-# ---------- 3. Robot ----------
+# ---------- 3. Selección de robot (contrato v3: docs/agentes/seleccion-robot.md) ----------
 
 SISTEMA_ROBOT = _prompt("robot")
 
 
-def alcance_necesario(entorno_json: dict, robot_json: dict | None = None) -> float:
-    """Alcance mínimo (m) para dejar un panel sobre el tubo de la fila 0 desde el pasillo.
-    Misma geometría que urdf.py y sim/plan.py: hombro sobre la base, muñeca de largo fijo.
-    Depende del robot: un vehículo más ancho queda más lejos del tubo y uno más alto sube el hombro."""
-    v = urdf.vehiculo((robot_json or {}).get("fisica"))
-    hombro_z = v.cubierta_z + urdf.HOMBRO_ALTO
-    muneca = sum(urdf.MUNECA)
-    d = entorno_json["panel"]["largo_m"] / 2 + v.ancho / 2 + 0.06   # sim/plan.py: distancia_pasillo
-    dz = entorno_json["estructura"]["altura_m"] + 0.05 + 0.04 + muneca - hombro_z  # tubo + panel + muñeca
-    return round(math.ceil((math.hypot(d, dz) + muneca) * 100) / 100 + 0.05, 2)  # +5 cm de margen: justo en el límite, la IK falla
+class Seleccion(NamedTuple):
+    requisitos: dict
+    seleccion: dict
+    robots_por_puesto: list[dict]
 
 
-def _specs_estimadas(r: dict) -> list[str]:
-    """Specs de selección que el fabricante no publica. Las medidas `fisica.*` son del clon, no de la selección."""
-    return [k for k in r.get("estimados", {}) if not k.startswith("fisica.")]
+def _candidato_para_el_modelo(ficha: dict, requisitos: dict) -> dict:
+    return {**ficha, "alcance_min_m": seleccion.alcance_min(ficha, requisitos),
+            "tiene_nucleo_fisica": seleccion.tiene_nucleo(ficha), "specs_estimadas": seleccion.specs_estimadas(ficha)}
 
 
-def _fallas(r: dict, entorno_json: dict) -> list[str]:
-    """Criterios obligatorios del prompt de selección (prompts/robot.md)."""
-    f = []
-    necesario = alcance_necesario(entorno_json, r)
-    if r["carga_util_kg"] < entorno_json["panel"]["peso_kg"]:
-        f.append(f"carga útil de {r['carga_util_kg']} kg menor que el panel ({entorno_json['panel']['peso_kg']} kg)")
-    if r["efector"] != "ventosa":
-        f.append("no usa ventosa")
-    if r["alcance_m"] < necesario:
-        f.append(f"alcance de {r['alcance_m']} m menor que el necesario ({necesario} m)")
-    if r["tipo"] == "brazo_fijo":
-        f.append("brazo fijo: no se desplaza por el parque")
-    if entorno_json["terreno"]["pendiente_grados"] > 10 and r["tipo"] != "vehiculo_con_brazo":
-        f.append("la pendiente pide un vehículo con brazo")
-    return f
+def _texto_seleccion(requisitos: dict, tope: int, candidatos: list[dict], titulo: str) -> str:
+    return (f"requisitos.json:\n{json.dumps(requisitos, ensure_ascii=False)}\n\n"
+            f"Tope de finalistas: {tope}\n\n"
+            f"{titulo}:\n{json.dumps([_candidato_para_el_modelo(f, requisitos) for f in candidatos], ensure_ascii=False)}")
 
 
-def eleccion_por_reglas(entorno_json: dict, catalogo: dict[str, dict]) -> dict:
-    """Modo fijo (sin LLM): mismos criterios del prompt, en el mismo orden. Determinista."""
-    def clave(r):
-        return (len(_fallas(r, entorno_json)), r["ficticio"], len(_specs_estimadas(r)),
-                -min(r["carga_util_kg"] / entorno_json["panel"]["peso_kg"], 3), -r["alcance_m"])
-    orden = sorted(catalogo.values(), key=clave)
-    r = orden[0]
-    fallas, necesario = _fallas(r, entorno_json), alcance_necesario(entorno_json, r)
-    partes = [f"{r['nombre']} carga {r['carga_util_kg']} kg y el panel pesa {entorno_json['panel']['peso_kg']} kg",
-              f"su alcance de {r['alcance_m']} m cubre los {necesario} m necesarios para dejar el panel sobre el tubo"
-              if r["alcance_m"] >= necesario else f"su alcance de {r['alcance_m']} m no cubre los {necesario} m necesarios"]
-    texto = ("No hay un robot que cumpla todo: " + "; ".join(fallas) + ". " if fallas else "") + \
-        ("Lo elegimos porque " + " y ".join(partes) + ".")
-    if _specs_estimadas(r):
-        texto += f" Ojo: el fabricante no publica {', '.join(_specs_estimadas(r))}; esos valores son estimaciones."
-    if r["ficticio"]:
-        texto += " Es un robot de referencia ficticio."
-    alternativas = []
-    for o in orden[1:]:
-        f = _fallas(o, entorno_json)
-        motivo = ("; ".join(f) if f else "ficticio" if o["ficticio"] else
-                  f"specs estimadas ({', '.join(_specs_estimadas(o))})" if _specs_estimadas(o) else "menor margen de carga y alcance")
-        alternativas.append({"id": o["id"], "por_que_no": motivo})
-    return {"id": r["id"], "justificacion": texto + " (Elección por reglas, sin LLM.)", "alternativas": alternativas}
+def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], tope: int) -> dict:
+    pasan, descartados = seleccion.particion(fichas, requisitos)
+    if not pasan:
+        elegido = seleccion.menos_fallas(fichas, requisitos)
+        texto = _texto_seleccion(requisitos, tope, [elegido],
+                                 "Ningún candidato pasó el descarte. Candidato elegido por el código, "
+                                 f"con sus fallas {seleccion.fallas(elegido, requisitos)}")
+        datos = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.ESQUEMA_JUSTIFICACION,
+                           contenido=[{"type": "text", "text": texto}])
+        return seleccion.armar([{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
+                               [], descartados)
+    orden = seleccion.ordenadas(pasan, requisitos)
+    if not any(seleccion.tiene_nucleo(f) for f in orden):
+        elegido = orden[0]
+        texto = _texto_seleccion(requisitos, tope, [elegido],
+                                 "Ningún candidato que pasó el descarte tiene el núcleo de fisica. Candidato "
+                                 "elegido por el código, el primero por las preferencias; el clon usa la base genérica")
+        datos = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.ESQUEMA_JUSTIFICACION,
+                           contenido=[{"type": "text", "text": texto}])
+        return seleccion.armar([{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
+                               seleccion.alternativas_sin_nucleo(orden, elegido), descartados)
+    texto = _texto_seleccion(requisitos, tope, orden, "Candidatos que pasaron el descarte por reglas, "
+                                                      "ordenados por las preferencias")
+    eleccion = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.esquema_eleccion([f["id"] for f in orden]),
+                          contenido=[{"type": "text", "text": texto}])
+    seleccion.comprobar(eleccion, pasan, tope)
+    return seleccion.armar(eleccion["finalistas"], eleccion["alternativas"], descartados)
 
 
-def robot(modo: str, modelo: str, entorno_json: dict, tarea_json: dict, catalogo: dict[str, dict]) -> dict:
-    ids = list(catalogo)
-    if modo == "fijo":
-        eleccion = eleccion_por_reglas(entorno_json, catalogo)
-    else:
-        esq = {
-            "type": "object", "additionalProperties": False, "required": ["id", "justificacion", "alternativas"],
-            "properties": {
-                "id": {"enum": ids},
-                "justificacion": {"type": "string"},
-                "alternativas": esquema("robot")["properties"]["alternativas"],
-            },
-        }
-        texto = (f"entorno.json:\n{json.dumps(entorno_json, ensure_ascii=False)}\n\n"
-                 f"tarea.json:\n{json.dumps(tarea_json, ensure_ascii=False)}\n\n"
-                 f"Catálogo:\n{json.dumps([{**r, 'alcance_necesario_m': alcance_necesario(entorno_json, r)} for r in catalogo.values()], ensure_ascii=False)}")
-        eleccion = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=esq,
-                              contenido=[{"type": "text", "text": texto}])
-    if eleccion["id"] not in catalogo:
-        raise ErrorAgente(f"el agente eligió un robot fuera del catálogo: {eleccion['id']}")
-    # Las specs salen siempre del catálogo, nunca del modelo.
-    datos = {**copy.deepcopy(catalogo[eleccion["id"]]),
-             "justificacion": eleccion["justificacion"], "alternativas": eleccion["alternativas"]}
-    return validado("robot", datos)
+def seleccionar(modo: str, modelo: str, entorno_json: dict, tarea_json: dict, catalogo: dict[str, dict],
+                max_finalistas: int = TOPE_FINALISTAS) -> Seleccion:
+    """Pasos 1, 3 y 4: requisitos, descarte por reglas y 1 a max_finalistas finalistas, cada uno con su robot.json."""
+    tope = validar_max_finalistas(max_finalistas)
+    fichas = list(catalogo.values())
+    req = perfiles.requisitos(entorno_json, tarea_json, fichas)
+    sel = (seleccion.por_reglas(req, fichas, tope) if modo == "fijo"
+           else _seleccion_con_modelo(modelo, req, fichas, tope))
+    return Seleccion(req, sel, seleccion.robots_finalistas(sel, catalogo))
 
 
 # ---------- 4. Clon ----------
@@ -469,4 +443,5 @@ def constructor(modo: str, modelo: str, robot_json: dict, entorno_json: dict, ta
     return validado("ensamblaje", datos)
 
 
-__all__ = ["ErrorAgente", "entorno", "tarea", "robot", "clon", "constructor", "frames_de_videos"]
+__all__ = ["ErrorAgente", "Seleccion", "alcance_necesario", "clon", "constructor", "entorno", "frames_de_videos",
+           "seleccionar", "tarea"]

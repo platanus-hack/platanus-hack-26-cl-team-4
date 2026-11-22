@@ -10,11 +10,25 @@
   "velocidad_base_m_s": 1.11,
   "efector": "ventosa",
   "fuente": {
-    "url": "https://www.accessnewswire.com/newsroom/en/electronics-and-engineering/relu-robotics-deploys-aipowered-photovoltaic-installation-robot-in-alg-1191828",
+    "url": "https://www.pv-magazine.com/2026/07/17/ai-powered-9-ton-tracked-robot-for-large-scale-pv-construction/",
     "consultado": "2026-11-21"
   },
+  "fisica": {
+    "largo_m": 5.2,
+    "ancho_m": 2.1,
+    "masa_kg": 9000,
+    "traccion": "orugas",
+    "altura_cubierta_m": 0.6,
+    "brazo_x_m": -1.0,
+    "gabinete_largo_m": 1.1,
+    "gabinete_alto_m": 1.1
+  },
   "estimados": {
-    "efector": "La nota de prensa no nombra el efector; los robots de instalación de módulos usan ventosas.",
-    "alcance_m": "La nota dice 'más de 5 m'; usamos 5,0 m."
+    "efector": "El texto no lo nombra. Las fotos de Relu muestran un marco con ventosas.",
+    "alcance_m": "La nota dice 'más de 5 m'; usamos 5,0 m.",
+    "fisica.altura_cubierta_m": "No publicada. Medida en la foto trasera de Relu (pv magazine, 2026-07-17), con el ancho de 2,1 m como escala: 0,6 m ± 0,2 m.",
+    "fisica.brazo_x_m": "No publicado. Medido en la foto lateral de Relu, con el largo de 5,2 m como escala: el pedestal del brazo va a 1,0 m ± 0,5 m del centro, hacia el gabinete. El clon pone el gabinete atrás (x negativo), por eso el valor es −1,0.",
+    "fisica.gabinete": "No publicado. Medido en las fotos de Relu: caja de 1,1 m ± 0,4 m de largo y 1,1 m ± 0,3 m sobre la cubierta.",
+    "fisica.pila": "No publicada. Las fotos muestran dos rumas de módulos en pallets en el extremo contrario al gabinete, sin remolque. Sin `pila_x_m`, el clon pone la pila sobre la cubierta, entre el brazo y ese extremo (0,8 m adelante del centro)."
   }
 }

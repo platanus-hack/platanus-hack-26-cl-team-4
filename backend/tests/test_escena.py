@@ -27,7 +27,7 @@ def entorno():
 @pytest.fixture
 def clon(entorno):
     t = json.loads((agentes.FIXTURES / "tarea.json").read_text(encoding="utf-8"))
-    return agentes.clon(agentes.robot("fijo", "x", entorno, t, catalogo.cargar()))[0]
+    return agentes.clon(agentes.seleccionar("fijo", "x", entorno, t, catalogo.cargar()).robots_por_puesto[0])[0]
 
 
 def test_escena_estatica_tiene_friccion_y_no_tiene_masa(entorno):
