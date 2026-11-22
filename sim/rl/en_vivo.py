@@ -164,6 +164,7 @@ def alargar_fila(a) -> dict:
         postes = [c for n, c in fijos.items() if n.startswith("Fila0_Poste") and c["centro"][0] <= tramo + 1e-6]
         d["postes"] = [{"nombre": f"poste_{j}", "tam_m": c["tam"], "pos_m": c["centro"], "material": fisica.material("acero")}
                        for j, c in enumerate(postes)]
+        viaz_escena.poner_rieles(d, ent)   # rieles para todos los slots del tramo largo
         return d
 
     viaz_escena.describir_entrenamiento = describir

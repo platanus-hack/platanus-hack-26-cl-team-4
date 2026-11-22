@@ -134,11 +134,13 @@ def describir_entrenamiento(entorno: dict, paneles_en_pila: int, clon: dict | No
     soporte = soporte_pila(entorno, clon["geometria"] if clon else None)
     pila = _pila(entorno, soporte, paneles_en_pila)
     arriba = pila.pop()
-    return {
+    desc = {
         "dt_s": fisica.DT_S,
         "decimacion": fisica.RENDER_CADA,
         "tramo_m": tramo,
         "suelo": fisica.material_suelo(entorno),
+        # "tubo" es la superficie de apoyo de los paneles: tarea.py lee su cara de arriba (altura de traslado y
+        # margen de la base). Con rieles, esa cara la forman los rieles; el tubo físico va más abajo (tubo_fisico).
         "tubo": {"nombre": "tubo", "tam_m": (tramo, *tubo["tam"][1:]), "pos_m": (tramo / 2, *tubo["centro"][1:]),
                  "material": fisica.material("acero")},
         "postes": [{"nombre": f"poste_{j}", "tam_m": c["tam"], "pos_m": c["centro"], "material": fisica.material("acero")}
@@ -148,6 +150,43 @@ def describir_entrenamiento(entorno: dict, paneles_en_pila: int, clon: dict | No
         "panel": _panel("panel", entorno, arriba["pos_inicial_m"], (slot[0], slot[1], altura_reposo_panel(entorno))),
         "variaciones": fisica.rangos_variacion(entorno),
     }
+    poner_rieles(desc, entorno)
+    return desc
+
+
+def poner_rieles(desc: dict, entorno: dict) -> None:
+    """Rieles de módulo bajo cada slot del tramo, como en un tracker real (fisica.RIELES).
+
+    El panel deja de apoyarse balanceado en un tubo de 10 cm: lo sostienen dos rieles que cruzan el tubo.
+    Dos modos (fisica.RIELES["bajo_tubo_m"]):
+    - 0: la cara de los rieles queda donde estaba la del tubo; el tubo físico y los postes bajan lo que miden los
+      rieles. Es la geometría real, pero el panel aterriza distinto de como aprendió la política (medido: 17 cm de error).
+    - > 0: el tubo queda donde estaba y la cara de los rieles, esos metros más abajo. El panel toca primero el tubo,
+      como en el entrenamiento, y los rieles lo sostienen apenas se inclina: ya no queda balanceado.
+    En los dos, el panel termina a la misma altura. Sin rieles (VIAZ_RIELES=0): desc queda como antes.
+    """
+    r = fisica.RIELES
+    desc["rieles"], desc["tubo_fisico"] = [], None
+    if not r["activos"]:
+        return
+    t, alto, bajo = desc["tubo"], r["alto_m"], r["bajo_tubo_m"]
+    arriba_tubo = t["pos_m"][2] + t["tam_m"][2] / 2
+    if bajo <= 0:
+        desc["tubo_fisico"] = {**t, "nombre": "tubo", "pos_m": (t["pos_m"][0], t["pos_m"][1], t["pos_m"][2] - alto)}
+        for p in desc["postes"]:
+            lado_x, lado_y, h = p["tam_m"]
+            p["tam_m"] = (lado_x, lado_y, h - alto)
+            p["pos_m"] = (p["pos_m"][0], p["pos_m"][1], (h - alto) / 2)
+    panel = entorno["panel"]
+    largo = panel["largo_m"] * r["largo_rel"]
+    z = arriba_tubo - max(bajo, 0.0) - alto / 2
+    medio = panel["ancho_m"] / 2
+    slots = [s for s in plan.slots(entorno, plan.caben(entorno)) if s[0] + medio <= desc["tramo_m"] + 1e-9]
+    for k, s in enumerate(slots):
+        for lado, signo in (("a", -1), ("b", 1)):
+            desc["rieles"].append({"nombre": f"riel_{k}{lado}", "tam_m": (r["ancho_m"], largo, alto),
+                                   "pos_m": (s[0] + signo * (medio - r["borde_m"]), t["pos_m"][1], z),
+                                   "material": fisica.material("acero")})
 
 
 def camara_demo(entorno: dict) -> dict:
@@ -471,7 +510,7 @@ def construir_cfg_entrenamiento(desc: dict, num_envs: int, env_spacing: float = 
     sol, cielo = generar_escena.SOL, generar_escena.CIELO
     lado = (math.ceil(math.sqrt(num_envs)) + 2) * env_spacing
     suelo = {"tam_m": (lado, lado, 0.1), "pos_m": (0.0, 0.0, -0.05), "material": desc["suelo"]}
-    t = desc["tubo"]
+    t = desc.get("tubo_fisico") or desc["tubo"]     # con rieles, el tubo físico va más abajo (poner_rieles)
     # Con texturas el llano (visual, sin colisión) es el único suelo que se ve, a ras del físico: igual que el demo.
     domo = (sim_utils.DomeLightCfg(intensity=cielo["intensidad"], color=(1.0, 1.0, 1.0),
                                    texture_file=str(carpeta / "cielo.png"), texture_format="latlong")
@@ -496,6 +535,10 @@ def construir_cfg_entrenamiento(desc: dict, num_envs: int, env_spacing: float = 
     for c in desc["postes"]:
         setattr(cfg, c["nombre"], _fijo_cfg(f"{{ENV_REGEX_NS}}/{c['nombre'].capitalize()}", c, generar_escena.COLOR_POSTE,
                                             aspecto="poste", carpeta=carpeta))
+    for r in desc.get("rieles", []):
+        # Fijos (sin cuerpo rígido): solo colisión. Baratos aunque sean 8 a 12 por copia.
+        setattr(cfg, r["nombre"], _fijo_cfg(f"{{ENV_REGEX_NS}}/{r['nombre'].capitalize()}", r, generar_escena.COLOR_TUBO,
+                                            aspecto="tubo", carpeta=carpeta))
     for p in desc["pila"]:
         # Todos llevan vidrio: en la secuencia de paneles (RF-INT-18) cada uno queda arriba de la pila o instalado.
         setattr(cfg, p["nombre"], _panel_cfg(f"{{ENV_REGEX_NS}}/{p['nombre'].capitalize()}", p, carpeta, vidrio=True))

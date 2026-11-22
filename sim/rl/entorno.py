@@ -88,13 +88,18 @@ class InstalarPanelCfg(DirectRLEnvCfg):
     # Modo secuencia: después de un éxito la base avanza y la misma copia instala el panel siguiente.
     secuencia: bool = False
     # En modo secuencia, el panel instalado se fija en su slot (lo alinean y aprietan las grapas). False: queda donde cayó.
+    # Con `grapas` no se teletransporta: queda donde lo dejó la política, unido al tubo con una unión fija.
     fijar_instalados: bool = True
+    grapas: bool = fisica.GRAPAS
+    # Ráfaga de viento sobre el panel que se maneja: velocidad máxima en m/s (0 = sin viento). Una por episodio.
+    viento_m_s: float = fisica.VIENTO_ENTRENAMIENTO_M_S
 
 
 def crear_cfg(entorno_json: str, tarea_json: str, robot_cfg: str, num_envs: int, device: str = "cuda:0",
               tolerancia_pos_m: float = 0.05, tolerancia_ang_grados: float = 5.0, asistido: float = 0.0,
               variar: bool = True, en_pila: int | None = None, agarre: str = "union", paneles: int = 1,
-              secuencia: bool = False, fijar_instalados: bool = True, semilla: int | None = None) -> InstalarPanelCfg:
+              secuencia: bool = False, fijar_instalados: bool = True, semilla: int | None = None,
+              grapas: bool | None = None, viento_m_s: float | None = None) -> InstalarPanelCfg:
     """Configuración del entorno para una corrida. Llamar después de crear la app de Isaac."""
     from isaaclab.sensors import ContactSensorCfg
 
@@ -125,7 +130,9 @@ def crear_cfg(entorno_json: str, tarea_json: str, robot_cfg: str, num_envs: int,
         entorno_json=str(entorno_json), tarea_json=str(tarea_json), robot_cfg=str(robot_cfg), en_pila=en_pila,
         tolerancia_pos_m=tolerancia_pos_m, tolerancia_ang_grados=tolerancia_ang_grados,
         asistido=asistido, variar=variar, agarre=agarre, paneles=paneles, secuencia=secuencia,
-        fijar_instalados=fijar_instalados, seed=semilla)
+        fijar_instalados=fijar_instalados, seed=semilla,
+        grapas=fisica.GRAPAS if grapas is None else grapas,
+        viento_m_s=fisica.VIENTO_ENTRENAMIENTO_M_S if viento_m_s is None else viento_m_s)
 
 
 def _cols(x: torch.Tensor) -> tuple[torch.Tensor, ...]:
@@ -151,6 +158,9 @@ class InstalarPanelEnv(DirectRLEnv):
         self.cadena = self.corrida.cadena
         desc, self.tarea = tarea_mod.de_corrida(self.corrida, cfg.en_pila)
         self.variaciones = desc["variaciones"]
+        # _setup_scene (dentro de super().__init__) crea las grapas: necesita los nombres de la pila y los slots.
+        self._prims_pila = [p["nombre"].capitalize() for p in desc["pila"]]
+        self._slots_grapa = min(cfg.paneles or self.tarea.paneles, self.tarea.paneles) - 1
         super().__init__(cfg, render_mode, **kwargs)
 
         n, dev = self.num_envs, self.device
@@ -207,27 +217,78 @@ class InstalarPanelEnv(DirectRLEnv):
         # Lo que evaluar.py lee al terminar cada episodio.
         self.final = {k: torch.zeros(n, device=dev) for k in ("err_pos_m", "err_ang_grados", "exito", "choque", "pasos",
                                                                "caida", "panel", "viaje_s")}
+        # Grapas: (copia, slot) con la unión activa. Viento: dirección, fuerza máxima y fase de la ráfaga de cada copia.
+        self.engrapado = torch.zeros(n, max(1, len(self.cuerpo_de_slot)), dtype=torch.bool, device=dev)
+        self.viento_dir = torch.zeros(n, 3, device=dev)
+        self.viento_n = torch.zeros(n, device=dev)
+        self.viento_fase = torch.zeros(n, device=dev)
+        ancho, largo = t.panel_tam[0], t.panel_tam[1]
+        self.area_panel = float(ancho * largo)
         if cfg.variar:
             self._variar_friccion()
 
-    # ---------- unión fija ventosa–panel ----------
+    # ---------- uniones: ventosa–panel y grapas panel–tubo ----------
 
     def _setup_scene(self) -> None:
-        """Una unión fija por copia entre la ventosa y el panel, apagada. Se crea antes de que parta la física."""
-        if self.cfg.agarre != "union":
-            return
-        from pxr import UsdPhysics
+        """Uniones fijas apagadas, creadas antes de que parta la física: una por copia entre la ventosa y el panel
+        (agarre "union") y, en modo secuencia con grapas, una por slot entre el panel instalado y el tubo."""
+        from pxr import Gf, UsdPhysics
 
         escenario = self.sim.stage
-        self._union = []
-        for i in range(self.cfg.scene.num_envs):
-            copia = f"/World/envs/env_{i}"
-            union = UsdPhysics.FixedJoint.Define(escenario, f"{copia}/Agarre")
-            union.CreateBody0Rel().SetTargets([f"{copia}/Robot/{ESLABON_VENTOSA}"])
-            union.CreateBody1Rel().SetTargets([f"{copia}/Panel"])
-            union.CreateExcludeFromArticulationAttr(True)
-            # (activa, posición del panel en el marco de la ventosa, orientación del panel en ese marco)
-            self._union.append((union.CreateJointEnabledAttr(False), union.CreateLocalPos0Attr(), union.CreateLocalRot0Attr()))
+        n = self.cfg.scene.num_envs
+        self._union, self._grapas = [], []
+        if self.cfg.agarre == "union":
+            for i in range(n):
+                copia = f"/World/envs/env_{i}"
+                union = UsdPhysics.FixedJoint.Define(escenario, f"{copia}/Agarre")
+                union.CreateBody0Rel().SetTargets([f"{copia}/Robot/{ESLABON_VENTOSA}"])
+                union.CreateBody1Rel().SetTargets([f"{copia}/Panel"])
+                union.CreateExcludeFromArticulationAttr(True)
+                # (activa, posición del panel en el marco de la ventosa, orientación del panel en ese marco)
+                self._union.append((union.CreateJointEnabledAttr(False), union.CreateLocalPos0Attr(), union.CreateLocalRot0Attr()))
+        if self.cfg.secuencia and self.cfg.grapas and self._slots_grapa > 0:
+            en_pila = self.tarea.en_pila
+            for i in range(n):
+                copia, fila = f"/World/envs/env_{i}", []
+                for s in range(self._slots_grapa):
+                    cuerpo = self._prims_pila[en_pila - 2 - s]     # el mismo cuerpo que ocupa el slot (cuerpo_de_slot)
+                    # Sin body1: la grapa ancla el panel al mundo. El tubo es cinemático y no se mueve, así que es lo
+                    # mismo, y PhysX no acepta despertar un cuerpo cinemático al activar una unión con él.
+                    g = UsdPhysics.FixedJoint.Define(escenario, f"{copia}/Grapa_{s}")
+                    g.CreateBody0Rel().SetTargets([f"{copia}/{cuerpo}"])
+                    g.CreateLocalPos0Attr(Gf.Vec3f(0.0, 0.0, 0.0))
+                    g.CreateLocalRot0Attr(Gf.Quatf(1.0, 0.0, 0.0, 0.0))
+                    g.CreateExcludeFromArticulationAttr(True)
+                    # (activa, posición del panel en el marco del tubo, orientación del panel en ese marco)
+                    fila.append((g.CreateJointEnabledAttr(False), g.CreateLocalPos1Attr(), g.CreateLocalRot1Attr()))
+                self._grapas.append(fila)
+
+    def _engrapar(self, ids: torch.Tensor, slots: torch.Tensor, pose: torch.Tensor) -> None:
+        """Activa la grapa del slot de cada copia en la pose donde quedó el panel: no lo mueve (sin teletransporte)."""
+        from pxr import Gf, Sdf
+
+        rel = pose[:, :3].tolist()                    # anclada al mundo: la pose del panel, en coordenadas del mundo
+        rot = pose[:, 3:].tolist()
+        with Sdf.ChangeBlock():
+            for i, s, p, q in zip(ids.tolist(), slots.tolist(), rel, rot):
+                activa, pos1, rot1 = self._grapas[i][s]
+                pos1.Set(Gf.Vec3f(*p))
+                rot1.Set(Gf.Quatf(q[0], q[1], q[2], q[3]))
+                activa.Set(True)
+        self.engrapado[ids, slots] = True
+
+    def _soltar_grapas(self, ids: torch.Tensor) -> None:
+        from pxr import Sdf
+
+        if not self._grapas:
+            return
+        cuales = ids[self.engrapado[ids].any(dim=1)]
+        with Sdf.ChangeBlock():
+            for i in cuales.tolist():
+                for s, (activa, _, _) in enumerate(self._grapas[i]):
+                    if bool(self.engrapado[i, s]):
+                        activa.Set(False)
+        self.engrapado[ids] = False
 
     def _sincronizar_union(self, m: dict, reinicio: torch.Tensor | None = None) -> None:
         """Activa la unión de las copias que sellaron y suelta la de las que dejaron de sellar.
@@ -304,17 +365,33 @@ class InstalarPanelEnv(DirectRLEnv):
         m = self.medidas   # medidas de la última observación: nada se movió desde entonces
         vp, vq, pp, pq = m["ventosa_pos"], m["ventosa_quat"], m["panel_pos"], m["panel_quat"]
         self.sellada = agarre.actualizar(self.sellada, self.succion, vp, vq, pp, pq, self.cadena.ventosa, self.tarea.panel_tam)
+        viento = self._viento(pq) if self.cfg.viento_m_s > 0 else None
         if self.cfg.agarre == "union":
             self._sincronizar_union(m)
+            if viento is not None:
+                self.panel.permanent_wrench_composer.set_forces_and_torques(
+                    forces=viento.unsqueeze(1), torques=torch.zeros_like(viento).unsqueeze(1))
             return
         activa = self.sellada.float()
         f, tq = agarre.llave(self.fuerza_n * activa, vp, vq, pp, pq)
+        fuerza = torch.stack(f, -1) + (viento if viento is not None else 0.0)
         self.panel.permanent_wrench_composer.set_forces_and_torques(
-            forces=torch.stack(f, -1).unsqueeze(1), torques=torch.stack(tq, -1).unsqueeze(1))
+            forces=fuerza.unsqueeze(1), torques=torch.stack(tq, -1).unsqueeze(1))
         reaccion = torch.zeros(self.num_envs, 1, 3, device=self.device)
         reaccion[:, 0, 2] = self.fuerza_n * activa
         self.robot.permanent_wrench_composer.set_forces_and_torques(
             forces=reaccion, torques=torch.zeros_like(reaccion), body_ids=self.id_ventosa)
+
+    def _viento(self, panel_quat) -> torch.Tensor:
+        """Fuerza del viento sobre el panel, en el marco del panel (como la aplica el wrench composer). (n, 3).
+
+        Cada copia tiene su ráfaga del episodio (dirección y fuerza máxima, _reset_idx). La fuerza sube y baja con un
+        período de 3 s, entre el 60 % y el 100 % de la máxima: viento con ráfagas, no un empuje constante.
+        """
+        t = self.episode_length_buf.float() * self.step_dt
+        racha = 0.8 + 0.2 * torch.sin(2 * math.pi * t / 3.0 + self.viento_fase)
+        mundo = self.viento_dir * (self.viento_n * racha).unsqueeze(-1)
+        return torch.stack(cin.quat_rotar(cin.quat_conj(panel_quat), _cols(mundo)), -1)
 
     def _apply_action(self) -> None:
         """Nada por paso de física: los objetivos y las fuerzas de _pre_physics_step siguen vigentes."""
@@ -422,6 +499,16 @@ class InstalarPanelEnv(DirectRLEnv):
         super()._reset_idx(env_ids)
         ids = torch.as_tensor(env_ids, device=self.device)
         n, dev, t, cfg = len(ids), self.device, self.tarea, self.cfg
+        # Las grapas se sueltan antes de mover los paneles de vuelta a la pila.
+        self._soltar_grapas(ids)
+        # Ráfaga del episodio: velocidad al azar hasta viento_m_s, dirección horizontal al azar y algo de sustentación.
+        if cfg.viento_m_s > 0:
+            v = torch.rand(n, device=dev) * cfg.viento_m_s
+            rumbo_v = torch.rand(n, device=dev) * 2 * math.pi
+            d = torch.stack([torch.cos(rumbo_v), torch.sin(rumbo_v), torch.full_like(rumbo_v, 0.25)], -1)
+            self.viento_dir[ids] = d / d.norm(dim=-1, keepdim=True)
+            self.viento_n[ids] = fisica.fuerza_viento_n(1.0, self.area_panel) * v * v
+            self.viento_fase[ids] = torch.rand(n, device=dev) * 2 * math.pi
 
         # Base detenida con ruido (RF-INT-19).
         ruido = self.variaciones if cfg.variar else {"base_pos_m": 0.0, "base_yaw_grados": 0.0}
@@ -584,7 +671,9 @@ class InstalarPanelEnv(DirectRLEnv):
         # El panel instalado se queda en el tubo. Los cuerpos son iguales: el de arriba de la pila toma el lugar del
         # instalado y el cuerpo "panel" (el que la ventosa puede sellar) vuelve arriba de la pila.
         instalado = self.panel.data.root_state_w[ids, :7].clone()
-        if cfg.fijar_instalados:
+        # Con grapas el panel queda donde lo dejó la política y se une al tubo. Sin grapas, el teletransporte de antes.
+        engrapar = bool(self._grapas)
+        if cfg.fijar_instalados and not engrapar:
             instalado[:, :3] = origen + self.metas[k]
             instalado[:, 3:] = torch.tensor([1.0, 0.0, 0.0, 0.0], device=dev)
         for s, j in enumerate(self.cuerpo_de_slot):
@@ -593,6 +682,8 @@ class InstalarPanelEnv(DirectRLEnv):
                 self.pila[j].write_root_pose_to_sim(instalado[cuales], env_ids=ids[cuales])
                 self.pila[j].write_root_velocity_to_sim(torch.zeros(int(cuales.sum()), 6, device=dev), env_ids=ids[cuales])
                 self.vecino_pos0[ids[cuales], s], self.vecino_quat0[ids[cuales], s] = instalado[cuales, :3], instalado[cuales, 3:]
+                if engrapar:
+                    self._engrapar(ids[cuales], torch.full((int(cuales.sum()),), s, device=dev), instalado[cuales])
         self.k[ids] = k + 1
         self.meta_w[ids] = origen + self.metas[k + 1]
         if cfg.variar:

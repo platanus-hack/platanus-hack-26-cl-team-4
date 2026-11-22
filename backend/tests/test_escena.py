@@ -200,7 +200,11 @@ def test_escena_de_entrenamiento_es_un_recorte_del_parque(entorno, clon):
     assert d["tramo_m"] == generar_escena.POSTE_CADA_M
     assert d["tubo"]["tam_m"] == (7.0, *fijos["Fila0_Tubo"]["tam"][1:])
     assert d["tubo"]["pos_m"] == (3.5, 0.0, entorno["estructura"]["altura_m"])
-    assert [p["pos_m"] for p in d["postes"]] == [fijos["Fila0_Poste0"]["centro"], fijos["Fila0_Poste1"]["centro"]]
+    # Los postes son los del parque. Con rieles, bajan lo que miden los rieles junto con el tubo (poner_rieles).
+    baja = fisica.RIELES["alto_m"] if fisica.RIELES["activos"] else 0.0
+    for p, nombre in zip(d["postes"], ("Fila0_Poste0", "Fila0_Poste1"), strict=True):
+        assert p["pos_m"][:2] == fijos[nombre]["centro"][:2]
+        assert p["tam_m"][2] == pytest.approx(fijos[nombre]["tam"][2] - baja)
     assert len(d["pila"]) == 4 and d["panel"]["nombre"] == "panel"
     assert d["panel"]["pos_inicial_m"][2] == pytest.approx(d["pila"][-1]["pos_inicial_m"][2] + fisica.PANEL_ESPESOR_M)
     assert d["panel"]["pos_esperada_m"] == tuple(viaz_escena.describir(entorno, 1)["paneles"][0]["pos_esperada_m"])
@@ -248,3 +252,33 @@ def test_hombro_aguanta_panel_con_brazo_extendido(entorno):
     torque = fisica.GRAVEDAD * (piezas["brazo"] * l1 / 2 + piezas["antebrazo"] * (l1 + l2 / 2)
                                 + (piezas["efector"] + entorno["panel"]["peso_kg"]) * (l1 + l2 + g["muneca_m"]))
     assert torque < urdf.ESFUERZO_NM["shoulder_lift"]
+
+
+# ---------- rieles de módulo (física más real del tracker) ----------
+
+def test_rieles_dejan_al_panel_a_la_misma_altura(entorno, monkeypatch):
+    """Con rieles, la cara de apoyo queda donde estaba la del tubo: la política entrenada sigue sirviendo."""
+    monkeypatch.setitem(fisica.RIELES, "activos", True)
+    d = viaz_escena.describir_entrenamiento(entorno, 5)
+    t, tf, alto = d["tubo"], d["tubo_fisico"], fisica.RIELES["alto_m"]
+    arriba_tubo = t["pos_m"][2] + t["tam_m"][2] / 2
+    assert tf["pos_m"][2] == pytest.approx(t["pos_m"][2] - alto)
+    medio = entorno["panel"]["ancho_m"] / 2
+    slots = [s for s in plan.slots(entorno, plan.caben(entorno)) if s[0] + medio <= d["tramo_m"] + 1e-9]
+    assert len(d["rieles"]) == 2 * len(slots)
+    for r in d["rieles"]:
+        assert r["pos_m"][2] + r["tam_m"][2] / 2 == pytest.approx(arriba_tubo)        # cara de apoyo intacta
+        assert r["pos_m"][2] - r["tam_m"][2] / 2 == pytest.approx(tf["pos_m"][2] + tf["tam_m"][2] / 2)  # sobre el tubo
+        assert r["tam_m"][1] < entorno["panel"]["largo_m"]                             # no asoma bajo el panel
+    for p in d["postes"]:
+        assert p["pos_m"][2] + p["tam_m"][2] / 2 == pytest.approx(tf["pos_m"][2] - tf["tam_m"][2] / 2)  # bajo el tubo
+
+
+def test_sin_rieles_la_escena_queda_como_antes(entorno, monkeypatch):
+    monkeypatch.setitem(fisica.RIELES, "activos", False)
+    d = viaz_escena.describir_entrenamiento(entorno, 5)
+    assert d["rieles"] == [] and d["tubo_fisico"] is None
+
+
+def test_fuerza_del_viento_crece_con_el_cuadrado():
+    assert fisica.fuerza_viento_n(20, 2.69) == pytest.approx(4 * fisica.fuerza_viento_n(10, 2.69))
