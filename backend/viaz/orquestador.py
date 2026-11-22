@@ -177,12 +177,25 @@ def elegir_robot(c: Corrida, cfg: Config, entorno: dict, tarea: dict) -> dict:
     return primero
 
 
-def exigir_pipeline(entorno: dict) -> None:
-    """El mapeo sirve para cualquier espacio; Tarea → Inteligencia todavía solo existe para algunos tipos."""
+def exigir_pipeline(entorno: dict, tarea: dict | None = None) -> None:
+    """Entorno y Tarea sirven para cualquier espacio y tarea; Robot → Inteligencia todavía solo existe para algunos.
+    Se llama después de escribir tarea.json: la corrida deja entorno.json, escena.usd y tarea.json antes de cortar."""
+    listos = "entorno.json, escena.usd" + (" y tarea.json" if tarea else "")
     if entorno["tipo"] not in agentes.TIPOS_CON_PIPELINE:
         raise agentes.ErrorAgente(
-            f"entorno.json y escena.usd listos para '{entorno['tipo']}', pero las etapas siguientes "
+            f"{listos} listos para '{entorno['tipo']}', pero las etapas siguientes "
             f"solo soportan: {', '.join(sorted(agentes.TIPOS_CON_PIPELINE))}")
+    if tarea and tarea["tarea"] not in agentes.TAREAS_CON_PIPELINE:
+        raise agentes.ErrorAgente(
+            f"{listos} listos para la tarea '{tarea['tarea']}', pero las etapas siguientes "
+            f"solo simulan: {', '.join(sorted(agentes.TAREAS_CON_PIPELINE))}")
+
+
+def tolerancias(tarea: dict) -> tuple[float, float, str]:
+    """Tolerancia de éxito de tarea.json (RF-INT-11) y la cadena de evaluar: esa más la fina de 2 cm y 2° (RF-INT-20)."""
+    ce = tarea["criterios_exito"]
+    pos, ang = ce["tolerancia_pos_m"], ce["tolerancia_ang_grados"]
+    return pos, ang, f"{pos:g}:{ang:g},{TOLERANCIA_FINA}"
 
 
 def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
@@ -198,12 +211,12 @@ def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     entorno, frames, artefactos = analizar_entorno(c, cfg, store, proyecto)
     c.trabajo_gpu("generar_escena", ["entorno.json"], ["escena.usd"])
     c.etapa("entorno", "listo", ["entorno.json", "escena.usd", *artefactos])
-    exigir_pipeline(entorno)
 
     c.etapa("tarea", "en_curso")
     tarea = agentes.tarea(modo, modelo, proyecto, entorno, frames)
     c.escribir("tarea.json", tarea)
     c.etapa("tarea", "listo", ["tarea.json"])
+    exigir_pipeline(entorno, tarea)
 
     # 3. Robot
     robot = elegir_robot(c, cfg, entorno, tarea)
@@ -236,7 +249,7 @@ def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
 # ---------- Flujo del demo con RL ----------
 
 ENTRADAS_RL = ["entorno.json", "tarea.json", "robot_cfg.py", "clon.json", "escena.usd"]
-TOLERANCIAS = "0.05:5,0.02:2"   # RF-INT-11 (entrenamiento) y RF-INT-20 (cifra adicional)
+TOLERANCIA_FINA = "0.02:2"   # RF-INT-20 (cifra adicional). La de entrenamiento sale de tarea.json (tolerancias())
 
 
 def _manual(ruta: str, fixture: str) -> dict:
@@ -370,13 +383,14 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
         c.escribir("entorno.json", validar("entorno", entorno))
     c.trabajo_gpu("generar_escena", ["entorno.json"], ["escena.usd"])
     c.etapa("entorno", "listo", ["entorno.json", "escena.usd", *artefactos])
-    exigir_pipeline(entorno)
 
-    # 2. Tarea escrita a mano
+    # 2. Tarea escrita a mano: además del esquema, tiene que calzar con entorno.json
     c.etapa("tarea", "en_curso")
-    tarea = validar("tarea", _manual(cfg.tarea_manual, "tarea"))
+    tarea = agentes.validar_tarea(_manual(cfg.tarea_manual, "tarea"), entorno)
     c.escribir("tarea.json", tarea)
     c.etapa("tarea", "listo", ["tarea.json"])
+    exigir_pipeline(entorno, tarea)
+    tol_pos, tol_ang, tols_evaluar = tolerancias(tarea)
 
     # 3. Selección de robot
     robot = elegir_robot(c, cfg, entorno, tarea)
@@ -390,7 +404,7 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     vigia = Vigia(c, cfg)
     latido_s = max(1.0, min(300.0, cfg.monitor_s / 2))
     c.trabajo_gpu("entrenar", ENTRADAS_RL, ["curva.json", "checkpoints.json"],
-                  {"horas": cfg.horas_entrenamiento, "tolerancia_pos_m": 0.05, "tolerancia_ang_grados": 5, "latido_s": latido_s},
+                  {"horas": cfg.horas_entrenamiento, "tolerancia_pos_m": tol_pos, "tolerancia_ang_grados": tol_ang, "latido_s": latido_s},
                   espera_s=cfg.horas_entrenamiento * 3600 + 3600, al_esperar=vigia.chequear)
     if not vigia.chequeos or vigia.chequeos[-1]["estado"] != "terminado":
         vigia.chequear(forzar=True)  # chequeo final con el resumen (RF-MON-07)
@@ -404,7 +418,7 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     mejor = max(vigia.todas, key=lambda m: (m.get("tasa_exito") or 0, m["iteracion"]))["iteracion"] if vigia.todas else None
     c.trabajo_gpu("evaluar", ENTRADAS_RL,
                   ["resultado.json", "evaluacion.json", "video.mp4", "trayectoria.json", "politica.pt"],
-                  {"checkpoint": mejor, "episodios": cfg.episodios_evaluacion, "tolerancias": TOLERANCIAS}, espera_s=3 * 3600)
+                  {"checkpoint": mejor, "episodios": cfg.episodios_evaluacion, "tolerancias": tols_evaluar}, espera_s=3 * 3600)
     resultado = c.leer_json("resultado.json")
     info = c.leer_json("video_info.json")
     resultado["entrenamiento"]["factor_video"] = info.get("factor_video")

@@ -68,7 +68,7 @@ def caben(entorno: dict) -> int:
 
 
 def cantidad(entorno: dict, tarea: dict) -> int:
-    return max(0, min(tarea["objetivo"]["paneles"], tarea["pila_paneles"]["cantidad"], caben(entorno)))
+    return max(0, min(tarea["objetivo"]["cantidad"], tarea["pila_paneles"]["cantidad"], caben(entorno)))
 
 
 def poses(entorno: dict, geo: dict) -> dict:
