@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "metodo": "planificador",
+  "fuente": "simulado",
+  "politica": null,
+  "metricas": {
+    "paneles_instalados": 5,
+    "intentos": 5,
+    "tasa_exito": 1.0,
+    "ciclo_promedio_s": 8.23
+  },
+  "video": null,
+  "notas": "Trayectoria sintética sin física (worker en modo simulado). No es un resultado de Isaac."
+}

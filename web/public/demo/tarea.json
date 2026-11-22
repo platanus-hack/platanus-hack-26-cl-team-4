@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "tarea": "instalar_panel",
+  "descripcion": "Tomar un panel de la pila que lleva el robot y dejarlo sobre el tubo de torsión de la fila 1",
+  "pila_paneles": {
+    "en_robot": true,
+    "cantidad": 5
+  },
+  "objetivo": {
+    "paneles": 5,
+    "ciclo_s": 60
+  },
+  "restricciones": [
+    "no chocar con las estructuras",
+    "panel horizontal durante el traslado"
+  ]
+}

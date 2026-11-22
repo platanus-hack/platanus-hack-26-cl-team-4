@@ -1,0 +1,10 @@
+/* /sala: realidad aumentada */
+.ar { display: flex; flex-direction: column; gap: 0.75rem; }
+.ar h2 { margin: 0; }
+.ar p { margin: 0; }
+.ar-modos { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.ar-modos button { background: var(--cielo-hondo); color: var(--tinta); border: 1px solid var(--regla); }
+.ar-modos button.activo { background: var(--tinta); color: var(--cielo); border-color: var(--tinta); }
+.ar-visor { width: 100%; height: min(65vh, 600px); border-radius: 12px; border: 1px solid var(--regla); background: radial-gradient(#e9edf2, #c9d1db); }
+.ar-camara { font-size: 1.15rem; font-weight: 700; padding: 0.9rem 1.2rem; border-radius: 12px; background: var(--tinta); color: var(--cielo); border: none; }
+.ar-boton { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); background: var(--tinta); color: var(--cielo); font-weight: 600; padding: 0.7rem 1.2rem; border-radius: 999px; border: none; }
