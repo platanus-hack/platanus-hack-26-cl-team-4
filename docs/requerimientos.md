@@ -266,8 +266,8 @@ flowchart LR
 | RF-ORQ-03 | Si una salida no valida, el orquestador reintenta la etapa 1 vez. Si falla otra vez, la corrida pasa a `error` | **S** |
 | RF-ORQ-04 | El orquestador repite una sola etapa con los archivos ya guardados | **S** |
 | RF-ORQ-06 | El orquestador registra cada llamada a Claude y al runner: etapa, duración, tokens y resultado | **S** |
-| RF-ORQ-07 | El orquestador corre una corrida hija por finalista con `procesar_rl` y el robot fijo. Todas usan la misma escena, las mismas horas de entrenamiento y las mismas semillas | **S** |
-| RF-ORQ-08 | El código elige el ganador con una regla sobre `evaluacion.json` (primero tasa de éxito, luego tiempo de ciclo) y escribe `comparacion.json`. El LLM solo explica. El resultado muestra la fidelidad de cada clon, avisa si difiere y dice qué no compara la simulación | **S** |
+| RF-ORQ-07 | Con 2 o 3 finalistas, el orquestador corre una corrida hija por finalista (`padre_id`), en orden, con el robot fijo. Todas usan la misma escena y las mismas horas de entrenamiento, completas para cada una. El entrenamiento no fija semillas todavía, y `comparacion.json` lo advierte. Con 1 finalista no hay hijas | **S** |
+| RF-ORQ-08 | El código elige el ganador con una regla sobre `resultado.json → metricas` de cada hija (primero tasa de éxito, luego tiempo de ciclo, luego el id) y escribe `comparacion.json`. El LLM solo explica. El resultado muestra la fidelidad de cada clon, avisa si difiere, avisa que las semillas no están fijas y dice qué no compara la simulación | **S** |
 | RF-API-01 | `POST /proyectos` crea el proyecto y devuelve las URLs firmadas de subida | **C** |
 | RF-API-02 | `POST /proyectos/{id}/corridas` crea una corrida y la encola | **C** |
 

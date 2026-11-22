@@ -78,12 +78,13 @@ python -m viaz.orquestador
 | `VIAZ_BUSQUEDA_MAX_ROBOTS` | orquestador | `3` | Fichas que acepta la búsqueda por corrida (1 a 5) |
 | `VIAZ_BUSQUEDA_MAX_CONSULTAS` | orquestador | `6` | Búsquedas web por corrida, `max_uses` (1 a 15) |
 | `VIAZ_BUSQUEDA_TIEMPO_S` | orquestador | `180` | Tiempo de la búsqueda, en segundos (10 a 1800) |
+| `VIAZ_MAX_FINALISTAS` | orquestador | `3` | Tope de finalistas (1 a 3). Con 2 o 3, cada uno entrena en su corrida hija. `1` deja la corrida como antes |
 | `WORKER_TOKEN` | API, pod | `dev-token` | Autoriza al sim runner |
 | `VIAZ_ORIGENES` | API | `http://localhost:3000` | CORS, separados por coma |
 | `VIAZ_CORRIDA_DEMO` | API | — | Id de la corrida que muestra `/corridas/demo` |
 | `VIAZ_FLUJO` | orquestador | `rl` | `rl` (demo) o `planificador` (flujo anterior) |
 | `VIAZ_ENTORNO_MANUAL`, `VIAZ_TAREA_MANUAL` | orquestador | fixtures | Rutas al `entorno.json` y `tarea.json` escritos a mano |
-| `VIAZ_HORAS_ENTRENAMIENTO` | orquestador | `4` | Tope del entrenamiento (RNF-17) |
+| `VIAZ_HORAS_ENTRENAMIENTO` | orquestador | `4` | Tope del entrenamiento (RNF-17). Vale para cada finalista: con 3, la corrida tarda 3 veces más |
 | `VIAZ_EPISODIOS_EVALUACION` | orquestador | `100` | Episodios de evaluación (RF-INT-14) |
 | `VIAZ_INTENTOS_CONSTRUCTOR` | orquestador | `3` | Intentos del agente constructor (RF-CLO-05) |
 | `VIAZ_MONITOR_S` | orquestador | `600` | Cada cuánto chequea el monitor |
