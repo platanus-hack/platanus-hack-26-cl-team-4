@@ -1,12 +1,27 @@
 # Catálogo de robots
 
-Un JSON por robot en `robots/`. El agente Robot elige **solo** entre estos archivos: no inventa robots.
+Un JSON por robot en `robots/`. El agente Robot elige entre estos archivos y las fichas del catálogo compartido (abajo): no inventa robots.
 Los archivos que empiezan con `_` no se cargan.
 
 - Formato: `robot.schema.json` sin `justificacion` ni `alternativas`. Copia `_plantilla.json`.
 - Cada dato sale de una fuente con URL y fecha (`fuente`). Si un dato no aparece en la fuente, déjalo fuera del pitch.
-- **`origen`:** es opcional. Sin el campo vale `catalogo`. Las fichas que trae la búsqueda web (contrato v3) tienen `origen: "busqueda"` y viven en el almacén de la corrida. Una persona las pasa a `robots/` con un PR.
+- **`origen`:** es opcional. Sin el campo vale `catalogo`. Las fichas que trae la búsqueda web (contrato v3) tienen `origen: "busqueda"`.
 - `viaz-instalador-ficticio` existe solo para desarrollar el flujo. Tiene `"ficticio": true` y la web lo muestra así.
+
+## Catálogo compartido (fichas de la búsqueda web)
+
+- **Dónde:** en el almacén, no en el repo: `catalogo/encontrados/<id>.json`, un archivo por ficha. Lo lee y lo escribe [`encontrados.py`](encontrados.py).
+- **Quién escribe:** el paso 2 de la selección ([`seleccion-robot.md`](../../../docs/agentes/seleccion-robot.md) §2). Un modelo escribió esos datos: nadie los revisó todavía.
+- **Evidencia:** cada spec de selección tiene una entrada en `evidencia` (`url` y `cita`, la oración exacta de la fuente) o en `estimados` (motivo).
+- **Choque de id:** gana la ficha de `robots/`. Un archivo inválido se salta y queda en el log.
+
+### Cómo pasar una ficha encontrada a `robots/`
+
+1. Copia `catalogo/encontrados/<id>.json` del almacén a `robots/<id>.json`.
+2. Abre cada enlace de `evidencia`. Confirma que la página dice la `cita` y que el valor coincide. Corrige o borra lo que no coincida.
+3. Revisa cada motivo de `estimados`. Un dato sin fuente ni motivo sale de la ficha.
+4. Borra el campo `origen` (sin el campo vale `catalogo`). Pon la fecha de tu revisión en `fuente.consultado`.
+5. Corre `uv run --no-sync -p .venv pytest -q tests/test_esquemas.py` desde `backend/` y abre un PR con lo que revisaste.
 
 ## Física propia del robot (`fisica`)
 

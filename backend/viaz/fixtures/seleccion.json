@@ -3,7 +3,7 @@
   "requisitos": "requisitos.json",
   "busqueda": {
     "estado": "omitida",
-    "detalle": "La búsqueda web todavía no existe: los candidatos son solo los del catálogo.",
+    "detalle": "La búsqueda web no corrió: los candidatos son solo las fichas conocidas.",
     "invalidas": []
   },
   "encontrados": [],
