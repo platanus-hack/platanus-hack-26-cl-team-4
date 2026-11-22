@@ -371,6 +371,14 @@ function Cierre() {
         <Link href="/probar" className="enlace" prefetch={false}>Ver cómo se sube una planta</Link>
       </div>
       <QrSala />
+      <figure className="pitch-cierre-video">
+        <VideoDemoSolar
+          src="/demo/timelapse_baile_10s.mp4"
+          poster="/demo/timelapse_baile_poster.jpg"
+          etiqueta="entrenamiento del baile del robot humanoide"
+        />
+        <figcaption>De caerse a bailar: 13 minutos de entrenamiento en simulación</figcaption>
+      </figure>
     </section>
   );
 }
