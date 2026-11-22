@@ -8,12 +8,14 @@ import ComparacionDeCorrida from "@/components/Comparacion";
 import Etapas from "@/components/Etapas";
 import SeleccionDeCorrida from "@/components/Seleccion";
 import { bajarJson, bajarTexto, verCorrida } from "@/lib/api";
-import type { Clon, Corrida, Entorno, Resultado, Robot, Trayectoria, VideoInfo } from "@/lib/tipos";
+import type { Clon, Corrida, Entorno, Resultado, Robot, Tarea, Trayectoria, VideoInfo } from "@/lib/tipos";
+import { vocabulario, type Vocabulario } from "@/lib/vocabulario";
 
 const Visor = dynamic(() => import("@/components/Visor"), { ssr: false, loading: () => <p>Cargando visor…</p> });
 
 interface Datos {
   entorno: Entorno;
+  tarea: Tarea | null;
   robot: Robot;
   clon: Clon;
   resultado: Resultado;
@@ -53,12 +55,13 @@ export default function PaginaCorrida() {
             bajarJson<Entorno>(a["entorno.json"]), bajarJson<Robot>(a["robot.json"]), bajarJson<Clon>(a["clon.json"]),
             bajarJson<Resultado>(a["resultado.json"]),
           ]);
-          const [tray, urdf, info] = await Promise.all([
+          const [tarea, tray, urdf, info] = await Promise.all([
+            a["tarea.json"] ? opcional(() => bajarJson<Tarea>(a["tarea.json"])) : null,
             a["trayectoria.json"] ? opcional(() => bajarJson<Trayectoria>(a["trayectoria.json"])) : null,
             a["robot.urdf"] ? opcional(() => bajarTexto(a["robot.urdf"])) : null,
             a["video_info.json"] ? opcional(() => bajarJson<VideoInfo>(a["video_info.json"])) : null,
           ]);
-          if (vivo) setDatos({ entorno, robot, clon, resultado, tray, urdf, info,
+          if (vivo) setDatos({ entorno, robot, clon, resultado, tray, urdf, info, tarea,
             construccion: a["construccion.mp4"] ?? null, video: a["video.mp4"] ?? null,
             rapido: a["entrenamiento_rapido.mp4"] ?? null });
           return;
@@ -78,7 +81,7 @@ export default function PaginaCorrida() {
   return (
     <section className="corrida">
       <aside className="lateral">
-        <h2>{id === "demo" ? "Demo: parque solar de referencia" : `Corrida ${corrida.id}`}</h2>
+        <h2>{id === "demo" ? "Demo: lugar de referencia" : `Corrida ${corrida.id}`}</h2>
         <Etapas etapas={corrida.etapas} />
         {corrida.error && <p className="error" role="alert">{corrida.error}</p>}
         {datos && <Panel datos={datos} />}
@@ -105,10 +108,15 @@ function Videos({ datos }: { datos: Datos }) {
   const ent = resultado.entrenamiento;
   return (
     <>
-      {entornoAMano(entorno) && (
+      {entornoAMano(entorno) ? (
         <p className="aviso">
-          <strong>Parque de referencia.</strong> Su entorno lo escribimos a mano. En producción, VIAZ lo extrae de los videos
+          <strong>Lugar de referencia.</strong> Su entorno lo escribimos a mano. En producción, VIAZ lo extrae de los videos
           que sube el cliente.
+        </p>
+      ) : (
+        <p className="aviso">
+          <strong>Medidas estimadas.</strong> El entorno sale de los frames del video, sin medición 3D: cada medida tiene
+          su confianza (menor a 1).
         </p>
       )}
       {datos.construccion && (
@@ -116,9 +124,11 @@ function Videos({ datos }: { datos: Datos }) {
           <figcaption>
             <strong>1 · El agente construye el robot</strong> <span className="etiqueta">simulación</span>
             <span className="tenue">
-              {" "}{datos.clon.construccion?.metodo === "agente"
-                ? `${datos.clon.construccion.intentos} intento(s) hasta un robot válido en Isaac Lab`
-                : "el agente no lo logró: se usó el ensamblaje por defecto"}
+              {" "}{datos.clon.modelo
+                ? "modelo publicado del robot para Isaac Lab, validado en la escena de esta corrida"
+                : datos.clon.construccion?.metodo === "agente"
+                  ? `${datos.clon.construccion.intentos} intento(s) hasta un robot válido en Isaac Lab`
+                  : "el agente no lo logró: se usó el ensamblaje por defecto"}
             </span>
           </figcaption>
           <video className="video" src={datos.construccion} controls muted playsInline />
@@ -154,15 +164,15 @@ function Videos({ datos }: { datos: Datos }) {
   );
 }
 
-function Exito({ resultado }: { resultado: Resultado }) {
+function Exito({ resultado, voc }: { resultado: Resultado; voc: Vocabulario }) {
   const ev = resultado.evaluacion;
   if (!ev) {
     const m = resultado.metricas;
     return (
       <dl className="metricas">
-        <dt>Paneles instalados</dt><dd>{m.paneles_instalados} / {m.intentos}</dd>
+        <dt>{voc.logrados}</dt><dd>{m.paneles_instalados} / {m.intentos}</dd>
         <dt>Tasa de éxito</dt><dd>{Math.round(m.tasa_exito * 100)} %</dd>
-        <dt>Ciclo por panel</dt><dd>{m.ciclo_promedio_s} s</dd>
+        <dt>{voc.ciclo}</dt><dd>{m.ciclo_promedio_s} s</dd>
       </dl>
     );
   }
@@ -171,19 +181,20 @@ function Exito({ resultado }: { resultado: Resultado }) {
     <>
       <dl className="metricas">
         {ev.tolerancias.map((t) => (
-          <FilaTolerancia key={`${t.pos_m}-${t.ang_grados}`} t={t} />
+          <FilaTolerancia key={`${t.pos_m}-${t.ang_grados}`} t={t} conAngulo={voc.usaAngulo} />
         ))}
-        <dt>Ciclo por panel</dt><dd>{resultado.metricas.ciclo_promedio_s} s</dd>
+        <dt>{voc.ciclo}</dt><dd>{resultado.metricas.ciclo_promedio_s} s</dd>
       </dl>
-      <p className="tenue">{ev.episodios} episodios de evaluación, con la base detenida con ruido de ±15 cm y ±5°.</p>
+      <p className="tenue">{ev.episodios} {voc.episodios}</p>
     </>
   );
 }
 
-function FilaTolerancia({ t }: { t: { pos_m: number; ang_grados: number; tasa_exito: number; exitos: number } }) {
+function FilaTolerancia({ t, conAngulo }: { t: { pos_m: number; ang_grados: number; tasa_exito: number; exitos: number };
+  conAngulo: boolean }) {
   return (
     <>
-      <dt>Éxito a {Math.round(t.pos_m * 100)} cm y {t.ang_grados}°</dt>
+      <dt>Éxito a {Math.round(t.pos_m * 100)} cm{conAngulo ? ` y ${t.ang_grados}°` : ""}</dt>
       <dd>{Math.round(t.tasa_exito * 100)} % <span className="tenue">({t.exitos})</span></dd>
     </>
   );
@@ -207,12 +218,15 @@ function Panel({ datos }: { datos: Datos }) {
       </div>
       <div className="tarjeta">
         <h3>Resultado {resultado.metodo === "rl" ? "del aprendizaje" : ""} <span className="etiqueta">simulación</span></h3>
-        <Exito resultado={resultado} />
+        <Exito resultado={resultado} voc={vocabulario(datos.tarea?.tarea)} />
         <p className="tenue">{resultado.notas}</p>
       </div>
       <div className="tarjeta">
         <h3>Diferencias del clon con el robot real</h3>
-        {clon.construccion && (
+        {clon.modelo && (
+          <p className="tenue">Sin ensamblaje: el clon es el modelo publicado para Isaac Lab ({clon.modelo.cfg.split(":")[1]}).</p>
+        )}
+        {clon.construccion && clon.piezas && (
           <p className="tenue">
             {clon.construccion.metodo === "agente"
               ? `Construido por el agente en ${clon.construccion.intentos} intento(s): ${clon.piezas.brazo} + ${clon.piezas.efector} sobre ${clon.piezas.base}.`

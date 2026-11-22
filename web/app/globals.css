@@ -68,6 +68,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .espera { display: grid; place-items: center; height: 50vh; background: var(--superficie); border: 1px dashed var(--borde); border-radius: 12px; color: var(--tenue); }
 
 /* Inicio: flujo y demo (RF-WEB-19, RNF-20) */
+.casos { display: flex; gap: 12px; flex-wrap: wrap; }
 .boton { display: inline-block; margin-top: 12px; font-weight: 700; padding: 10px 16px; border-radius: 8px; background: var(--acento); color: var(--acento-texto); text-decoration: none; }
 .subtitulo { margin-top: 32px; font-size: 1.3rem; }
 .pasos { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }

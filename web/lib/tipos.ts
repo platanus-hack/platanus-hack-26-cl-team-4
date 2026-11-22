@@ -18,7 +18,10 @@ export interface Corrida {
 }
 
 export interface Entorno {
+  tipo: string;
+  descripcion: string;
   confianza: Record<string, number>;
+  // Perfil parque_solar: solo existen en ese tipo de entorno.
   filas: { cantidad: number; largo_m: number; separacion_m: number };
   estructura: { tipo: string; altura_m: number; inclinacion_grados: number };
   panel: { largo_m: number; ancho_m: number; peso_kg: number };
@@ -40,7 +43,8 @@ export interface Robot {
 export interface Clon {
   diferencias_con_real: string[];
   validado_en_escena: boolean;
-  piezas: { base: string; brazo: string; efector: string };
+  piezas?: { base: string; brazo: string; efector: string };   // clon ensamblado
+  modelo?: { fuente: string; cfg: string; usd: string };      // clon = modelo publicado del fabricante
   fidelidad?: "generico" | "medido" | "verificado";
   construccion?: { metodo: "agente" | "determinista" | "comprobado"; intentos: number };
 }
@@ -82,4 +86,10 @@ export interface Trayectoria {
   paneles: { id: number; pos_m: [number, number, number]; quat: [number, number, number, number] }[];
   pila: { en_base: boolean; pos_m: [number, number, number]; paso_m: number };
   frames: Frame[];
+}
+
+export interface Tarea {
+  tarea: string;
+  descripcion: string;
+  criterios_exito: { tolerancia_pos_m: number; tolerancia_ang_grados: number; sin_choques: boolean; tiempo_max_s: number | null };
 }
