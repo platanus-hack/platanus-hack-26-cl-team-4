@@ -1,8 +1,8 @@
 # Contrato: agente de selección de robot
 
-> Etapa 3. **Contrato v3** (2026-11-21). **Implementado:** pasos 1, 3 y 4 de la v3 (requisitos, descarte por reglas, 1 a 3 finalistas). Sin búsqueda web ni corridas hijas: la corrida sigue con el finalista 1.
+> Etapa 3. **Contrato v3** (2026-11-21). **Implementado:** pasos 1 a 4 de la v3 (requisitos, búsqueda web, descarte por reglas, 1 a 3 finalistas). La búsqueda solo se probó contra modelos falsos. Sin corridas hijas: la corrida sigue con el finalista 1.
 > Requerimientos: RF-ROB-01..12, RF-CLO-10..11, RF-ORQ-07..08, RNF-02, RNF-03.
-> Código: [`agentes/__init__.py`](../../backend/viaz/agentes/__init__.py) → `seleccionar()`, con el paso 1 en [`agentes/perfiles.py`](../../backend/viaz/agentes/perfiles.py) y los pasos 3 y 4 en [`agentes/seleccion.py`](../../backend/viaz/agentes/seleccion.py). Prompt: [`prompts/robot.md`](../../backend/viaz/agentes/prompts/robot.md). Catálogo: [`catalogo/robots/`](../../backend/viaz/catalogo/robots/). Tests: [`test_seleccion.py`](../../backend/tests/test_seleccion.py).
+> Código: [`orquestador.py`](../../backend/viaz/orquestador.py) → `seleccionar_robot()` une los pasos. Paso 1 en [`agentes/perfiles.py`](../../backend/viaz/agentes/perfiles.py), paso 2 en [`agentes/busqueda.py`](../../backend/viaz/agentes/busqueda.py) y [`catalogo/encontrados.py`](../../backend/viaz/catalogo/encontrados.py), pasos 3 y 4 en [`agentes/seleccion.py`](../../backend/viaz/agentes/seleccion.py) y `agentes.seleccionar()`. Prompts: [`robot.md`](../../backend/viaz/agentes/prompts/robot.md), [`busqueda.md`](../../backend/viaz/agentes/prompts/busqueda.md), [`busqueda_fichas.md`](../../backend/viaz/agentes/prompts/busqueda_fichas.md). Catálogo: [`catalogo/robots/`](../../backend/viaz/catalogo/robots/). Tests: [`test_seleccion.py`](../../backend/tests/test_seleccion.py), [`test_busqueda.py`](../../backend/tests/test_busqueda.py).
 > Explicación paso a paso, con un diagrama por parte: [`seleccion-robot-flujo.md`](seleccion-robot-flujo.md).
 > Esquemas v3: [`requisitos`](../../backend/viaz/esquemas/requisitos.schema.json), [`seleccion`](../../backend/viaz/esquemas/seleccion.schema.json), [`comparacion`](../../backend/viaz/esquemas/comparacion.schema.json). Ejemplos en [`fixtures/`](../../backend/viaz/fixtures/).
 
@@ -11,14 +11,14 @@
 | Paso | Real y probado | Sin probar | Falso o de relleno | No existe |
 |---|---|---|---|---|
 | 1. Requisitos (perfil de dominio) | Perfil `solar` (`perfiles.py`). Su salida es igual a `fixtures/requisitos.json`. Un dominio sin perfil da `ErrorAgente` | — | — | Perfiles de otros dominios |
-| 2. Búsqueda web | — | — | — | Todo el paso |
+| 2. Búsqueda web | Borrador → ficha, evidencia por dato, inválidas con motivo, duplicados, estados, catálogo compartido (`AlmacenLocal`) y límites de configuración, con tests contra modelos falsos | Las dos llamadas contra la API real. `AlmacenR2.listar` (sin credenciales en los tests). Los dos prompts nuevos | — | — |
 | 3. Descarte por reglas | `fallas()` genérico: lee solo `requisitos.json`. Un test por requisito | — | — | — |
 | 4. Selección | Modo `fijo`: 1 a 3 finalistas y `seleccion.json`, con tests. Modo `claude`: las reglas de §4 sobre la respuesta, con tests contra un modelo falso | Modo `claude` contra la API del backend, con salida estructurada | — | — |
 | 5. Corridas hijas | `procesar_rl` con el finalista 1 | — | — | Una corrida hija por finalista |
 | 6. Modelo comprobado | — | — | — | Registro y reuso de recetas de clon |
 | 7. Comparación | — | — | Métricas de `fixtures/comparacion.json` (ilustrativas) | Regla, `comparacion.json`, `fidelidad` en el código |
 
-- **Esquemas y fixtures v3:** existen y validan (`test_esquemas.py`). La etapa robot de los dos flujos escribe `requisitos.json`, `seleccion.json` y `robot.json` (finalista 1). `fixtures/seleccion.json` sale del modo `fijo`. Nadie escribe `comparacion.json` todavía.
+- **Esquemas y fixtures v3:** existen y validan (`test_esquemas.py`). La etapa robot de los dos flujos escribe `requisitos.json`, `encontrados.json`, `seleccion.json` y `robot.json` (finalista 1). `fixtures/seleccion.json` sale del modo `fijo`. Nadie escribe `comparacion.json` todavía.
 - **Otro dominio:** con este contrato el agente puede **elegir** para otro dominio. La **simulación** de ese dominio no corre todavía: `entorno.json`, `tarea.json` y `sim/rl` son solo solares.
 
 ## Flujo v3
@@ -56,8 +56,9 @@ flowchart TD
 |---|---|
 | `entorno.json`, `tarea.json` | Escritos a mano por el equipo (demo) o agentes de mapeo y tarea |
 | `requisitos.json` | Perfil de dominio (código), desde `entorno.json` y `tarea.json` |
-| Catálogo | `catalogo/robots/*.json`, validado contra `robot.schema.json` al cargar |
-| Fichas encontradas | Paso de búsqueda, validadas contra `robot.schema.json`. Se guardan en el almacén de la corrida |
+| Catálogo del repo | `catalogo/robots/*.json`, validado contra `robot.schema.json` al cargar |
+| Catálogo compartido | Fichas que trajo la búsqueda en corridas anteriores: `catalogo/encontrados/<id>.json` en el almacén. Un archivo inválido se salta y queda en el log. En un choque de id gana el repo |
+| Fichas encontradas | Paso de búsqueda de esta corrida, validadas contra `robot.schema.json`. Van al catálogo compartido y a `encontrados.json` de la corrida |
 | Modelos comprobados | `sim/assets_aprobados/<id>/` (receta) + `robot.usd` en el almacén |
 
 ### Paso 1: perfil de dominio
@@ -89,12 +90,65 @@ flowchart LR
 
 ### Paso 2: búsqueda web
 
-- **Qué hace:** busca robots reales que hagan la tarea y no estén en el catálogo. Devuelve fichas con el formato del catálogo.
-- **Cada ficha encontrada:** `origen: "busqueda"`, `fuente.url`, `fuente.consultado`. Cada valor que la fuente no publica va en `estimados` con su motivo.
-- **Validación:** el código valida cada ficha contra el esquema. Las inválidas van a `seleccion.busqueda.invalidas` y al log. Cada ficha rechazada queda registrada.
-- **Límites:** máximo de robots y de tiempo, por configuración. Al llegar al límite, `busqueda.estado` es `cortada`.
-- **Falla:** no hace fallar la corrida. `busqueda.estado` queda `fallida` y la selección sigue con el catálogo.
-- **Promoción:** una persona pasa una ficha encontrada a `catalogo/robots/` con un PR.
+- **Qué hace:** busca robots reales que hagan la tarea y no estén entre las fichas conocidas (repo + catálogo compartido). Devuelve fichas con el formato del catálogo.
+- **Está encendida por defecto** (`VIAZ_BUSQUEDA=1`). Solo corre con `VIAZ_AGENTES=claude`.
+
+```mermaid
+flowchart LR
+  RQ[requisitos.json] --> A["A. investigar<br/>web_search, max_uses"]
+  K[(Fichas conocidas)] --> A
+  A -->|"notas: dato, URL y cita"| B["B. fichar<br/>salida estructurada"]
+  B -->|borradores| C["Código: arma, limpia<br/>y valida cada ficha"]
+  C -->|válidas| G[(catalogo/encontrados/)]
+  C -->|válidas| E[encontrados.json]
+  C -->|inválidas| I["busqueda.invalidas<br/>y log"]
+```
+
+- **Dos llamadas.** A usa la herramienta `web_search` del servidor y devuelve notas. B convierte las notas en borradores con salida estructurada, sin herramientas. Motivo: la API no acepta citas con salida estructurada en la misma llamada, y B se puede probar sola.
+- **El modelo no escribe la ficha.** El código la arma desde el borrador: `version: 1`, `origen: "busqueda"`, `ficticio: false`, `fuente.consultado` = fecha de hoy y un `id` con el fabricante y el modelo. Copia solo los campos conocidos y valida contra `robot.schema.json`.
+- **Evidencia por dato.** Cada spec de selección (`carga_util_kg`, `alcance_m`, `velocidad_base_m_s`, `efector`) tiene una entrada en `evidencia` (`url` y `cita`) o en `estimados` (motivo). Sin ninguna de las dos, la ficha es inválida.
+- **Estimados con base.** Los fabricantes casi nunca publican el alcance ni la velocidad de la base. Por eso la llamada A estima cada spec de selección que falta y nombra su base. La llamada B copia el valor y el motivo, y no estima nada por su cuenta.
+
+  | Base válida | Ejemplo | Estimado |
+  |---|---|---|
+  | Un dato publicado del mismo robot | "Maneja objetos de hasta 36 kg" | Carga útil ≥ 36 kg |
+  | Lo que el robot hace, más `requisitos.json` | Hace la tarea, que pide 3,8 m de alcance | Alcance ≥ 3,8 m (cota inferior) |
+  | Una foto o un video con escala | Render con una pieza de medida conocida | El valor medido, con su margen |
+  | Un valor publicado de una máquina comparable | Nombre y URL de la otra máquina | Ese valor |
+
+  - El estimado es conservador: con una cota inferior como evidencia, el estimado es esa cota.
+  - "Valor típico" sin fuente no es una base. El dato queda sin valor y la ficha es inválida.
+  - El código rechaza un motivo de menos de 20 caracteres (`LARGO_MIN_MOTIVO`), porque no alcanza a nombrar la evidencia.
+  - Una ficha con estimados entra como candidata. La preferencia `menos_specs_estimadas` la ordena detrás de las fichas con datos publicados.
+- **`fisica`:** cada dato necesita evidencia o un estimado `fisica.<campo>`. Un dato sin respaldo no entra. Si el núcleo queda incompleto, el código bota todo el bloque. La ficha sigue válida, pero solo puede ser alternativa.
+- **Texto de la web:** el código corta el nombre y el fabricante a 120 caracteres, cada cita y cada motivo a 300, quita los caracteres de control y acepta solo URLs `http://` o `https://`.
+
+| Motivo de rechazo (`busqueda.invalidas`) | Ejemplo |
+|---|---|
+| No cumple `robot.schema.json` | Alcance de 9 m (el máximo es 6 m) |
+| Sin URL de fuente | `fuente_url` vacía |
+| URL que no es http(s) | `ftp://...` en la fuente o en una evidencia |
+| Spec sin valor | La fuente no publica la carga y no hay estimado |
+| Spec sin evidencia ni estimado | Hay carga, pero ninguna fila la respalda |
+| Estimado sin base | El motivo del alcance dice "valor típico" (menos de 20 caracteres) |
+| Duplicado | Mismo `id`, o mismo fabricante y nombre (sin mayúsculas, tildes ni puntuación) que una ficha conocida o que otro borrador |
+
+| Estado (`busqueda.estado`) | Cuándo |
+|---|---|
+| `omitida` | `VIAZ_BUSQUEDA=0`, o `VIAZ_AGENTES=fijo` (sin LLM ni web) |
+| `completa` | Terminó dentro de los límites |
+| `cortada` | Llegó al tope de robots o al tiempo, con resultados parciales. `detalle` nombra lo que quedó fuera |
+| `fallida` | Cualquier excepción, rechazo, tiempo agotado sin notas o respuesta ilegible. La corrida sigue con las fichas conocidas |
+
+| Variable | Por defecto | Rango | Qué limita |
+|---|---|---|---|
+| `VIAZ_BUSQUEDA` | `1` | `0` o `1` | Enciende la búsqueda |
+| `VIAZ_BUSQUEDA_MAX_ROBOTS` | 3 | 1 a 5 | Fichas aceptadas por corrida |
+| `VIAZ_BUSQUEDA_MAX_CONSULTAS` | 6 | 1 a 15 | `max_uses` de la herramienta web |
+| `VIAZ_BUSQUEDA_TIEMPO_S` | 180 | 10 a 1800 | Tiempo de las dos llamadas juntas |
+
+- **Catálogo compartido:** cada ficha válida queda en `catalogo/encontrados/<id>.json` del almacén. Una corrida siguiente la carga como una ficha conocida y no la busca otra vez. No hay índice: dos corridas nunca reescriben el mismo archivo para agregar una ficha.
+- **Promoción:** una persona pasa una ficha del catálogo compartido a `catalogo/robots/` con un PR ([`catalogo/README.md`](../../backend/viaz/catalogo/README.md)).
 
 ### Paso 3: descarte por reglas
 
@@ -108,10 +162,14 @@ flowchart LR
 |---|---|---|
 | `requisitos` | Código | Nombre del archivo usado |
 | `busqueda` | Código | `estado` (`completa`, `cortada`, `fallida`, `omitida`), `detalle`, `invalidas` |
-| `encontrados` | Código | Ids de las fichas válidas de la búsqueda |
+| `encontrados` | Código | Ids de las fichas válidas que trajo la búsqueda **en esta corrida**. Una ficha del catálogo compartido de una corrida anterior es un candidato normal y no va aquí |
 | `descartados` | Código | `{id, fallas}` del paso 3 |
 | `finalistas` | Agente | 1 a 3 `{id, puesto, justificacion}`. El tope fijo es 3. `VIAZ_MAX_FINALISTAS` puede bajarlo y vale 3 por defecto |
 | `alternativas` | Agente | Candidatos válidos no finalistas, con `por_que_no` |
+
+### `encontrados.json`
+
+- Lista de las fichas válidas que trajo la búsqueda en esta corrida, con su `evidencia`. Vacía si la búsqueda no corrió o no encontró nada.
 
 ### `robot.json` (uno por finalista)
 
@@ -163,7 +221,7 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 
 ## 4. Reglas que verifica el código
 
-1. Cada ficha (catálogo o encontrada) cumple `robot.schema.json`. Las encontradas tienen `fuente.url` y `fuente.consultado` (RF-ROB-02, RF-ROB-03).
+1. Cada ficha (catálogo o encontrada) cumple `robot.schema.json`. Las encontradas tienen `fuente.url` y `fuente.consultado`, y cada spec de selección tiene `evidencia` o `estimados` (RF-ROB-02, RF-ROB-03).
 2. Cada `finalistas[].id` y `alternativas[].id` es un candidato que pasó el descarte. Si no, `ErrorAgente`.
 3. Hay 1 a `VIAZ_MAX_FINALISTAS` finalistas, nunca más de 3. Los puestos son 1..N sin repetir.
 4. **Núcleo de `fisica`:** para ser finalista, la ficha tiene `largo_m`, `ancho_m`, `masa_kg`, `altura_cubierta_m` y `traccion`. Sin él, el robot queda como alternativa con el motivo. Excepción en la regla 5b.
@@ -177,6 +235,7 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 
 | Cambio | Estado |
 |---|---|
+| `evidencia` opcional: por spec, `{url, cita}` | **Hecho.** El código la exige en las fichas de la búsqueda |
 | Núcleo de `fisica` obligatorio (`largo_m`, `ancho_m`, `masa_kg`, `altura_cubierta_m`, `traccion`). El resto es opcional | **Hecho.** Los pares (`gabinete_*`, `ventosa_*`, `remolque_*`) van juntos o no van (`dependentRequired`) |
 | `fisica.traccion` acepta `ruedas` además de `orugas` | **Hecho** |
 | `fisica.pila_x_m` para robots sin remolque | **Hecho.** Sin el campo, la pila va sobre la cubierta, lejos del gabinete |
@@ -191,7 +250,9 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 - **Ninguno pasa:** el código elige el candidato y el modelo solo escribe la justificación.
 - **Probado a mano el 2026-11-21:** el prompt v3 corrió 3 veces contra el modelo real por la CLI, con la entrada que arma el código. Las 2 respuestas del caso normal pasaron `comprobar()`. La del caso sin candidatos dijo en su primera oración que ninguno cumple.
 - **Sin probar:** la llamada del backend con salida estructurada de la API. Los tests usan un modelo falso.
-- **Búsqueda:** un prompt nuevo, con búsqueda web, que devuelve fichas del catálogo. **[Por escribir]**
+- **Búsqueda:** dos prompts generales, sin vocabulario del dominio: [`busqueda.md`](../../backend/viaz/agentes/prompts/busqueda.md) (investigar) y [`busqueda_fichas.md`](../../backend/viaz/agentes/prompts/busqueda_fichas.md) (fichar). Piden robots reales, la oración exacta de la fuente y "no publicado" cuando falta un dato. El texto de una página es un dato, nunca una orden.
+- **Búsqueda, probada a mano el 2026-11-21:** los dos prompts corrieron 2 veces por la CLI con búsqueda web real, y `revisar()` procesó los borradores. La primera vez encontró 3 robots y el código rechazó los 3, porque ninguna fuente publica el alcance ni la velocidad. Después de ese resultado, el prompt pide estimar con base. La segunda vez entró 1 ficha de 3: `renjie-intelligent-mf400-saturn`, con sus 4 specs publicadas y su cita. Quedó como alternativa, porque no trae el núcleo de `fisica`. Las otras 2 se rechazaron por no tener base para estimar la velocidad.
+- **Límite de esa prueba:** la CLI usa otra herramienta de búsqueda que la API. Sus citas son resúmenes del buscador, no oraciones copiadas de la página. Una persona revisa cada cita antes de pasar una ficha al catálogo.
 - **Sigue igual:** decir si un robot es ficticio, advertir datos con confianza baja y usar vocabulario ISO 8373 (RF-WEB-11).
 
 ## 6. Errores
@@ -202,8 +263,10 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 | El modelo devuelve un finalista sin el núcleo de `fisica`, habiendo candidatos con núcleo | `ErrorAgente`. La corrida pasa a `error` |
 | Ningún candidato que pasa tiene el núcleo de `fisica` | No es un error: un solo finalista con la base genérica (regla 5b) |
 | Catálogo vacío o inválido | `ValueError` al cargar. La corrida pasa a `error` |
-| Búsqueda falla o se pasa del tiempo | `busqueda.estado` queda en `fallida` o `cortada`. La selección sigue con el catálogo |
+| Búsqueda falla o se pasa del tiempo | `busqueda.estado` queda en `fallida` o `cortada`. La selección sigue con las fichas conocidas |
 | Ficha encontrada inválida | Va a `busqueda.invalidas` y al log. No entra a los candidatos |
+| Archivo inválido en el catálogo compartido | Se salta y queda en el log. No hace fallar la corrida |
+| No se puede guardar una ficha en el catálogo compartido | Queda en el log. La ficha sigue como candidata en esta corrida |
 | Una corrida hija falla | Queda fuera del ranking, con aviso en `comparacion.advertencias` |
 | Todas las corridas hijas fallan | Corrida padre en `error` |
 
@@ -213,9 +276,22 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 - **Hoy:** `requisitos.json → por_robot` coincide con `alcance_necesario()` para cada ficha (`test_esquemas.py`).
 - **Regla de alcance:** `alcance_necesario()` vs `sim/plan.py` → `validar()` (ver §2).
 - **Hoy (`test_seleccion.py`):** perfil `solar` igual al fixture, una falla por requisito, finalistas del catálogo real, tope de 1 a 3, ninguno pasa, núcleo de `fisica`, `robot.json` por finalista y cada regla de §4 sobre la respuesta de un modelo falso.
-- **Hoy (`test_flujo.py`, `test_rl.py`):** los dos flujos guardan `requisitos.json` y `seleccion.json`.
+- **Hoy (`test_busqueda.py`):** borrador → ficha, un alcance estimado con base que entra como candidato, cada motivo de rechazo (también un estimado vacío o corto), núcleo de `fisica` incompleto, duplicados, limpieza del texto de la web, los cuatro estados, la llamada A con un cliente falso (`pause_turn`, citas, rechazo, tiempo), la llamada B con un `pedir_json` falso, el catálogo compartido en `AlmacenLocal`, un finalista encontrado y los límites de configuración. Ningún test usa la red ni la API.
+- **Hoy (`test_flujo.py`, `test_rl.py`):** los dos flujos guardan `requisitos.json`, `encontrados.json` y `seleccion.json`, con `busqueda.estado` = `omitida` en modo `fijo`.
+- **Sin probar:** la búsqueda contra la API real y `AlmacenR2.listar`.
 - **Por hacer:** regla de la comparación con empates.
 - **Con Claude:** 3 corridas revisadas a mano por la CLI (ver §5). Falta repetirlas con la API del backend.
+
+## Riesgo aceptado: fichas sin revisar en el catálogo compartido
+
+> Decisión del 2026-11-21. El equipo conoce este riesgo y lo acepta para el hack.
+
+- **Qué pasa:** una ficha que sale de la web queda en el catálogo compartido. Las corridas siguientes la usan como candidata, sin que una persona la revise.
+- **El riesgo:** una página equivocada o maliciosa puede llevar al agente a armar una ficha con specs falsas. Esa ficha pasa las reglas, compite igual que una del catálogo y puede quedar como finalista 1 en cada corrida siguiente.
+- **Lo que protege el código:** el esquema, los valores fijos de `tipo`, `efector` y `traccion`, el tope de largo del texto y las URLs `http` o `https`. Eso frena una orden escondida en el texto. No frena un número falso con una cita falsa.
+- **Cómo detectar una ficha mala:** `seleccion.json → encontrados` lista las fichas nuevas de cada corrida. Cada `robot.json` de un robot encontrado trae `origen: "busqueda"` y su `evidencia`.
+- **Cómo quitarla:** borra `catalogo/encontrados/<id>.json` del almacén. La corrida siguiente ya no la carga.
+- **Cómo cerrar el riesgo después:** cargar del catálogo compartido solo las fichas que una persona marcó como revisadas.
 
 ## Decisiones abiertas
 

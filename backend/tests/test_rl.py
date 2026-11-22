@@ -94,6 +94,8 @@ def test_flujo_rl_completo(sistema):
     a = _artefactos(c)
     for n in ("entorno", "tarea", "requisitos", "seleccion", "robot", "clon", "resultado", "evaluacion", "ensamblaje", "hitos", "curva"):
         validar(n, requests.get(a[f"{n}.json"], timeout=5).json())
+    assert requests.get(a["seleccion.json"], timeout=5).json()["busqueda"]["estado"] == "omitida"
+    assert requests.get(a["encontrados.json"], timeout=5).json() == []
     clon = requests.get(a["clon.json"], timeout=5).json()
     assert clon["validado_en_escena"] and clon["construccion"]["metodo"] == "agente"
     assert "PARAMETROS" in requests.get(a["robot_cfg.py"], timeout=5).text

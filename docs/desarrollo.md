@@ -59,7 +59,7 @@ export VIAZ_AGENTES=claude
 python -m viaz.orquestador
 ```
 
-- **Agentes que llaman a Claude:** Entorno y Tarea reciben frames del video (1 cada 3 s, máx. 8). Robot elige dentro de `backend/viaz/catalogo/robots/`.
+- **Agentes que llaman a Claude:** Entorno y Tarea reciben frames del video (1 cada 3 s, máx. 8). Robot elige entre `backend/viaz/catalogo/robots/`, el catálogo compartido del almacén y lo que trae la búsqueda web ([`seleccion-robot.md`](agentes/seleccion-robot.md) §2).
 - **Agente sin LLM:** Clon es código determinista.
 - **Fallos:** si una salida no cumple su esquema, la corrida pasa a `error` con el motivo.
 
@@ -74,6 +74,10 @@ python -m viaz.orquestador
 | `VIAZ_AGENTES` | orquestador | `fijo` | `fijo` o `claude` |
 | `VIAZ_MODELO` | orquestador | `claude-opus-5-5` | Modelo de los agentes |
 | `ANTHROPIC_API_KEY` | orquestador | — | Solo en modo `claude` |
+| `VIAZ_BUSQUEDA` | orquestador | `1` | Búsqueda web de robots (`1` o `0`). Solo corre en modo `claude` |
+| `VIAZ_BUSQUEDA_MAX_ROBOTS` | orquestador | `3` | Fichas que acepta la búsqueda por corrida (1 a 5) |
+| `VIAZ_BUSQUEDA_MAX_CONSULTAS` | orquestador | `6` | Búsquedas web por corrida, `max_uses` (1 a 15) |
+| `VIAZ_BUSQUEDA_TIEMPO_S` | orquestador | `180` | Tiempo de la búsqueda, en segundos (10 a 1800) |
 | `WORKER_TOKEN` | API, pod | `dev-token` | Autoriza al sim runner |
 | `VIAZ_ORIGENES` | API | `http://localhost:3000` | CORS, separados por coma |
 | `VIAZ_CORRIDA_DEMO` | API | — | Id de la corrida que muestra `/corridas/demo` |

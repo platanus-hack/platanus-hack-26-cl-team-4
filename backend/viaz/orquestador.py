@@ -20,6 +20,8 @@ from sqlalchemy import insert, select, update
 from pathlib import Path
 
 from . import agentes, catalogo, monitor, urdf
+from .agentes import busqueda
+from .catalogo import encontrados
 from . import robot_cfg as rc
 from . import almacen as alm
 from . import db
@@ -137,17 +139,41 @@ def analizar_entorno(c: Corrida, cfg: Config, store: alm.Almacen, proyecto: dict
     return entorno, frames, artefactos
 
 
+def parametros_busqueda(cfg: Config) -> busqueda.Parametros:
+    return busqueda.Parametros(cfg.busqueda, cfg.busqueda_max_robots, cfg.busqueda_max_consultas, cfg.busqueda_tiempo_s)
+
+
+def seleccionar_robot(cfg: Config, store: alm.Almacen, entorno: dict,
+                      tarea: dict) -> tuple[agentes.Seleccion, list[dict]]:
+    """Pasos 1 a 4 de la selección v3. Devuelve la selección y las fichas que trajo la búsqueda en esta corrida."""
+    conocidas = encontrados.unir(catalogo.cargar(), encontrados.cargar(store))
+    requisitos_de_conocidas = agentes.perfiles.requisitos(entorno, tarea, list(conocidas.values()))
+    res = busqueda.buscar(cfg.agentes, cfg.modelo, requisitos_de_conocidas, tarea, conocidas,
+                          parametros_busqueda(cfg))
+    for ficha in res.fichas:
+        try:
+            encontrados.guardar(store, ficha)
+        except Exception as e:
+            log.warning("no pude guardar %s en el catálogo compartido: %s", ficha["id"], e)
+    candidatas = {**conocidas, **{f["id"]: f for f in res.fichas}}
+    r = agentes.seleccionar(cfg.agentes, cfg.modelo, entorno, tarea, candidatas, cfg.max_finalistas,
+                            busqueda=res.bloque(), encontrados=[f["id"] for f in res.fichas])
+    return r, res.fichas
+
+
 def elegir_robot(c: Corrida, cfg: Config, entorno: dict, tarea: dict) -> dict:
-    """Etapa robot (selección v3, pasos 1, 3 y 4)."""
+    """Etapa robot (selección v3, pasos 1 a 4)."""
     c.etapa("robot", "en_curso", estado_corrida="eligiendo_robot")
-    r = agentes.seleccionar(cfg.agentes, cfg.modelo, entorno, tarea, catalogo.cargar(), cfg.max_finalistas)
+    r, nuevas = seleccionar_robot(cfg, c.store, entorno, tarea)
+    c.escribir("encontrados.json", json.dumps(nuevas, ensure_ascii=False, indent=2))
     c.escribir("requisitos.json", r.requisitos)
     c.escribir("seleccion.json", r.seleccion)
     primero, *sin_correr = r.robots_por_puesto
     c.escribir("robot.json", primero)
-    log.info("corrida %s: sigue con %s; finalistas sin correr: %s", c.id, primero["id"],
+    log.info("corrida %s: búsqueda %s (%s); sigue con %s; finalistas sin correr: %s", c.id,
+             r.seleccion["busqueda"]["estado"], r.seleccion["busqueda"]["detalle"], primero["id"],
              ", ".join(x["id"] for x in sin_correr) or "ninguno")
-    c.etapa("robot", "listo", ["requisitos.json", "seleccion.json", "robot.json"])
+    c.etapa("robot", "listo", ["requisitos.json", "encontrados.json", "seleccion.json", "robot.json"])
     return primero
 
 

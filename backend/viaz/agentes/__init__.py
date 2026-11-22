@@ -341,7 +341,8 @@ def _texto_seleccion(requisitos: dict, tope: int, candidatos: list[dict], titulo
             f"{titulo}:\n{json.dumps([_candidato_para_el_modelo(f, requisitos) for f in candidatos], ensure_ascii=False)}")
 
 
-def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], tope: int) -> dict:
+def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], tope: int,
+                          busqueda: dict | None, encontrados: list[str]) -> dict:
     pasan, descartados = seleccion.particion(fichas, requisitos)
     if not pasan:
         elegido = seleccion.menos_fallas(fichas, requisitos)
@@ -351,7 +352,7 @@ def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], top
         datos = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.ESQUEMA_JUSTIFICACION,
                            contenido=[{"type": "text", "text": texto}])
         return seleccion.armar([{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
-                               [], descartados)
+                               [], descartados, busqueda, encontrados)
     orden = seleccion.ordenadas(pasan, requisitos)
     if not any(seleccion.tiene_nucleo(f) for f in orden):
         elegido = orden[0]
@@ -361,23 +362,29 @@ def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], top
         datos = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.ESQUEMA_JUSTIFICACION,
                            contenido=[{"type": "text", "text": texto}])
         return seleccion.armar([{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
-                               seleccion.alternativas_sin_nucleo(orden, elegido), descartados)
+                               seleccion.alternativas_sin_nucleo(orden, elegido), descartados, busqueda,
+                               encontrados)
     texto = _texto_seleccion(requisitos, tope, orden, "Candidatos que pasaron el descarte por reglas, "
                                                       "ordenados por las preferencias")
     eleccion = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.esquema_eleccion([f["id"] for f in orden]),
                           contenido=[{"type": "text", "text": texto}])
     seleccion.comprobar(eleccion, pasan, tope)
-    return seleccion.armar(eleccion["finalistas"], eleccion["alternativas"], descartados)
+    return seleccion.armar(eleccion["finalistas"], eleccion["alternativas"], descartados, busqueda, encontrados)
 
 
 def seleccionar(modo: str, modelo: str, entorno_json: dict, tarea_json: dict, catalogo: dict[str, dict],
-                max_finalistas: int = TOPE_FINALISTAS) -> Seleccion:
-    """Pasos 1, 3 y 4: requisitos, descarte por reglas y 1 a max_finalistas finalistas, cada uno con su robot.json."""
+                max_finalistas: int = TOPE_FINALISTAS, busqueda: dict | None = None,
+                encontrados: list[str] | None = None) -> Seleccion:
+    """Pasos 1, 3 y 4: requisitos, descarte por reglas y 1 a max_finalistas finalistas, cada uno con su robot.json.
+
+    catalogo: todas las fichas candidatas (repo, compartidas y encontradas). busqueda y encontrados: el resultado
+    del paso 2 (busqueda.buscar), que va tal cual a seleccion.json. Sin ellos, la búsqueda queda `omitida`."""
     tope = validar_max_finalistas(max_finalistas)
     fichas = list(catalogo.values())
+    ids = list(encontrados or [])
     req = perfiles.requisitos(entorno_json, tarea_json, fichas)
-    sel = (seleccion.por_reglas(req, fichas, tope) if modo == "fijo"
-           else _seleccion_con_modelo(modelo, req, fichas, tope))
+    sel = (seleccion.por_reglas(req, fichas, tope, busqueda, ids) if modo == "fijo"
+           else _seleccion_con_modelo(modelo, req, fichas, tope, busqueda, ids))
     return Seleccion(req, sel, seleccion.robots_finalistas(sel, catalogo))
 
 
