@@ -1,5 +1,7 @@
 # VIAZ
 
+[![ci](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/actions/workflows/ci.yml/badge.svg)](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/actions/workflows/ci.yml)
+
 **De videos de tu lugar de trabajo a un robot real trabajando ahí, antes de comprarlo.**
 
 VIAZ es el puente entre la industria y la robótica.
@@ -47,7 +49,7 @@ flowchart LR
 
 1. **Mapear el entorno.** El agente Mapeo de entorno analiza los videos y la descripción del cliente. Después describe el lugar de trabajo: medidas, objetos y terreno. Con esos datos, la simulación genera la escena 3D.
 2. **Definir la tarea.** El agente Tarea lee el entorno y la descripción del cliente. Después define qué hace el robot y cómo se mide el resultado.
-3. **Elegir el robot.** El código calcula los requisitos de la tarea y descarta los robots del catálogo que no los cumplen. El agente Selección de robot elige hasta 3 finalistas y explica por qué. Hoy solo el primero sigue al paso 4.
+3. **Elegir el robot.** El código calcula los requisitos de la tarea y descarta los robots del catálogo que no los cumplen. El agente Selección de robot elige hasta 3 finalistas y explica por qué. Si hay más de uno, cada finalista sigue los pasos 4 a 6 en su propia corrida hija. El código elige al ganador con una regla fija. La configuración de deploy (`render.yaml`) fija 1 finalista. El deploy todavía no existe: [`docs/estado.md`](docs/estado.md).
 4. **Construir el robot.** El agente Constructor arma el robot simulado con las medidas, el alcance y la carga útil del robot real. La simulación lo valida en la escena. Si falla, el agente corrige, con un máximo de 3 intentos.
 5. **Entrenar la tarea.** El robot aprende la tarea con aprendizaje por refuerzo (RL) en NVIDIA Isaac Lab. El agente Monitor vigila el entrenamiento y avisa al equipo.
 6. **Evaluar y mostrar.** La simulación evalúa al robot entrenado y graba los videos. La web muestra el robot elegido, los videos y las métricas: tareas hechas, tasa de éxito y tiempo por ciclo.
@@ -68,7 +70,7 @@ El mismo flujo corre en rubros distintos. Solo cambia el perfil de dominio ([`do
 - **Entrada:** videos y una descripción del lugar de trabajo.
 - **Salida:** un demo de cómo trabajaría ese robot en ese lugar, antes de comprar o importar nada.
 
-**Hoy:** los casos 1 y 2 tienen perfil y entorno RL (`sim/rl/` y `sim/animar/`). El caso 3 tiene solo entorno y tarea de ejemplo. Cómo agregar uno: [`docs/agregar-dominio.md`](docs/agregar-dominio.md).
+**Hoy:** los casos 1 y 2 tienen perfil de tarea y entorno RL (`sim/rl/` y `sim/animar/`). Solo el caso 1 tiene además perfil de entorno (`parque_solar`). El caso 3 tiene solo entorno y tarea de ejemplo. Qué está probado: [`docs/estado.md`](docs/estado.md). Cómo agregar uno: [`docs/agregar-dominio.md`](docs/agregar-dominio.md).
 
 ## Por qué importa
 
@@ -78,6 +80,8 @@ El mismo flujo corre en rubros distintos. Solo cambia el perfil de dominio ([`do
 
 ## Más detalle
 
+- Estado del proyecto (qué es real, qué no y dónde está la prueba): [`docs/estado.md`](docs/estado.md)
+- Índice de la documentación: [`docs/README.md`](docs/README.md)
 - Arquitectura técnica: [`docs/arquitectura.md`](docs/arquitectura.md)
 - Contrato de datos entre agentes: [`docs/contrato-datos.md`](docs/contrato-datos.md)
 
