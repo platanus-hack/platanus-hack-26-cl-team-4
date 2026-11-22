@@ -4,11 +4,13 @@ La usan exportar_glb.py (Android / web) y exportar_usdz.py (iPhone, AR Quick Loo
 Unidades: metros, Y arriba. El pasillo central va en x ≈ 0,15 y el mural al fondo (z negativo).
 Medidas aproximadas (±1 m): salen de la nube de puntos de COLMAP y del video, no de un plano.
 El robot está ANIMADO A MANO: no está entrenado ni sale de Isaac.
+El humanoide de la fila es la malla del modelo publicado del Unitree H1, de pie y quieto (h1_pose.npz).
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 
@@ -397,42 +399,11 @@ def robot_dron() -> dict[str, Malla]:
 
 
 def robot_humanoide() -> dict[str, Malla]:
-    """Humanoide con estructura visible, carcasas segmentadas y pies de apoyo."""
-    g = {k: Malla() for k in ("azul", "robot_blanco", "negro", "vidrio", "ojos", "metal_mecanizado", "goma")}
-    carcasa(g["negro"], (0, .747, 0), (.263, .170, .174), .036)
-    carcasa(g["robot_blanco"], (0, .807, .006), (.229, .104, .169), .026)
-    cilindro(g["metal_mecanizado"], (0, .91, 0), .078, .146, lados=16)
-    carcasa(g["azul"], (0, 1.033, .008), (.293, .213, .187), .049)
-    carcasa(g["robot_blanco"], (0, 1.161, .015), (.367, .250, .223), .049)
-    carcasa(g["vidrio"], (0, 1.151, .127), (.156, .090, .020), .010)
-    caja(g["ojos"], (0, 1.149, .138), (.068, .007, .003))
-    cilindro(g["negro"], (0, 1.313, -.003), .056, .084, lados=14)
-    esfera(g["robot_blanco"], (0, 1.441, .016), .131, seg=18, anillos=12, escala=(.88, 1.02, .92))
-    carcasa(g["negro"], (0, 1.433, .122), (.190, .100, .061), .021)
-    carcasa(g["vidrio"], (0, 1.433, .154), (.165, .079, .015), .006)
-    for lado in (-1, 1):
-        caja(g["ojos"], (lado * .039, 1.438, .163), (.026, .008, .004))
-        cadera = (lado * .098, .724, -.009)
-        rodilla = (lado * .113, .408, .024)
-        tobillo = (lado * .113, .110, -.018)
-        hombro = (lado * .216, 1.205, .010)
-        codo = (lado * .248, .951, .035)
-        muneca = (lado * .241, .753, .075)
-        for centro, radio, ancho in ((cadera, .070, .084), (rodilla, .056, .083), (tobillo, .040, .068),
-                                     (hombro, .061, .075), (codo, .044, .065)):
-            cilindro(g["negro"], centro, radio, ancho, lados=14, eje="x")
-        tramo(g["robot_blanco"], cadera, rodilla, .071, .048)
-        tramo(g["robot_blanco"], rodilla, tobillo, .058, .034)
-        tramo(g["azul"], hombro, codo, .052, .033)
-        tramo(g["robot_blanco"], codo, muneca, .046, .026)
-        for cx, cy, cz in (rodilla, codo):
-            cilindro(g["metal_mecanizado"], (cx + lado * .043, cy, cz), .025, .010, lados=12, eje="x")
-        carcasa(g["robot_blanco"], (tobillo[0], .063, .047), (.131, .090, .234), .022)
-        carcasa(g["goma"], (tobillo[0], .014, .047), (.137, .028, .239), .007)
-        carcasa(g["negro"], (muneca[0], .712, .076), (.062, .079, .049), .009)
-        for dedo in (-1, 0, 1):
-            carcasa(g["negro"], (muneca[0] + .018 * dedo, .667, .080), (.012, .042, .018), .004)
-    return g
+    """Unitree H1 de pie: malla del modelo publicado, de h1_pose.npz (sale de generar_h1_pose.py). Mira a +z."""
+    d = np.load(Path(__file__).with_name("h1_pose.npz"))
+    m = Malla()
+    m.agregar(d["pos"], d["nor"], np.zeros((len(d["pos"]), 2)), d["idx"].tolist())
+    return {"robot_gris": m}
 
 
 def escaneo(ancho: float, alto: float) -> dict[str, Malla]:
