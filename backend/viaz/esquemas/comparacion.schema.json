@@ -25,7 +25,7 @@
       "pattern": "^[a-z0-9-]+$"
     },
     "regla": {
-      "description": "Regla con que el código ordenó el ranking, en una oración.",
+      "description": "Regla con que el código ordenó el ranking, en una oración simple para el cliente, sin nombres de campos.",
       "type": "string"
     },
     "condiciones": {
@@ -48,7 +48,11 @@
           "exclusiveMinimum": 0
         },
         "semillas": {
-          "type": "array",
+          "description": "Semillas del entrenamiento, iguales para todos. null: el entrenamiento no fija semillas (sim/rl/entrenar.py no tiene ese parámetro).",
+          "type": [
+            "array",
+            "null"
+          ],
           "minItems": 1,
           "items": {
             "type": "integer"
@@ -84,6 +88,10 @@
             "type": "string",
             "pattern": "^[a-z0-9-]+$"
           },
+          "nombre": {
+            "description": "Nombre de la ficha (robot.json → nombre). Lo agrega el código, no el modelo.",
+            "type": "string"
+          },
           "corrida_id": {
             "description": "Id de la corrida hija del finalista.",
             "type": "string"
@@ -94,13 +102,13 @@
             "maximum": 3
           },
           "tasa_exito": {
-            "description": "evaluacion.json → tolerancias[0].tasa_exito (la tolerancia de entrenamiento).",
+            "description": "resultado.json → metricas.tasa_exito de la corrida hija. Es evaluacion.json → tolerancias[0].tasa_exito (la tolerancia de entrenamiento).",
             "type": "number",
             "minimum": 0,
             "maximum": 1
           },
           "ciclo_s": {
-            "description": "evaluacion.json → ciclo_promedio_s. null si no hubo ningún éxito.",
+            "description": "resultado.json → metricas.ciclo_promedio_s de la corrida hija. null si no hubo ningún éxito.",
             "type": [
               "number",
               "null"

@@ -172,6 +172,7 @@ class Avisador:
     webhook: str
     ultimo: dict[str, float] = field(default_factory=dict)
     enviados: list[str] = field(default_factory=list)  # para tests y registro
+    etiqueta: str = ""
 
     def tipo_de(self, c: dict) -> str | None:
         if c["estado"] == "divergiendo":
@@ -188,7 +189,8 @@ class Avisador:
         tipo = self.tipo_de(c) or "hito"
         e = c["evidencia"]
         titulo = {"hito": f"HITO: {c['hito']}", "fin": "FIN DEL ENTRENAMIENTO"}.get(tipo, c["estado"].upper())
-        lineas = [f"{EMOJI[tipo]} VIAZ · entrenamiento instalar_panel · {titulo}",
+        lineas = [f"{EMOJI[tipo]} VIAZ · entrenamiento instalar_panel · {titulo}"
+                  + (f" · {self.etiqueta}" if self.etiqueta else ""),
                   f"Iteración {c['iteracion']} · {e['tiempo_usado_h']} h de {horas_max} h"]
         if e["recompensa_media"] is not None:
             lineas.append(f"Recompensa media: {e['recompensa_media']:.1f}"

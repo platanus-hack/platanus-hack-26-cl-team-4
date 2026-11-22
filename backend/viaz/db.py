@@ -37,6 +37,7 @@ corridas = Table(
     Column("estado", String(32), nullable=False, default="en_cola"),
     Column("etapas", JSON, nullable=False, default=list),  # [{nombre, estado, artefactos: [archivo]}]
     Column("error", Text),
+    Column("padre_id", String(32)),
     Column("creado", DateTime(timezone=True), nullable=False, default=ahora),
     Column("actualizado", DateTime(timezone=True), nullable=False, default=ahora),
 )
@@ -73,6 +74,7 @@ metricas = Table(
 # Columnas agregadas después de la primera versión: create_all no las agrega a tablas que ya existen.
 _COLUMNAS_NUEVAS = {
     "trabajos": {"latido_en": "TIMESTAMP", "detener": "BOOLEAN NOT NULL DEFAULT FALSE", "parametros": "JSON"},
+    "corridas": {"padre_id": "VARCHAR(32)"},
 }
 
 ETAPAS = ["entorno", "tarea", "robot", "clon", "inteligencia"]

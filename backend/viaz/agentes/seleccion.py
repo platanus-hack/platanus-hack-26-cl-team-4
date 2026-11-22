@@ -169,17 +169,27 @@ BUSQUEDA_OMITIDA = {"estado": "omitida", "invalidas": [],
                     "detalle": "La búsqueda web no corrió: los candidatos son solo las fichas conocidas."}
 
 
-def armar(finalistas: list[dict], alternativas: list[dict], descartados: list[dict],
+def nombres(fichas: list[dict]) -> dict[str, str]:
+    return {f["id"]: f["nombre"] for f in fichas if f.get("nombre")}
+
+
+def con_nombre(filas: list[dict], por_id: dict[str, str]) -> list[dict]:
+    return [{"id": f["id"], **({"nombre": por_id[f["id"]]} if f["id"] in por_id else {}),
+             **{k: v for k, v in f.items() if k not in ("id", "nombre")}} for f in filas]
+
+
+def armar(fichas: list[dict], finalistas: list[dict], alternativas: list[dict], descartados: list[dict],
           busqueda: dict | None = None, encontrados: list[str] | tuple[str, ...] = ()) -> dict:
     """seleccion.json validado. `busqueda` es el bloque del paso 2; `encontrados`, los ids que trajo en esta corrida."""
+    por_id = nombres(fichas)
     return validado("seleccion", {
         "version": 1,
         "requisitos": "requisitos.json",
         "busqueda": copy.deepcopy(busqueda or BUSQUEDA_OMITIDA),
         "encontrados": list(encontrados),
-        "descartados": descartados,
-        "finalistas": sorted(finalistas, key=lambda f: f["puesto"]),
-        "alternativas": alternativas,
+        "descartados": con_nombre(descartados, por_id),
+        "finalistas": con_nombre(sorted(finalistas, key=lambda f: f["puesto"]), por_id),
+        "alternativas": con_nombre(alternativas, por_id),
     })
 
 
@@ -190,19 +200,20 @@ def por_reglas(requisitos: dict, fichas: list[dict], tope: int, busqueda: dict |
     pasan, descartados = particion(fichas, requisitos)
     if not pasan:
         elegido = menos_fallas(fichas, requisitos)
-        return armar([{"id": elegido["id"], "puesto": 1,
-                       "justificacion": justificacion_sin_candidatos(elegido, requisitos)}],
+        return armar(fichas, [{"id": elegido["id"], "puesto": 1,
+                              "justificacion": justificacion_sin_candidatos(elegido, requisitos)}],
                      [], descartados, busqueda, encontrados)
     orden = ordenadas(pasan, requisitos)
     elegidos = [f for f in orden if tiene_nucleo(f)][:tope]
     if not elegidos:
         elegido = orden[0]
-        return armar([{"id": elegido["id"], "puesto": 1, "justificacion": justificacion_sin_nucleo(elegido, requisitos)}],
+        return armar(fichas, [{"id": elegido["id"], "puesto": 1,
+                              "justificacion": justificacion_sin_nucleo(elegido, requisitos)}],
                      alternativas_sin_nucleo(orden, elegido), descartados, busqueda, encontrados)
     finalistas = [{"id": f["id"], "puesto": n, "justificacion": _justificacion(f, requisitos, n)}
                   for n, f in enumerate(elegidos, 1)]
     alternativas = [{"id": f["id"], "por_que_no": _por_que_no(f, tope)} for f in orden if f not in elegidos]
-    return armar(finalistas, alternativas, descartados, busqueda, encontrados)
+    return armar(fichas, finalistas, alternativas, descartados, busqueda, encontrados)
 
 
 def comprobar(eleccion: dict, pasan: list[dict], tope: int) -> None:
@@ -247,7 +258,7 @@ def robots_finalistas(seleccion: dict, fichas: dict[str, dict]) -> list[dict]:
     def otros(finalista: dict) -> list[dict]:
         return ([{"id": f["id"], "por_que_no": f"finalista {f['puesto']}"}
                  for f in seleccion["finalistas"] if f["id"] != finalista["id"]]
-                + [dict(a) for a in seleccion["alternativas"]]
+                + [{"id": a["id"], "por_que_no": a["por_que_no"]} for a in seleccion["alternativas"]]
                 + [{"id": d["id"], "por_que_no": "; ".join(d["fallas"])}
                    for d in seleccion["descartados"] if d["id"] != finalista["id"]])
     return [validado("robot", {**copy.deepcopy(fichas[f["id"]]), "justificacion": f["justificacion"],

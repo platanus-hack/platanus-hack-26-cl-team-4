@@ -86,6 +86,10 @@
           "id": {
             "type": "string"
           },
+          "nombre": {
+            "description": "Nombre de la ficha (robot.json → nombre). Lo agrega el código, no el modelo.",
+            "type": "string"
+          },
           "fallas": {
             "type": "array",
             "minItems": 1,
@@ -114,6 +118,10 @@
             "type": "string",
             "pattern": "^[a-z0-9-]+$"
           },
+          "nombre": {
+            "description": "Nombre de la ficha (robot.json → nombre). Lo agrega el código, no el modelo.",
+            "type": "string"
+          },
           "puesto": {
             "type": "integer",
             "minimum": 1,
@@ -137,6 +145,10 @@
         ],
         "properties": {
           "id": {
+            "type": "string"
+          },
+          "nombre": {
+            "description": "Nombre de la ficha (robot.json → nombre). Lo agrega el código, no el modelo.",
             "type": "string"
           },
           "por_que_no": {
