@@ -1,6 +1,7 @@
 "use client";
 
-// Realidad aumentada: la sala modelada de forma simple + un robot de servicio ANIMADO A MANO (no entrenado).
+// Realidad aumentada: la sala modelada de forma simple + un robot de servicio ANIMADO A MANO (no entrenado),
+// y un humanoide que repite la grabación del movimiento de su política entrenada en Isaac Lab.
 // model-viewer abre la cámara del celular: AR Quick Look en iPhone (USDZ) y Scene Viewer / WebXR en Android (GLB).
 // El paquete autónomo de model-viewer se publica junto con los modelos de la sala.
 import Script from "next/script";
@@ -8,7 +9,7 @@ import "./sala.css";
 import { createElement, useEffect, useRef, useState } from "react";
 
 // Sube este número al regenerar los modelos: obliga al celular a bajar los archivos nuevos y no usar los guardados.
-const VERSION = 7;
+const VERSION = 8;
 
 // Primero va el modo principal: los robots a tamaño real en el lugar donde está la persona.
 const MODELOS = {
@@ -19,6 +20,7 @@ const MODELOS = {
     usdz: `/ar/robot.usdz?v=${VERSION}`,
     orbita: "10deg 72deg auto",
     escalaFija: true,   // 1:1 con la sala real: no se agranda ni se achica con los dedos
+    animacion: "entrega_cafe",
   },
   maqueta: {
     titulo: "Maqueta de la sala",
@@ -27,6 +29,16 @@ const MODELOS = {
     usdz: `/ar/maqueta.usdz?v=${VERSION}`,
     orbita: "35deg 60deg auto",
     escalaFija: false,
+    animacion: "entrega_cafe",
+  },
+  entrenado: {
+    titulo: "Robot entrenado",
+    detalle: "Apunta al piso: un robot humanoide baila a tamaño real con el movimiento que aprendió en la simulación de VIAZ.",
+    glb: `/ar/robot_entrenado.glb?v=${VERSION}`,
+    usdz: `/ar/robot_entrenado.usdz?v=${VERSION}`,
+    orbita: "20deg 80deg 6.5m",   // lejos: el robot se desplaza al bailar y con "auto" los pies salen del cuadro
+    escalaFija: true,
+    animacion: "anima_la_fiesta",
   },
 } as const;
 
@@ -92,7 +104,7 @@ export default function PaginaSala() {
           "camera-controls": true,
           "touch-action": "pan-y",
           autoplay: true,
-          "animation-name": "entrega_cafe",
+          "animation-name": m.animacion,
           "shadow-intensity": "1",
           "camera-orbit": m.orbita,
           exposure: "1.1",
@@ -101,10 +113,17 @@ export default function PaginaSala() {
         createElement("button", { slot: "ar-button", className: "ar-boton" }, "Ver en tu espacio"),
       )}
 
-      <p className="aviso">
-        <strong>Concepto.</strong> La sala está modelada de forma simple a partir del video (medidas aproximadas). Los robots y la
-        elección están animados a mano: no están entrenados ni salen de la simulación de VIAZ.
-      </p>
+      {modo === "entrenado" ? (
+        <p className="aviso">
+          <strong>Grabación.</strong> El movimiento es una grabación de la política entrenada en la simulación de VIAZ, sin
+          retoques. La política no corre en el celular, y en este modo la sala no aparece.
+        </p>
+      ) : (
+        <p className="aviso">
+          <strong>Concepto.</strong> La sala está modelada de forma simple a partir del video (medidas aproximadas). Los robots y la
+          elección están animados a mano: no están entrenados ni salen de la simulación de VIAZ.
+        </p>
+      )}
       <p className="tenue">
         Funciona en iPhone (Safari) y en Android con ARCore (Chrome). En computador se ve en 3D, sin realidad aumentada.
       </p>
