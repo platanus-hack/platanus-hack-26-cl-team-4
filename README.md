@@ -56,22 +56,6 @@ flowchart LR
 
 En los casos de referencia del demo, el equipo puede escribir a mano el entorno y la tarea. En ese caso los agentes Mapeo de entorno y Tarea no corren, y la web lo dice.
 
-## Casos de referencia
-
-El mismo flujo corre en rubros distintos. Solo cambia el perfil de dominio ([`docs/requerimientos.md`](docs/requerimientos.md) §4.0).
-
-| Caso | Lugar | Tarea | Robot que busca VIAZ |
-|---|---|---|---|
-| 1 | Megaparque solar: filas de estructuras y pilas de paneles | Tomar un panel y dejarlo sobre la estructura | Robot de instalación de paneles |
-| 2 | Sala de eventos (la del pitch): tarima, pantalla, filas de sillas | Recorrer la sala y bailar frente al público sin chocar | El que elija el agente; con reglas, el humanoide Unitree H1 |
-| 3 | Sala u oficina: mesa, sillas y estante | Tomar una caja de la mesa y dejarla en el estante | Robot móvil con brazo |
-| Otros | Bodega, taller, línea de producción | Transportar, ordenar, tomar y dejar | El que pidan los requisitos |
-
-- **Entrada:** videos y una descripción del lugar de trabajo.
-- **Salida:** un demo de cómo trabajaría ese robot en ese lugar, antes de comprar o importar nada.
-
-**Hoy:** los casos 1 y 2 tienen perfil de tarea y entorno RL (`sim/rl/` y `sim/animar/`). Solo el caso 1 tiene además perfil de entorno (`parque_solar`). El caso 3 tiene solo entorno y tarea de ejemplo. Qué está probado: [`docs/estado.md`](docs/estado.md). Cómo agregar uno: [`docs/agregar-dominio.md`](docs/agregar-dominio.md).
-
 ## Por qué importa
 
 - **Menos riesgo:** el cliente ve el robot en su propio lugar de trabajo antes de invertir.
@@ -84,6 +68,7 @@ El mismo flujo corre en rubros distintos. Solo cambia el perfil de dominio ([`do
 - Índice de la documentación: [`docs/README.md`](docs/README.md)
 - Arquitectura técnica: [`docs/arquitectura.md`](docs/arquitectura.md)
 - Contrato de datos entre agentes: [`docs/contrato-datos.md`](docs/contrato-datos.md)
+- Cómo agregar un rubro nuevo: [`docs/agregar-dominio.md`](docs/agregar-dominio.md)
 
 ---
 
