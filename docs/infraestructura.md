@@ -101,7 +101,7 @@ Probado el 2026-11-21 en una RTX 5090 de Vast.ai con driver 580.178.04, en un ho
 cd /workspace/viaz
 bash worker-gpu/pod/instalar.sh            # ~15 min en un pod nuevo (estimado); 2,5 min si ya está instalado (medido)
 source /workspace/pod.env
-bash worker-gpu/pod/humo.sh                # Cartpole PPO: 60 s, ~150 000 pasos/s, recompensa ~4,9 (medido)
+bash worker-gpu/pod/humo.sh                # Cartpole PPO: 60 s, ~150 000 pasos/s, recompensa ~4,9 (medido en el pod; el log no está en el repo)
 ```
 
 - **Idempotente:** si algo falla, corrige y corre `instalar.sh` de nuevo. Salta lo que ya está hecho.
