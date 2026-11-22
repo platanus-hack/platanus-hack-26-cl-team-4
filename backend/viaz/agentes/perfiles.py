@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import Callable
 
 from .. import urdf
-from ..esquemas import esquema
 from .base import ErrorAgente, validado
 from .seleccion import preferencias
 
@@ -39,7 +38,7 @@ def alcance_necesario(entorno_json: dict, robot_json: dict | None = None) -> flo
 def _tipos_solares(pendiente_grados: float) -> list[str]:
     if pendiente_grados > PENDIENTE_MAX_BASE_MOVIL_GRADOS:
         return ["vehiculo_con_brazo"]
-    return [t for t in esquema("robot")["properties"]["tipo"]["enum"] if t != "brazo_fijo"]
+    return ["base_movil_brazo", "vehiculo_con_brazo"]   # explícito: un humanoide no sirve en el perfil solar
 
 
 def _numero(valor: float) -> str:

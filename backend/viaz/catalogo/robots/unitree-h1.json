@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "unitree-h1",
+  "nombre": "H1 (humanoide de tamaño completo)",
+  "fabricante": "Unitree Robotics (China)",
+  "tipo": "humanoide",
+  "ficticio": false,
+  "carga_util_kg": 30,
+  "alcance_m": 0.6,
+  "velocidad_base_m_s": 3.3,
+  "efector": "mano",
+  "fuente": {
+    "url": "https://www.unitree.com/h1",
+    "consultado": "2026-11-21"
+  },
+  "capacidades": ["caminar", "transportar"],
+  "evidencia": {
+    "tipo": {
+      "url": "https://www.unitree.com/h1",
+      "cita": "Unitree H1 / H1-2. Height about 180CM, Weight about 47kg"
+    }
+  },
+  "estimados": {
+    "carga_util_kg": "Unitree no la publica en su tabla. New Atlas informó hasta 30 kg en el anuncio del H1 (newatlas.com/robotics/unitree-h1-humanoid-bipedal-robot).",
+    "alcance_m": "No publicado. Brazo de 4 grados de libertad en un humanoide de 1,8 m: estimamos 0,6 m desde el hombro.",
+    "velocidad_base_m_s": "No está en la tabla oficial. Tiendas y fichas de terceros publican 3,3 m/s; caminando en interiores conviene mucho menos.",
+    "efector": "El H1 base trae brazos sin mano diestra; Unitree ofrece manos como opción. Para llevar una bandeja o taza usamos 'mano'."
+  }
+}
