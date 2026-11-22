@@ -4,6 +4,25 @@
 - **Commit base:** `dc7a26b` (`main`).
 - **Objetivo:** correr todos los agentes con Claude real, de punta a punta, con clave de API (A) o con suscripción (B).
 
+## Estado de cada problema (actualizado 2026-11-22, rama `fix/pendientes-corrida-real`)
+
+| # | Problema | Qué se hizo | Estado |
+|---|---|---|---|
+| 1 | Ningún flujo corre todos los agentes | `rl` corre el agente Entorno con videos en modo `claude` (no solo con `VIAZ_MEDIR`) y el agente Tarea con `VIAZ_TAREA_AGENTE=1` | Hecho. Probado en `fijo` (`test_flujo_rl_pide_la_tarea_al_agente…`). Sin probar con Claude real |
+| 2 | Backend solo con clave de API | `VIAZ_CLAUDE=suscripcion`: adaptador con el Agent SDK de Python (`agentes/base.py`), sin herramientas ni configuración de la carpeta | Hecho. Probado con un SDK falso. **Sin probar con el SDK real** (no instala en el Mac del equipo por `cryptography`) |
+| 3 | Términos de la suscripción | El código rechaza la suscripción en Render (`RENDER`) y si también hay `ANTHROPIC_API_KEY`. `render.yaml` fija `VIAZ_CLAUDE=api` | Hecho y probado. Que el uso local cuente como "uso normal": **[Sin verificar]** |
+| 4 | Búsqueda sin citas con el CLI | Con suscripción, la búsqueda queda `omitida` con su motivo | Hecho y probado |
+| 5 | Errores de la API botan la corrida | Todo error de la API o del JSON sale como `ErrorAgente`; 408, 429, 5xx, 529 y red se reintentan 3 veces con espera (5, 20 y 60 s) | Hecho y probado con errores reales del SDK `anthropic` |
+| 6 | Fallas en silencio | Chequeo previo al arrancar en `claude` (si falla, el orquestador sale con código 2). `monitoreo.jsonl` trae `fuente` y `motivo_reglas`; `comparacion.json` trae `fuente_explicacion` | Hecho y probado. La web todavía no muestra la fuente |
+| 7 | Esquemas sin pasar por la API | 7B: test de límites (24 opcionales, 16 uniones) para los 8 esquemas: todos caben. 7A: `backend/scripts/humo_agentes.py` | 7B hecho. **7A sin correr: falta la clave** |
+| 8 | `max_tokens` fijo | Streaming; tope por agente (`MAX_TOKENS_AGENTE`, Entorno 48 000) y `VIAZ_MAX_TOKENS`; el log avisa si una salida pasa el 80 % | Hecho. Las cifras reales salen del script de humo |
+| 9 | `render.yaml` en `fijo` | `VIAZ_AGENTES=claude`, 1 finalista, 1 h, monitor cada 30 min con cupo de 6, agente Tarea | Hecho. **Sin clave cargada en Render, el orquestador no arranca** (a propósito) |
+| 10 | El pod no alcanza el almacén local | `worker-gpu/pod/todo_en_el_pod.sh`: API, orquestador y runner en el pod, sin R2 | Hecho y probado (corridas `5e72191bab0c` y la del script). Render + R2 sigue pendiente de credenciales |
+| 11 | Worker Isaac sin preparar | Doc con `VIAZ_CMD_GRABAR_CLIP`; los comandos pasan por `sim/tareas.py`; escena con texturas (`VIAZ_PYTHON_ESCENA`) | Hecho y probado de punta a punta en Isaac |
+| 12 | Más de 12 h y gasto sin tope | Valores del demo en `render.yaml`; cupo de chequeos del monitor con Claude (`VIAZ_MONITOR_MAX_LLAMADAS`, por defecto 12) | Hecho. Sin tope de gasto en dólares |
+| 13 | El Monitor puede trabar la espera | Tiempo tope = mitad de `VIAZ_MONITOR_S` (mínimo 10 s); tolerancias desde `tarea.json` | Hecho y probado |
+| — | Tolerancia fina fija de 2 cm y 2° | Sale del perfil de la tarea (`PerfilTarea.tolerancia_fina`); `animar_evento` no tiene | Hecho y probado |
+
 **Resumen**
 1. Hoy ningún flujo corre todos los agentes juntos: `rl` salta Tarea (y Entorno sin `VIAZ_MEDIR`), y `planificador` salta Constructor, RL, Monitor y Comparación.
 2. Con clave de API (A), el código ya usa la API documentada. Falta probarla con el modelo real, manejar sus errores y desplegarla.

@@ -23,6 +23,11 @@ FIXTURES = Path(__file__).resolve().parent.parent / "fixtures"
 PROMPTS = Path(__file__).resolve().parent / "prompts"
 
 
+# Tope de tokens de salida por agente (pendientes, problema 8). El pensamiento adaptativo de Opus 5.5 cuenta dentro.
+# Entorno es el más largo: hasta 8 imágenes y un esquema grande. base.py avisa en el log si una salida pasa el 80 %.
+MAX_TOKENS_AGENTE = {"entorno": 48000, "tarea": 24000, "seleccion": 24000, "constructor": 24000, "fichar": 24000}
+
+
 def _prompt(nombre: str) -> str:
     """Instrucciones del agente. Viven en prompts/<nombre>.md (contrato: docs/agentes/)."""
     return (PROMPTS / f"{nombre}.md").read_text(encoding="utf-8")
@@ -163,7 +168,8 @@ def entorno(modo: str, modelo: str, proyecto: dict, frames: list[dict] | None,
                                                           "data": base64.b64encode(vista_png).decode()}})
         contenido.append({"type": "text", "text": texto_entorno(proyecto, medidas)})
         datos = normalizar_entorno(pedir_json(modelo=modelo, sistema=SISTEMA_ENTORNO,
-                                              esquema=esquema_agente_entorno(), contenido=contenido))
+                                              esquema=esquema_agente_entorno(), contenido=contenido,
+                                              max_tokens=MAX_TOKENS_AGENTE["entorno"], etiqueta="entorno"))
         ajustes = datos.pop("ajustes", [])
         datos = aplicar_medidas(datos, medidas, ajustes)
     datos.update(version=1, videos=[v.rsplit("/", 1)[1] for v in proyecto["videos"]],
@@ -310,7 +316,8 @@ def tarea(modo: str, modelo: str, proyecto: dict, entorno_json: dict, frames: li
     for _ in range(INTENTOS_TAREA):
         datos = normalizar_tarea(pedir_json(
             modelo=modelo, sistema=SISTEMA_TAREA, esquema=esquema_agente_tarea(),
-            contenido=[*(frames or []), {"type": "text", "text": texto_tarea(proyecto, entorno_json, problemas)}]))
+            contenido=[*(frames or []), {"type": "text", "text": texto_tarea(proyecto, entorno_json, problemas)}],
+            max_tokens=MAX_TOKENS_AGENTE["tarea"], etiqueta="tarea"))
         datos["version"] = 1
         datos, problemas = completar_tarea(validado("tarea", datos), entorno_json, descripcion)
         if not problemas:
@@ -349,7 +356,8 @@ def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], top
                                  "Ningún candidato pasó el descarte. Candidato elegido por el código, "
                                  f"con sus fallas {seleccion.fallas(elegido, requisitos)}")
         datos = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.ESQUEMA_JUSTIFICACION,
-                           contenido=[{"type": "text", "text": texto}])
+                           contenido=[{"type": "text", "text": texto}], max_tokens=MAX_TOKENS_AGENTE["seleccion"],
+                           etiqueta="seleccion")
         return seleccion.armar(fichas, [{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
                                [], descartados, busqueda, encontrados)
     orden = seleccion.ordenadas(pasan, requisitos)
@@ -359,14 +367,16 @@ def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], top
                                  "Ningún candidato que pasó el descarte tiene el núcleo de fisica. Candidato "
                                  "elegido por el código, el primero por las preferencias; el clon usa la base genérica")
         datos = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.ESQUEMA_JUSTIFICACION,
-                           contenido=[{"type": "text", "text": texto}])
+                           contenido=[{"type": "text", "text": texto}], max_tokens=MAX_TOKENS_AGENTE["seleccion"],
+                           etiqueta="seleccion")
         return seleccion.armar(fichas, [{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
                                seleccion.alternativas_sin_nucleo(orden, elegido), descartados, busqueda,
                                encontrados)
     texto = _texto_seleccion(requisitos, tope, orden, "Candidatos que pasaron el descarte por reglas, "
                                                       "ordenados por las preferencias")
     eleccion = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.esquema_eleccion([f["id"] for f in orden]),
-                          contenido=[{"type": "text", "text": texto}])
+                          contenido=[{"type": "text", "text": texto}], max_tokens=MAX_TOKENS_AGENTE["seleccion"],
+                          etiqueta="seleccion")
     seleccion.comprobar(eleccion, pasan, tope)
     return seleccion.armar(fichas, eleccion["finalistas"], eleccion["alternativas"], descartados, busqueda, encontrados)
 
@@ -445,7 +455,8 @@ def constructor(modo: str, modelo: str, robot_json: dict, entorno_json: dict, ta
             texto += (f"\n\nEnsamblaje del intento anterior:\n{json.dumps(previo, ensure_ascii=False)}"
                       f"\nProblemas:\n- " + "\n- ".join(problemas_previos or []))
         datos = pedir_json(modelo=modelo, sistema=SISTEMA_CONSTRUCTOR, esquema=esquema_agente_constructor(assets),
-                           contenido=[{"type": "text", "text": texto}])
+                           contenido=[{"type": "text", "text": texto}], max_tokens=MAX_TOKENS_AGENTE["constructor"],
+                           etiqueta="constructor")
     datos.update(version=1, robot_id=robot_json["id"])
     return validado("ensamblaje", datos)
 

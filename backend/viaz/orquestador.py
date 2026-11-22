@@ -139,10 +139,12 @@ def exigir_pipeline(entorno: dict, tarea: dict | None = None) -> None:
 
 
 def tolerancias(tarea: dict) -> tuple[float, float, str]:
-    """Tolerancia de éxito de tarea.json (RF-INT-11) y la cadena de evaluar: esa más la fina de 2 cm y 2° (RF-INT-20)."""
+    """Tolerancia de éxito de tarea.json (RF-INT-11) y la cadena de evaluar: esa más la fina del perfil de la tarea
+    (RF-INT-20; instalar_panel: 2 cm y 2°). Una tarea sin tolerancia fina se evalúa solo con la suya."""
     ce = tarea["criterios_exito"]
     pos, ang = ce["tolerancia_pos_m"], ce["tolerancia_ang_grados"]
-    return pos, ang, f"{pos:g}:{ang:g},{TOLERANCIA_FINA}"
+    fina = agentes.perfil_de_tarea(tarea["tarea"]).tolerancia_fina
+    return pos, ang, f"{pos:g}:{ang:g}" + (f",{fina[0]:g}:{fina[1]:g}" if fina else "")
 
 
 def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
@@ -196,7 +198,6 @@ def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
 # ---------- Flujo del demo con RL ----------
 
 ENTRADAS_RL = ["entorno.json", "tarea.json", "robot_cfg.py", "clon.json", "escena.usd"]
-TOLERANCIA_FINA = "0.02:2"   # RF-INT-20 (cifra adicional). La de entrenamiento sale de tarea.json (tolerancias())
 
 
 def _manual(ruta: str, fixture: str) -> dict:
@@ -233,7 +234,8 @@ class Vigia:
         if not self.todas:
             return None
         ch = monitor.chequear(self.cfg.agentes, self.cfg.modelo, nuevas, self.todas, self.chequeos,
-                              self.cfg.horas_entrenamiento, self.hitos_antes, self.tarea)
+                              self.cfg.horas_entrenamiento, self.hitos_antes, self.tarea,
+                              tiempo_s=max(10.0, self.cfg.monitor_s / 2), max_llamadas=self.cfg.monitor_max_llamadas)
         if forzar and ch["estado"] != "terminado":
             ch = {**ch, "estado": "terminado", "hito": "fin", "recomendacion": "detener",
                   "detalle": f"Terminó el entrenamiento. Mejor éxito: {monitor.hitos(self.todas)['mejor_tasa_exito'] or 0:.0%}. "
@@ -370,11 +372,13 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     with eng.connect() as cx:
         proyecto = dict(cx.execute(select(db.proyectos).where(db.proyectos.c.id == c.proyecto_id)).mappings().first())
 
-    # 1. Entorno + escena. Con VIAZ_MEDIR y videos, lo mide el agente Entorno; si no, se lee a mano (RF-MAP-11).
+    # 1. Entorno + escena. Con videos y sin VIAZ_ENTORNO_MANUAL, lo escribe el agente Entorno si hay medición
+    # (VIAZ_MEDIR) o Claude (VIAZ_AGENTES=claude). Si no, se lee a mano (RF-MAP-11). Pendientes, problema 1.
     c.etapa("entorno", "en_curso", estado_corrida="analizando_entorno")
     artefactos: list[str] = []
-    if cfg.medir and proyecto["videos"] and not cfg.entorno_manual:
-        entorno, _, artefactos = analizar_entorno(c, cfg, store, proyecto)
+    frames = None
+    if (cfg.medir or cfg.agentes == "claude") and proyecto["videos"] and not cfg.entorno_manual:
+        entorno, frames, artefactos = analizar_entorno(c, cfg, store, proyecto)
     else:
         entorno = _manual(cfg.entorno_manual, "entorno")
         entorno["videos"] = [v.rsplit("/", 1)[1] for v in proyecto["videos"]] or entorno.get("videos", [])
@@ -382,9 +386,16 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     c.trabajo_gpu("generar_escena", ["entorno.json"], ["escena.usd"])
     c.etapa("entorno", "listo", ["entorno.json", "escena.usd", *artefactos])
 
-    # 2. Tarea escrita a mano: además del esquema, tiene que calzar con entorno.json
+    # 2. Tarea. Con VIAZ_TAREA_AGENTE=1 la escribe el agente Tarea (descripción del cliente + frames); si no, se lee
+    # a mano. En los dos casos tiene que calzar con entorno.json. Pendientes, problema 1.
     c.etapa("tarea", "en_curso")
-    tarea = agentes.validar_tarea(_manual(cfg.tarea_manual, "tarea"), entorno)
+    if cfg.tarea_agente:
+        if frames is None and cfg.agentes == "claude":
+            videos = [store.leer(v) for v in proyecto["videos"] if store.existe(v)]
+            frames = agentes.frames_de_videos(videos) if videos else None
+        tarea = agentes.tarea(cfg.agentes, cfg.modelo, proyecto, entorno, frames)
+    else:
+        tarea = agentes.validar_tarea(_manual(cfg.tarea_manual, "tarea"), entorno)
     c.escribir("tarea.json", tarea)
     c.etapa("tarea", "listo", ["tarea.json"])
     exigir_pipeline(entorno, tarea)
@@ -459,9 +470,30 @@ def procesar_una(cfg: Config, eng, store: alm.Almacen) -> bool:
     return True
 
 
+ESQUEMA_PRUEBA = {"type": "object", "additionalProperties": False, "required": ["ok"],
+                  "properties": {"ok": {"type": "boolean"}}}
+
+
+def comprobar_claude(cfg: Config) -> None:
+    """Chequeo previo en modo claude (pendientes, problema 6A): una llamada mínima antes de tomar corridas.
+    Si falla, el orquestador no arranca: una clave mala o sin cupo no termina en una corrida "lista" con reglas."""
+    if cfg.agentes != "claude":
+        return
+    from .agentes import base
+    base.pedir_json(modelo=cfg.modelo, sistema="Responde con ok=true.", esquema=ESQUEMA_PRUEBA, effort="low",
+                    contenido=[{"type": "text", "text": "Chequeo de credenciales de VIAZ."}], max_tokens=1024,
+                    tiempo_s=60, etiqueta="chequeo_previo")
+    log.info("chequeo previo: Claude responde (proveedor %s, modelo %s)", base.proveedor(), cfg.modelo)
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     cfg = cargar()
+    try:
+        comprobar_claude(cfg)
+    except agentes.ErrorAgente as e:
+        log.error("el orquestador no arranca: Claude no responde en modo claude: %s", e)
+        raise SystemExit(2) from e
     eng, store = db.motor(cfg.db_url), alm.crear(cfg)
     log.info("orquestador listo (agentes=%s, almacén=%s)", cfg.agentes, cfg.almacen)
     while True:

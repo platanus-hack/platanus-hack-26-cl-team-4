@@ -291,7 +291,8 @@ def esquema_borradores() -> dict:
 def fichar(*, modelo: str, notas: str, max_robots: int, tiempo_s: float) -> list[dict]:
     texto = f"Tope de robots: {max_robots}\n\nNotas de la búsqueda web:\n{notas}"
     datos = pedir_json(modelo=modelo, sistema=SISTEMA_FICHAR, esquema=esquema_borradores(),
-                       contenido=[{"type": "text", "text": texto}], tiempo_s=tiempo_s)
+                       contenido=[{"type": "text", "text": texto}], tiempo_s=tiempo_s, max_tokens=24000,
+                       etiqueta="busqueda-fichar")
     return list(datos["robots"])
 
 
@@ -325,6 +326,11 @@ def buscar(modo: str, modelo: str, requisitos: dict, tarea: dict, conocidas: dic
         return _omitida("Modo fijo: sin LLM ni búsqueda web. Los candidatos son las fichas conocidas.")
     if not parametros.activa:
         return _omitida("VIAZ_BUSQUEDA=0: búsqueda apagada. Los candidatos son las fichas conocidas.")
+    from .base import proveedor
+    if proveedor() == "suscripcion":
+        # El CLI y el Agent SDK no entregan las citas literales (cited_text) que exige cada ficha (pendientes, problema 4).
+        return _omitida("VIAZ_CLAUDE=suscripcion: la búsqueda web necesita citas literales de la API; "
+                        "los candidatos son las fichas conocidas.")
     inicio = reloj()
     try:
         notas = investigar(modelo=modelo, texto=texto_investigar(requisitos, tarea, conocidas, parametros.max_robots),

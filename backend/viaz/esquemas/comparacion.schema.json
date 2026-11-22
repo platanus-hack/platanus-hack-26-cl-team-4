@@ -150,6 +150,10 @@
     "explicacion": {
       "description": "Texto del LLM para el cliente. Explica la regla; no la cambia.",
       "type": "string"
+    },
+    "fuente_explicacion": {
+      "description": "Quién escribió la explicación: claude, o plantilla (modo fijo, o Claude falló). Lo escribe el código.",
+      "enum": ["claude", "plantilla"]
     }
   }
 }

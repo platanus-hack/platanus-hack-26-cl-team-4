@@ -106,13 +106,16 @@ def comparar(hijas: Sequence[Hija], condiciones: dict) -> dict:
 
 
 def explicar(modo: str, modelo: str, comp: dict) -> dict:
+    """La explicación para el cliente. Dice si la escribió Claude o es la plantilla (problema 6)."""
+    plantilla = {**comp, "fuente_explicacion": "plantilla"}
     if modo == "fijo":
-        return comp
-    sin_explicacion = {k: v for k, v in comp.items() if k != "explicacion"}
+        return plantilla
+    sin_explicacion = {k: v for k, v in comp.items() if k not in ("explicacion", "fuente_explicacion")}
     try:
         datos = pedir_json(modelo=modelo, sistema=SISTEMA_COMPARACION, esquema=ESQUEMA_EXPLICACION, effort="medium",
-                           contenido=[{"type": "text", "text": json.dumps(sin_explicacion, ensure_ascii=False)}])
-        return validar("comparacion", {**comp, "explicacion": datos["explicacion"]})
+                           contenido=[{"type": "text", "text": json.dumps(sin_explicacion, ensure_ascii=False)}],
+                           max_tokens=8000, etiqueta="comparacion")
+        return validar("comparacion", {**comp, "explicacion": datos["explicacion"], "fuente_explicacion": "claude"})
     except Exception as e:
         log.warning("la explicación de la comparación falló, queda la plantilla: %s", e)
-        return comp
+        return plantilla

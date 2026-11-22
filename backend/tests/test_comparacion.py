@@ -150,13 +150,14 @@ def test_explicacion_usa_la_plantilla_si_el_modelo_falla(monkeypatch):
         raise ErrorAgente("sin red")
 
     monkeypatch.setattr(comparacion, "pedir_json", falla)
-    assert comparacion.explicar("claude", "m", comp) == comp
+    # Pendientes, problema 6: cae a la plantilla, pero lo dice.
+    assert comparacion.explicar("claude", "m", comp) == {**comp, "fuente_explicacion": "plantilla"}
 
 
 def test_modo_fijo_no_llama_al_modelo(monkeypatch):
     comp = comparacion.comparar([_hija("a", 0.9), _hija("b", 0.8)], CONDICIONES)
     monkeypatch.setattr(comparacion, "pedir_json", lambda **kw: pytest.fail("no debe llamar al modelo"))
-    assert comparacion.explicar("fijo", "m", comp) == comp
+    assert comparacion.explicar("fijo", "m", comp) == {**comp, "fuente_explicacion": "plantilla"}
 
 
 def test_el_prompt_no_nombra_el_dominio():

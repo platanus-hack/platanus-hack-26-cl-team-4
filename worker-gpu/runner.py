@@ -349,7 +349,8 @@ def _enlazar_texturas(d: Path) -> None:
 
 def ejecutar(tipo: str, d: Path, modo: str, isaac_python: str, ctx: Contexto | None = None) -> None:
     if tipo == "generar_escena":
-        _correr(sys.executable, "generar_escena.py", d)
+        # Las texturas necesitan numpy y Pillow: en el pod, el Python de Isaac (VIAZ_PYTHON_ESCENA en entorno_rl.env).
+        _correr(os.getenv("VIAZ_PYTHON_ESCENA", sys.executable), "generar_escena.py", d)
     elif tipo == "validar_clon":
         if modo == "isaac":
             _correr(isaac_python, "validar_clon.py", d)

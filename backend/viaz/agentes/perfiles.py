@@ -193,6 +193,7 @@ class PerfilTarea:
     requisitos: ConstructorRequisitos | None = None
     sim: str | None = None
     problemas: Callable[[dict, dict], list[str]] | None = None   # reglas propias contra entorno.json
+    tolerancia_fina: tuple[float, float] | None = None           # RF-INT-20: (m, grados) que también se informa
 
 
 PERFILES_ENTORNO: dict[str, PerfilEntorno] = {
@@ -210,7 +211,8 @@ PERFILES_ENTORNO: dict[str, PerfilEntorno] = {
 ENTORNO_GENERICO = PerfilEntorno("generico", (), (), None, "tarea_sala", False)
 
 PERFILES_TAREA: dict[str, PerfilTarea] = {
-    "instalar_panel": PerfilTarea("instalar_panel", ("pila_paneles",), "parque_solar", True, sim="rl"),
+    "instalar_panel": PerfilTarea("instalar_panel", ("pila_paneles",), "parque_solar", True, sim="rl",
+                                  tolerancia_fina=(0.02, 2.0)),
     "animar_evento": PerfilTarea("animar_evento", ("animacion",), None, True, requisitos=perfil_animar,
                                  sim="animar", problemas=problemas_animar),
 }

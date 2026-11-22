@@ -97,6 +97,14 @@
         "string",
         "null"
       ]
+    },
+    "fuente": {
+      "description": "Quién escribió el chequeo: claude, o reglas (modo fijo, o Claude falló o se acabó su cupo). Lo escribe el código.",
+      "enum": ["claude", "reglas"]
+    },
+    "motivo_reglas": {
+      "description": "Si fuente es reglas en modo claude: por qué no respondió Claude.",
+      "type": ["string", "null"]
     }
   }
 }

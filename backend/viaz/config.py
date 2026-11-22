@@ -92,6 +92,12 @@ class Config:
         "VIAZ_BUSQUEDA_TIEMPO_S", os.getenv("VIAZ_BUSQUEDA_TIEMPO_S", "180"), 10, 1800))
     # Monitor del entrenamiento (RF-MON): cada cuánto chequea y a dónde avisa.
     monitor_s: float = field(default_factory=lambda: float(os.getenv("VIAZ_MONITOR_S", "600")))
+    # Cupo de chequeos con Claude por corrida; después el monitor sigue con reglas (pendientes, problema 12).
+    monitor_max_llamadas: int = field(default_factory=lambda: entero_en_rango(
+        "VIAZ_MONITOR_MAX_LLAMADAS", os.getenv("VIAZ_MONITOR_MAX_LLAMADAS", "12"), 0, 500))
+    # Flujo rl: 1 = el agente Tarea escribe tarea.json desde la descripción y los frames, en vez de leerla a mano
+    # (pendientes, problema 1). 0 = se lee VIAZ_TAREA_MANUAL o el fixture.
+    tarea_agente: bool = field(default_factory=lambda: interruptor("VIAZ_TAREA_AGENTE", os.getenv("VIAZ_TAREA_AGENTE", "0")))
     discord_webhook: str = field(default_factory=lambda: os.getenv("VIAZ_DISCORD_WEBHOOK", ""))
     # Token para acciones del equipo (detener un entrenamiento). Por defecto, el mismo del worker.
     admin_token: str = field(default_factory=lambda: os.getenv("VIAZ_ADMIN_TOKEN", "") or os.getenv("WORKER_TOKEN", "dev-token"))

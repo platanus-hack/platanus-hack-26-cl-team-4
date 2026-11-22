@@ -5,16 +5,29 @@ envVarGroups:
     envVars:
       - key: WORKER_TOKEN        # el pod GPU usa este mismo valor
         generateValue: true
-      - key: VIAZ_AGENTES        # fijo = fixtures; claude = Claude API
-        value: fijo
+      - key: VIAZ_AGENTES        # fijo = fixtures; claude = Claude API. Con claude, sin clave válida el orquestador no arranca
+        value: claude
+      - key: VIAZ_CLAUDE         # Render usa solo clave de API: la suscripción es solo para uso local (pendientes, 3)
+        value: api
       - key: VIAZ_ALMACEN
         value: r2
       - key: VIAZ_MODELO
         value: claude-opus-5-5
       - key: VIAZ_FLUJO              # rl = demo con entrenamiento; planificador = flujo anterior
         value: rl
+      # Primera corrida real (pendientes, 9A y 12A): 1 finalista, 1 h, monitor cada 30 min con cupo de Claude.
       - key: VIAZ_HORAS_ENTRENAMIENTO
-        value: "4"
+        value: "1"
+      - key: VIAZ_MAX_FINALISTAS
+        value: "1"
+      - key: VIAZ_MONITOR_S
+        value: "1800"
+      - key: VIAZ_MONITOR_MAX_LLAMADAS
+        value: "6"
+      - key: VIAZ_BUSQUEDA
+        value: "1"
+      - key: VIAZ_TAREA_AGENTE       # 1: el agente Tarea escribe tarea.json (pendientes, 1A)
+        value: "1"
       - key: VIAZ_ADMIN_TOKEN        # para POST /corridas/{id}/detener
         generateValue: true
       - key: PYTHON_VERSION

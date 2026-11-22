@@ -133,7 +133,7 @@ def _cola(previos: list[dict], cond):
 
 
 def esquema_agente() -> dict:
-    esq = sin_campos(esquema("monitoreo"), ["version", "t"])
+    esq = sin_campos(esquema("monitoreo"), ["version", "t", "fuente", "motivo_reglas"])
     esq["properties"]["hito"] = {"enum": ["ninguno", "primer_exito", "exito_50", "mejor_recompensa", "umbral_alcanzado", "fin"]}
     esq["properties"]["checkpoint_recomendado"] = {"type": "string", "description": "Nombre del checkpoint o 'ninguno'"}
     return esq
@@ -156,11 +156,21 @@ def tolerancia_de(tarea: dict | None) -> str:
 
 
 def chequear(modo: str, modelo: str, nuevas: list[dict], todas: list[dict], previos: list[dict], horas_max: float,
-             hitos_antes: dict | None = None, tarea: dict | None = None) -> dict:
-    """Un chequeo. En modo claude, si Claude falla, usa las reglas: el monitor nunca frena el entrenamiento."""
-    reglas = chequeo_reglas(nuevas, todas, previos, horas_max, hitos_antes)
-    if modo != "claude" or reglas["estado"] == "divergiendo" and "NaN" in reglas["detalle"]:
+             hitos_antes: dict | None = None, tarea: dict | None = None, tiempo_s: float | None = None,
+             max_llamadas: int | None = None) -> dict:
+    """Un chequeo. En modo claude, si Claude falla, usa las reglas: el monitor nunca frena el entrenamiento.
+
+    Cada chequeo dice su `fuente` (problema 6): claude o reglas, y por qué cayó a reglas.
+    tiempo_s: tope de la llamada a Claude, para no trabar la espera del entrenamiento (problema 13).
+    max_llamadas: cupo de chequeos con Claude por corrida; después, reglas (problema 12)."""
+    reglas = {**chequeo_reglas(nuevas, todas, previos, horas_max, hitos_antes), "fuente": "reglas", "motivo_reglas": None}
+    if modo != "claude":
         return reglas
+    if reglas["estado"] == "divergiendo" and "NaN" in reglas["detalle"]:
+        return {**reglas, "motivo_reglas": "NaN: el código detiene sin consultar"}
+    usadas = sum(1 for p in previos if p.get("fuente") == "claude")
+    if max_llamadas is not None and usadas >= max_llamadas:
+        return {**reglas, "motivo_reglas": f"cupo de {max_llamadas} chequeos con Claude agotado"}
     try:
         from .agentes.base import pedir_json
         from .agentes import _prompt
@@ -170,15 +180,16 @@ def chequear(modo: str, modelo: str, nuevas: list[dict], todas: list[dict], prev
                  f"Hitos calculados por el sistema: {json.dumps(hitos(todas), ensure_ascii=False)}\n"
                  f"Chequeo por reglas (referencia): {json.dumps(reglas, ensure_ascii=False)}")
         r = pedir_json(modelo=modelo, sistema=_prompt("monitor"), esquema=esquema_agente(),
-                       contenido=[{"type": "text", "text": texto}], effort="medium")
+                       contenido=[{"type": "text", "text": texto}], effort="medium", tiempo_s=tiempo_s,
+                       max_tokens=8000, etiqueta="monitor")
         r["hito"] = None if r["hito"] == "ninguno" else r["hito"]
         r["checkpoint_recomendado"] = None if r["checkpoint_recomendado"] in ("", "ninguno") else r["checkpoint_recomendado"]
         # La evidencia numérica sale de las métricas, no del modelo (contrato §4.2).
         return validar("monitoreo", {**r, "version": 1, "t": reglas["t"], "iteracion": reglas["iteracion"],
-                                     "evidencia": reglas["evidencia"]})
+                                     "evidencia": reglas["evidencia"], "fuente": "claude", "motivo_reglas": None})
     except Exception as e:  # noqa: BLE001
         log.warning("el monitor con Claude falló, uso reglas: %s", e)
-        return reglas
+        return {**reglas, "motivo_reglas": f"Claude falló: {type(e).__name__}: {str(e)[:200]}"}
 
 
 # ---------- avisos por Discord ----------

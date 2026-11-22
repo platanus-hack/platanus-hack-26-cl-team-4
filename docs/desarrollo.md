@@ -71,7 +71,12 @@ python -m viaz.orquestador
 | `VIAZ_ALMACEN` | API, orquestador | `local` | `local` (disco) o `r2` |
 | `VIAZ_URL_PUBLICA` | API, orquestador | `http://localhost:8000` | Base de las URLs del almacén local |
 | `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | API, orquestador | — | Cloudflare R2 |
-| `VIAZ_AGENTES` | orquestador | `fijo` | `fijo` o `claude` |
+| `VIAZ_AGENTES` | orquestador | `fijo` | `fijo` o `claude`. Con `claude`, el orquestador prueba una llamada al arrancar y no arranca si falla |
+| `VIAZ_CLAUDE` | orquestador | `api` | `api` (clave de API) o `suscripcion` (Agent SDK con `CLAUDE_CODE_OAUTH_TOKEN`, solo local; rechazado en Render) |
+| `VIAZ_MAX_TOKENS` | orquestador | `32000` | Tope de salida por defecto; cada agente tiene el suyo en `MAX_TOKENS_AGENTE` |
+| `VIAZ_TAREA_AGENTE` | orquestador | `0` | Flujo `rl`: `1` = el agente Tarea escribe `tarea.json` |
+| `VIAZ_MONITOR_MAX_LLAMADAS` | orquestador | `12` | Chequeos del monitor con Claude por corrida; después, reglas |
+| `VIAZ_PYTHON_ESCENA` | pod | Python del runner | Python con numpy y Pillow para `generar_escena` con texturas |
 | `VIAZ_MODELO` | orquestador | `claude-opus-5-5` | Modelo de los agentes |
 | `ANTHROPIC_API_KEY` | orquestador | — | Solo en modo `claude` |
 | `VIAZ_BUSQUEDA` | orquestador | `1` | Búsqueda web de robots (`1` o `0`). Solo corre en modo `claude` |
@@ -140,3 +145,26 @@ VIAZ_DIR_POD=/workspace/viaz python worker-gpu/runner.py --modo isaac
 ### 5. Corrida de respaldo para el pitch
 1. Correr una corrida completa en producción y anotar su id.
 2. Poner ese id en `VIAZ_CORRIDA_DEMO` (Render). `/corridas/demo` la muestra aunque el pod esté apagado.
+
+## Claude con suscripción (solo local)
+
+Para que una persona corra los agentes con su plan Pro o Max en su propia máquina. **No** sirve para Render ni para un producto: los términos lo prohíben y el código lo rechaza ([`pendientes-corrida-real.md`](pendientes-corrida-real.md), problemas 2 a 4).
+
+```bash
+claude setup-token                      # una vez; guarda el token, dura un año
+pip install claude-agent-sdk            # en la venv del backend
+unset ANTHROPIC_API_KEY                 # si existe, ganaría sobre el token y cobraría a la API
+export CLAUDE_CODE_OAUTH_TOKEN=... VIAZ_CLAUDE=suscripcion VIAZ_AGENTES=claude
+python -m viaz.orquestador
+```
+
+- La búsqueda web queda `omitida`: el SDK no entrega las citas literales que pide cada ficha.
+- Estado: probado con un SDK falso; **sin probar con el SDK real**.
+
+## Prueba de humo con Claude real
+
+```bash
+cd backend && ANTHROPIC_API_KEY=... python scripts/humo_agentes.py --video ../ruta/al/video.mov
+```
+
+Una llamada por agente; el informe queda en `humo_agentes.json` y los tokens por llamada en el log.

@@ -253,3 +253,23 @@ def test_constructor_reintenta_y_usa_respaldo(sistema, monkeypatch):
     import video
     destino = Path(store.raiz) / alm.clave_corrida(c["id"], "construccion.mp4")
     assert video.duracion_s(destino) > 3 * 3.5
+
+
+@pytest.fixture
+def con_tarea_agente(monkeypatch):
+    monkeypatch.setenv("VIAZ_TAREA_AGENTE", "1")   # antes de crear la Config del sistema
+
+
+def test_flujo_rl_pide_la_tarea_al_agente_con_viaz_tarea_agente(con_tarea_agente, sistema, monkeypatch):
+    """Pendientes, problema 1: con VIAZ_TAREA_AGENTE=1, tarea.json sale del agente Tarea y no del archivo a mano."""
+    url, _, _ = sistema
+    llamadas = []
+    original = agentes.tarea
+
+    def espia(*a, **kw):
+        llamadas.append(a[0])
+        return original(*a, **kw)
+    monkeypatch.setattr(orquestador.agentes, "tarea", espia)
+    c = _correr(url)
+    assert c["estado"] == "listo", c["error"]
+    assert llamadas == ["fijo"]
