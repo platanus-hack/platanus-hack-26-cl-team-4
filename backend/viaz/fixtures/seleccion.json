@@ -14,6 +14,16 @@
       "fallas": [
         "alcance de 2.5 m menor que el necesario (2.95 m)"
       ]
+    },
+    {
+      "id": "unitree-h1",
+      "nombre": "H1 (humanoide de tamaño completo)",
+      "fallas": [
+        "carga útil de 30 kg menor que la mínima (32 kg)",
+        "efector mano no está entre los aceptados (ventosa)",
+        "tipo humanoide no está entre los aceptados (base_movil_brazo, vehiculo_con_brazo)",
+        "alcance de 0.6 m menor que el necesario (2.28 m)"
+      ]
     }
   ],
   "finalistas": [
