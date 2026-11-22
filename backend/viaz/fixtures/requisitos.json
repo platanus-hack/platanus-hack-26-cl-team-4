@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "dominio": "solar",
+  "tarea": "instalar_panel",
+  "objeto": { "nombre": "panel", "largo_m": 2.38, "ancho_m": 1.13, "peso_kg": 32 },
+  "carga_min_kg": 32,
+  "efectores_aceptados": ["ventosa"],
+  "tipos_aceptados": ["base_movil_brazo", "vehiculo_con_brazo"],
+  "movilidad": "movil",
+  "pendiente_grados": 0,
+  "por_robot": [
+    { "id": "aes-maximo", "alcance_min_m": 2.28 },
+    { "id": "leapting-mmr", "alcance_min_m": 2.53 },
+    { "id": "relu-bison", "alcance_min_m": 2.28 },
+    { "id": "trinatracker-buildex-e", "alcance_min_m": 2.28 },
+    { "id": "viaz-instalador-ficticio", "alcance_min_m": 2.28 }
+  ],
+  "preferencias": [
+    { "criterio": "mayor_velocidad_base", "descripcion": "Mayor velocidad de base" },
+    { "criterio": "mayor_margen_carga_alcance", "descripcion": "Mayor margen de carga útil y de alcance sobre el mínimo" },
+    { "criterio": "real_sobre_ficticio", "descripcion": "Un robot real antes que uno ficticio" },
+    { "criterio": "menos_specs_estimadas", "descripcion": "Menos specs en estimados" }
+  ],
+  "advertencias": ["terreno.friccion tiene confianza 0,5: es un valor supuesto, no medido"]
+}

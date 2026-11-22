@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "seleccion.json",
+  "description": "Resultado de la etapa de selección v3: candidatos descartados por reglas, 1 a 3 finalistas y las alternativas. Cada finalista tiene además su robot.json en su corrida hija.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "requisitos",
+    "busqueda",
+    "encontrados",
+    "descartados",
+    "finalistas",
+    "alternativas"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "requisitos": {
+      "description": "Nombre del archivo de requisitos que usó la selección.",
+      "type": "string"
+    },
+    "busqueda": {
+      "description": "Cómo terminó la búsqueda web. Su falla no hace fallar la corrida: la selección sigue con el catálogo.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "estado",
+        "detalle",
+        "invalidas"
+      ],
+      "properties": {
+        "estado": {
+          "enum": [
+            "completa",
+            "cortada",
+            "fallida",
+            "omitida"
+          ]
+        },
+        "detalle": {
+          "type": "string"
+        },
+        "invalidas": {
+          "description": "Fichas que la búsqueda devolvió y el código botó por no cumplir robot.schema.json. Nunca se botan en silencio.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "nombre",
+              "motivo"
+            ],
+            "properties": {
+              "nombre": {
+                "type": "string"
+              },
+              "motivo": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "encontrados": {
+      "description": "Ids de las fichas válidas que trajo la búsqueda (origen: busqueda). Se guardan en el almacén de la corrida.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "descartados": {
+      "description": "Candidatos que no cumplen un requisito obligatorio, con cada falla.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "fallas"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fallas": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "finalistas": {
+      "description": "Tope fijo de 3. VIAZ_MAX_FINALISTAS puede bajarlo.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "puesto",
+          "justificacion"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "puesto": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "justificacion": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "alternativas": {
+      "description": "Candidatos válidos que no quedaron como finalistas.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "por_que_no"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "por_que_no": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

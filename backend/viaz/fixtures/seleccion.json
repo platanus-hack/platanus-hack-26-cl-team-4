@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "requisitos": "requisitos.json",
+  "busqueda": {
+    "estado": "omitida",
+    "detalle": "Ejemplo sin búsqueda web: los candidatos son solo los del catálogo.",
+    "invalidas": []
+  },
+  "encontrados": [],
+  "descartados": [],
+  "finalistas": [
+    {
+      "id": "leapting-mmr",
+      "puesto": 1,
+      "justificacion": "LEAPTING MMR carga 100 kg y el panel pesa 32 kg. Su alcance de 3,1 m cubre los 2,53 m que necesita para dejar el panel sobre el tubo. Es el único candidato con el núcleo de fisica, por eso es el único finalista. Ojo: terreno.friccion es un valor supuesto, no medido."
+    }
+  ],
+  "alternativas": [
+    { "id": "relu-bison", "por_que_no": "sin el núcleo de fisica (largo_m, ancho_m, masa_kg, altura_cubierta_m, traccion); además el fabricante no publica efector ni alcance exacto" },
+    { "id": "trinatracker-buildex-e", "por_que_no": "sin el núcleo de fisica; además carga, alcance y efector son estimados" },
+    { "id": "aes-maximo", "por_que_no": "sin el núcleo de fisica; además carga, alcance, velocidad y efector son estimados" },
+    { "id": "viaz-instalador-ficticio", "por_que_no": "ficticio y sin el núcleo de fisica" }
+  ]
+}

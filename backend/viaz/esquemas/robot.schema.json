@@ -105,6 +105,20 @@
         }
       }
     },
+    "origen": {
+      "description": "De dónde viene la ficha. Sin el campo, `catalogo`. Una ficha `busqueda` vive en el almacén de la corrida hasta que un PR la pasa a catalogo/robots/.",
+      "enum": [
+        "catalogo",
+        "busqueda"
+      ]
+    },
+    "capacidades": {
+      "description": "Tareas que el robot hace según su fuente (por ejemplo, instalar_panel).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "estimados": {
       "description": "Specs que el fabricante NO publica y que estimamos, con el motivo. El agente y la web deben decirlo.",
       "type": "object",
