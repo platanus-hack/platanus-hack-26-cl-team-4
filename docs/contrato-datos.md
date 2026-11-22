@@ -196,7 +196,8 @@ Perfil `instalar_panel` (el del demo): el mismo núcleo, con `elemento: null` en
 
 - **Generación:** el clon lo arma código determinista ([`backend/viaz/urdf.py`](../backend/viaz/urdf.py)): una base con ruedas y un brazo de 6 ejes escalado al alcance del robot.
 - **`geometria`:** tiene las medidas que usa el plan ([`sim/plan.py`](../sim/plan.py)). Coinciden con `robot.urdf`.
-- **`fidelidad` (opcional, contrato v3):** `generico` (base genérica), `medido` (usa `fisica` de la ficha) o `verificado` (`medido`, sin `fisica.*` estimados, y pasó `validar_robot` y la rúbrica). Ningún código lo escribe todavía.
+- **`fidelidad` (contrato v3):** `generico` (base genérica), `medido` (usa `fisica` de la ficha) o `verificado` (`medido`, sin `fisica.*` estimados, y pasó `validar_robot` y la rúbrica). El código escribe `medido` o `generico` en cada clon ([`modelos.fidelidad()`](../backend/viaz/modelos.py)). Nunca escribe `verificado`, porque necesita la rúbrica humana.
+- **`construccion.metodo` (flujo rl):** `agente`, `determinista` (RF-CLO-07) o `comprobado` (modelo reusado de una corrida anterior, RF-CLO-11).
 - **Articulaciones de `robot.urdf`:** `shoulder_pan`, `shoulder_lift`, `elbow`, `wrist_1`, `wrist_2` y `wrist_3`. El link de la ventosa se llama `efector`.
 - **`validacion.json`:** sale del trabajo `validar_clon` con el formato `{"ok", "problemas": [], "fuente", "paneles_planificados"}`. Si `ok` es `false`, la corrida pasa a `error`.
 
