@@ -5,6 +5,7 @@
 VIAZ es el puente entre la industria y la robótica.
 Muchas industrias todavía no usan robots. No saben qué robot sirve ni cómo funcionaría en su lugar de trabajo.
 VIAZ responde esas dos preguntas con un demo en simulación.
+Sirve para **cualquier lugar de trabajo y cualquier tarea de manipulación**: un parque solar, una oficina, una bodega o un taller. Cada rubro entra como un perfil, sin cambiar los agentes.
 
 ## Cómo funciona
 
@@ -49,18 +50,24 @@ flowchart LR
 3. **Elegir el robot.** El código calcula los requisitos de la tarea y descarta los robots del catálogo que no los cumplen. El agente Selección de robot elige hasta 3 finalistas y explica por qué. Hoy solo el primero sigue al paso 4.
 4. **Construir el robot.** El agente Constructor arma el robot simulado con las medidas, el alcance y la carga útil del robot real. La simulación lo valida en la escena. Si falla, el agente corrige, con un máximo de 3 intentos.
 5. **Entrenar la tarea.** El robot aprende la tarea con aprendizaje por refuerzo (RL) en NVIDIA Isaac Lab. El agente Monitor vigila el entrenamiento y avisa al equipo.
-6. **Evaluar y mostrar.** La simulación evalúa al robot entrenado y graba los videos. La web muestra el robot elegido, los videos y las métricas: paneles instalados, tasa de éxito y tiempo por ciclo.
+6. **Evaluar y mostrar.** La simulación evalúa al robot entrenado y graba los videos. La web muestra el robot elegido, los videos y las métricas: tareas hechas, tasa de éxito y tiempo por ciclo.
 
-En el demo del parque solar, el equipo escribe a mano el entorno y la tarea. Por eso los agentes Mapeo de entorno y Tarea no corren en el demo.
+En los casos de referencia del demo, el equipo puede escribir a mano el entorno y la tarea. En ese caso los agentes Mapeo de entorno y Tarea no corren, y la web lo dice.
 
-## Ejemplo: parque solar
+## Casos de referencia
 
-Una empresa de energía verde construye megaparques solares e instala los paneles a mano.
+El mismo flujo corre en rubros distintos. Solo cambia el perfil de dominio ([`docs/requerimientos.md`](docs/requerimientos.md) §4.0).
 
-- **Entrada:** videos del parque, con filas de estructuras y pilas de paneles.
-- **VIAZ elige** un robot real de instalación de paneles solares.
-- **VIAZ simula** al robot tomando paneles e instalándolos en las estructuras del parque.
-- **Salida:** un demo de cómo trabajaría ese robot en ese parque, antes de comprar o importar nada.
+| Caso | Lugar | Tarea | Robot que busca VIAZ |
+|---|---|---|---|
+| 1 | Megaparque solar: filas de estructuras y pilas de paneles | Tomar un panel y dejarlo sobre la estructura | Robot de instalación de paneles |
+| 2 **[Por definir]** | Sala u oficina: mesa, sillas y estante | Tomar una caja de la mesa y dejarla en el estante | Robot móvil con brazo |
+| Otros | Bodega, taller, línea de producción | Transportar, ordenar, tomar y dejar | El que pidan los requisitos |
+
+- **Entrada:** videos y una descripción del lugar de trabajo.
+- **Salida:** un demo de cómo trabajaría ese robot en ese lugar, antes de comprar o importar nada.
+
+**Hoy:** solo el caso 1 tiene perfil de selección y entorno RL en el código. El caso 2 tiene entorno y tarea de ejemplo (`backend/viaz/fixtures/*_sala.json`).
 
 ## Por qué importa
 

@@ -10,7 +10,8 @@ VIAZ es una **aplicación web**. El cliente sube videos de su planta.
 Agentes en la nube virtualizan la planta, eligen un robot real, lo clonan y le ponen inteligencia en Isaac Lab.
 La web le entrega al cliente la virtualización: un visor 3D y un video del robot trabajando en su planta.
 
-**Caso del demo:** un megaparque solar. El robot instala paneles en las estructuras.
+**Alcance:** cualquier lugar de trabajo y cualquier tarea de manipulación. Lo propio de cada rubro vive en un perfil de dominio ([`requerimientos.md`](requerimientos.md) §4.0).
+**Caso de referencia 1:** un megaparque solar. El robot instala paneles en las estructuras. El caso 2 está **[Por definir]**.
 
 ```mermaid
 flowchart LR
@@ -236,11 +237,11 @@ timeline
   title Hitos del hack
   Checkpoint 1 (sáb 11:00) : Pod con Isaac corriendo un ejemplo : API + Postgres en Render y web en Vercel : Flujo de punta a punta con salidas fijas
   Checkpoint 2 (sáb 23:00) : Escena procedural desde un video real : Robot elegido y clon validado en el pod : Visor 3D reproduce la trayectoria
-  Freeze (dom 05:00) : El clon instala paneles en la escena : Video, métricas y corrida de demo guardada : Pitch
+  Freeze (dom 05:00) : El clon hace la tarea en la escena de cada caso : Video, métricas y corrida de demo guardada : Pitch
 ```
 
 - **Regla:** primero el flujo completo con datos fijos, después cambiar cada etapa por la real.
-- **Corrida de respaldo:** se guarda una corrida completa del parque solar en R2. Si el pod falla en el pitch, la web la muestra igual.
+- **Corrida de respaldo:** se guarda una corrida completa de cada caso de referencia en R2. Si el pod falla en el pitch, la web la muestra igual.
 
 ## 11. Riesgos
 
@@ -258,6 +259,6 @@ timeline
 
 - ¿RunPod o Vast.ai? ¿Quién crea la cuenta y carga el saldo?
 - ¿De dónde salen los créditos de la Claude API?
-- ¿Tenemos videos reales de un parque solar o usamos videos públicos?
+- ¿Tenemos videos reales de cada caso de referencia (parque solar y caso 2) o usamos videos públicos?
 - ¿Qué robot usamos de referencia para el demo?
 - ¿Quién es responsable de cada área de la §9?

@@ -1,23 +1,24 @@
 # VIAZ
 
-**De videos de tu planta a un robot real trabajando en ella, antes de comprarlo.**
+**De videos de tu lugar de trabajo a un robot real trabajando ahí, antes de comprarlo.**
 
-Muchas industrias todavía no usan robots. No saben qué robot sirve ni cómo trabajaría en su planta.
-VIAZ responde esas dos preguntas con un demo en simulación.
+Muchas industrias todavía no usan robots. No saben qué robot sirve ni cómo trabajaría en su lugar de trabajo.
+VIAZ responde esas dos preguntas con un demo en simulación, para cualquier rubro y cualquier tarea de manipulación.
 
 ## Cómo funciona
 
-1. **Virtualizar el entorno.** Un agente analiza los videos de la planta y genera una copia 3D para la simulación.
-2. **Elegir el robot.** Un agente compara la planta y la tarea con un catálogo de robots reales. Después elige el que mejor calza y explica por qué.
+1. **Virtualizar el entorno.** Un agente analiza los videos del lugar y genera una copia 3D para la simulación.
+2. **Elegir el robot.** Un agente compara el lugar y la tarea con un catálogo de robots reales. Después elige el que mejor calza y explica por qué.
 3. **Clonar el robot.** Se arma un modelo simulado con las medidas, el alcance y la carga útil del robot real.
 4. **Clonar su inteligencia.** El robot ejecuta la tarea en NVIDIA Isaac Lab, dentro del entorno virtual, en una GPU en la nube.
-5. **Resultado.** El cliente ve en la web un visor 3D del robot trabajando en su planta, con métricas: tareas hechas, tasa de éxito y tiempo por ciclo.
+5. **Resultado.** El cliente ve en la web un visor 3D del robot trabajando en su lugar de trabajo, con métricas: tareas hechas, tasa de éxito y tiempo por ciclo.
 
-## Ejemplo: parque solar
+## Ejemplos
 
-Una empresa de energía verde construye megaparques solares e instala los paneles a mano.
-VIAZ toma videos del parque, elige un robot de instalación de paneles y simula cómo los instalaría en esas estructuras.
-Así la empresa ve el resultado antes de comprar o importar un robot.
+- **Parque solar:** una empresa de energía verde instala paneles a mano. VIAZ toma videos del parque, elige un robot de instalación de paneles y simula cómo los instalaría en esas estructuras.
+- **Oficina o bodega:** VIAZ toma videos del lugar, elige un robot móvil con brazo y simula cómo ordenaría cajas en un estante.
+
+El mismo sistema sirve para los dos. Así cualquier empresa ve el resultado antes de comprar o importar un robot.
 
 ## Tecnología
 

@@ -65,9 +65,9 @@ flowchart LR
 | `entrenar` | `robot_cfg.py`, `escena.usd`, `entorno.json`, `tarea.json` | Checkpoints, métricas por latido, clips → `entrenamiento_rapido.mp4`, `curva.json` |
 | `evaluar` | Checkpoint elegido | `resultado.json` (`metodo: "rl"`), `video.mp4`, `trayectoria.json` (Should) |
 
-- **Tarea RL:** con la base detenida, el brazo toma un panel y lo deja apoyado sobre el tubo. Sin cables ni pernos (W-05).
-- **Base móvil:** avanza entre puntos de montaje con un controlador programado (RF-INT-18). Se detiene con ruido de ±15 cm y ±5° (RF-INT-19).
-- **Éxito:** panel apoyado, sin choque, a 5 cm y 5° o menos (RF-INT-11). Meta: 90 % en 100 episodios.
+- **Tarea RL:** con la base detenida, el brazo toma el objeto en el origen y lo deja en el destino de `tarea.json` (RF-INT-10). Caso 1: toma un panel y lo deja apoyado sobre el tubo, sin cables ni pernos (W-05).
+- **Base móvil:** avanza entre puntos de trabajo con un controlador programado (RF-INT-18). Se detiene con ruido de ±15 cm y ±5° (RF-INT-19).
+- **Éxito:** objeto en el destino, sin choque, dentro de la tolerancia de `tarea.json` (RF-INT-11). Caso 1: 5 cm y 5°. Meta: 90 % en 100 episodios.
 - **Tiempo:** fijo. Se fija tras la primera hora de entrenamiento (RNF-17).
 - **Plan B:** si la política queda bajo 50 %, el planificador graba la muestra (RF-INT-01).
 
@@ -80,7 +80,7 @@ flowchart LR
 
 | Tema | Requerimientos v0.7 | Código | Pendiente |
 |---|---|---|---|
-| Entorno y tarea | A mano (RF-MAP-11, RF-TAR-04) | `VIAZ_ENTORNO_MANUAL` / `VIAZ_TAREA_MANUAL`; sin ruta usa los fixtures | Escribir el `entorno.json` del parque de referencia |
+| Entorno y tarea | A mano (RF-MAP-11, RF-TAR-04) | `VIAZ_ENTORNO_MANUAL` / `VIAZ_TAREA_MANUAL`; sin ruta usa los fixtures | Escribir el `entorno.json` de cada caso de referencia |
 | Constructor | Agente con Isaac Lab (RF-CLO-01..07) | Implementado: 3 intentos + ensamblaje por defecto | Verificar `crear_articulacion_cfg()` y el catálogo de assets en el pod |
 | Entrenamiento | `entrenar`, `grabar_clips`, `evaluar` (RF-INT-12..15) | Implementado en el runner; el entorno RL lo construye el equipo | Entorno RL de Isaac Lab que cumpla [`contrato-entorno-rl.md`](../contrato-entorno-rl.md) |
 | Monitor | RF-MON-01..10 | Implementado: reglas + Claude, Discord, hitos, detener con NaN o 90 % × 3 | Crear el webhook de Discord |

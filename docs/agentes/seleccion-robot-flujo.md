@@ -39,7 +39,7 @@ flowchart LR
 - Un perfil de dominio es código que traduce el lugar y la tarea a números: carga mínima, alcance mínimo por robot, efectores aceptados, movilidad y pendiente.
 - El agente lee `requisitos.json`. Ya no lee "panel" ni "tubo".
 - Las reglas solares de hoy pasan al perfil `solar`. Otro rubro agrega su perfil y no toca el agente.
-- **Límite:** el agente queda general, pero la simulación sigue siendo solar. Otro rubro todavía no corre de punta a punta.
+- **Límite:** el agente queda general, pero la simulación sigue siendo solar. Otro rubro todavía no corre de punta a punta. Es requisito desde la v1.0 (RF-GEN-07).
 - **Llega en:** PR 2.
 
 ## 3. La búsqueda agrega robots que no estaban

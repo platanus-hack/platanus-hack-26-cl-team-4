@@ -20,7 +20,7 @@
 
 - **Esquemas y fixtures v3:** existen y validan (`test_esquemas.py`). La etapa robot de los dos flujos escribe `requisitos.json`, `encontrados.json`, `seleccion.json` y `robot.json` (finalista 1). `fixtures/seleccion.json` sale del modo `fijo`. El flujo `rl` con 2 o 3 finalistas escribe `comparacion.json` en la corrida padre.
 - **Flujo `planificador`:** sigue solo con el finalista 1. No tiene corridas hijas.
-- **Otro dominio:** con este contrato el agente puede **elegir** para otro dominio. La **simulación** de ese dominio no corre todavía: `entorno.json`, `tarea.json` y `sim/rl` son solo solares.
+- **Otro dominio:** el alcance es general ([`requerimientos.md`](../requerimientos.md) v1.0, §4.0). Con este contrato el agente ya puede **elegir** para otro dominio. Falta en el código: el perfil de requisitos de ese dominio y su simulación (`sim/rl` hoy solo tiene `instalar_panel`).
 
 ## Flujo v3
 
@@ -318,7 +318,7 @@ Hay dos niveles:
 | Costo de 3 finalistas | Hoy cada finalista entrena las horas completas, en un solo pod y en orden. 3 finalistas cuestan 3 veces las horas de pod y tardan 3 veces más. Falta decidir si conviene repartir las horas o usar más pods |
 | Semillas | El entrenamiento no fija semillas. Parte de la diferencia entre finalistas puede venir del azar. Falta un parámetro de semilla en `sim/rl/entrenar.py` |
 | Prioridad MoSCoW | RF-ROB-08..12, RF-CLO-10..11 y RF-ORQ-07..08 están en **S** hasta que el equipo decida |
-| Alcance de la generalización | Si generalizar `entorno.json`, `tarea.json` y `sim/rl` (hoy solo solares) entra en el hack |
+| ~~Alcance de la generalización~~ | **Resuelto (2026-11-22):** sí entra. Requerimientos v1.0, RF-GEN-01..08. Falta elegir el caso de referencia 2 |
 | Catálogo actual | `leapting-mmr`, `relu-bison` y `trinatracker-buildex-e` tienen el núcleo de `fisica`. `aes-maximo` no lo tiene, porque ninguna foto trae una escala para medirlo. BUILDEX E falla el alcance, con 2,5 m estimados contra 2,95 m necesarios. Una persona decide su alcance real. Hoy hay 2 finalistas |
 | Definición de `fidelidad` | La tabla de §3 es una propuesta. El código escribe `generico` y `medido`. Falta decidir cómo se marca `verificado` |
 | Guardado de modelos | Hoy solo se guarda la receta (`ensamblaje.json`, cerca de 1 KB). Pendiente: decidir dónde viven los archivos para siempre, guardar el `robot.usd` construido con su física, medir antes el tamaño real de los archivos y borrar los modelos viejos cuando cambia una ficha. Acordado el 2026-11-21 dejarlo para después |

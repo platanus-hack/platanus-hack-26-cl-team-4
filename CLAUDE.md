@@ -1,6 +1,6 @@
 # VIAZ: reglas para agentes
 
-VIAZ virtualiza lugares de trabajo reales (cualquier industria) y pone robots reales a trabajar en ellos en simulación. El demo usa un parque solar, pero **el producto no es solo para paneles**.
+VIAZ virtualiza lugares de trabajo reales (cualquier industria) y pone robots reales a trabajar en ellos en simulación. El parque solar es solo el caso de referencia 1: **el alcance es general**. Nada nuevo puede suponer paneles, filas ni un rubro fijo. Lo propio de un rubro va en su perfil de dominio ([`docs/requerimientos.md`](docs/requerimientos.md) §4.0).
 
 ## Calidad de la virtualización (escenas, objetos y robots)
 

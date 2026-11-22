@@ -42,6 +42,7 @@ flowchart LR
 - [ ] Revisar y aprobar `requerimientos.md` v0.4 (los 3 integrantes).
 - [ ] Arrendar el pod RTX 5090 y pasar la prueba de humo, incluido un ejemplo de RL de Isaac Lab ([`infraestructura.md`](infraestructura.md) §6).
 - [ ] Elegir el parque real y escribir `entorno.json` y `tarea.json` a mano (RF-MAP-11, RF-TAR-04).
+- [ ] Elegir el caso de referencia 2 y escribir su `entorno.json` y `tarea.json` (RF-GEN-07).
 - [x] Decidir base, umbral y canal de avisos: base móvil con RL en el brazo, 90 % a 5 cm y 5° en 100 episodios, Discord.
 - [ ] Crear el canal `#entrenamiento` en Discord y su webhook; guardar la URL en Render.
 
@@ -54,7 +55,9 @@ flowchart LR
 
 ### Iteración 2 — Constructor y entrenamiento (→ CP2, sáb 23:00)
 - [ ] Agente constructor: `ensamblaje.json` → `robot_cfg.py` → `validar_clon`, con 3 intentos (RF-CLO-01..06).
-- [ ] Entorno RL `instalar_panel` en Isaac Lab con recompensa y condición de éxito (RF-INT-10..11), base con ruido (RF-INT-19) y controlador de la base (RF-INT-18).
+- [ ] Perfiles de dominio del caso 2: requisitos, escena y entorno RL, sin tocar los agentes (RF-GEN-03..06, RF-ROB-08).
+- [ ] Prompts y monitor sin rubro fijo; tolerancias desde `tarea.json` (RF-GEN-04..05, RF-MON-11).
+- [ ] Entorno RL `instalar_panel` (caso 1) en Isaac Lab con recompensa y condición de éxito (RF-INT-10..11), base con ruido (RF-INT-19) y controlador de la base (RF-INT-18).
 - [ ] Entrenamiento lanzado con grabación de clips (RF-INT-12..13).
 - [ ] Agente monitor leyendo métricas y avisando por Discord (RF-MON-01..04, RF-MON-08).
 - [ ] Tras la primera hora: fijar las horas de entrenamiento con la pendiente de la curva (RNF-17).
@@ -63,7 +66,8 @@ flowchart LR
 - [ ] Elegir el checkpoint con el monitor y evaluar 100 episodios, a 5 cm/5° y a 2 cm/2° (RF-INT-14, RF-INT-20, RF-MON-05).
 - [ ] Grabar `video.mp4` con la muestra y armar `entrenamiento_rapido.mp4` (RF-INT-13, RF-INT-15).
 - [ ] Web con los dos videos, el robot elegido y las métricas (RF-WEB-06..09, RF-WEB-13, RF-WEB-15).
-- [ ] Sección de la web que explica el flujo completo y rotula el parque de referencia (RF-WEB-19, RNF-20).
+- [ ] Sección de la web que explica el flujo completo y rotula cada caso de referencia (RF-WEB-19, RNF-20).
+- [ ] La web deja elegir entre los casos de referencia (RF-WEB-21).
 - [ ] Verificar los criterios de aceptación ([`requerimientos.md`](requerimientos.md) §8).
 - [ ] Pitch.
 - [ ] Plan B si el RL no llega al umbral: muestra con planificador (RF-INT-01).
@@ -109,3 +113,4 @@ Una tarea está terminada cuando:
 | 2026-11-21 | — | Requerimientos v0.4: plan del demo con RL | Entorno y tarea a mano; agentes de selección, constructor y monitor; video en cámara rápida del entrenamiento en la web; tarea solo poner el panel |
 | 2026-11-21 | — | Requerimientos v0.5 | Base móvil con navegación programada y RL en el brazo; meta 90 % a 5 cm y 5° en 100 episodios; tiempo fijo; avisos por Discord |
 | 2026-11-21 | — | Requerimientos v0.6 | La subida de videos se explica en la web y en el pitch, pero no se usa en vivo; el demo muestra el parque de referencia |
+| 2026-11-22 | — | Requerimientos v1.0 | El alcance se generaliza: cualquier lugar y cualquier tarea de manipulación, por perfiles de dominio. El parque solar pasa a caso de referencia 1; se piden al menos 2 casos de punta a punta |

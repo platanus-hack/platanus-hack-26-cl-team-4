@@ -1,8 +1,8 @@
 # Contrato del entorno RL de Isaac Lab
 
-> Estado: **v1** (2026-11-21). Para el equipo que construye el entorno `instalar_panel` en Isaac Lab.
+> Estado: **v1** (2026-11-21). Para el equipo que construye entornos RL de tareas en Isaac Lab. El primero es `instalar_panel` (caso de referencia 1). Toda tarea nueva cumple este mismo contrato (RF-GEN-03); los ejemplos de abajo son del caso 1.
 > Si el entorno cumple este contrato, el sistema lo lanza, lo vigila, lo evalúa y graba los videos sin cambios de código.
-> Requerimientos: RF-INT-10..25, RF-MAP-12..14, RF-GPU-02, RF-GPU-06, RF-MON-01 (requerimientos v0.8). Esquemas: [`backend/viaz/esquemas/`](../backend/viaz/esquemas/).
+> Requerimientos: RF-INT-10..25, RF-MAP-12..14, RF-GPU-02, RF-GPU-06, RF-MON-01 (requerimientos v1.0). Esquemas: [`backend/viaz/esquemas/`](../backend/viaz/esquemas/).
 
 ```mermaid
 flowchart LR
