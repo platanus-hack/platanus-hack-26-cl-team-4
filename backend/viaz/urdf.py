@@ -7,8 +7,9 @@ Física: cada link tiene masa e inercia calculadas de su forma (caja o cilindro 
 PhysX se vuelve inestable con inercias inventadas (p. ej. 0,01 para una base de 600 kg).
 Las masas son supuestos hasta tener la ficha del robot real: ver MASA_* abajo.
 
-Un robot con bloque `fisica` en su ficha del catálogo usa sus propias medidas: largo, ancho y masa del
-vehículo, altura de la cubierta, orugas, gabinete, grosor del brazo, marco de ventosas y remolque de paneles.
+Un robot con bloque `fisica` en su ficha del catálogo usa sus propias medidas. El núcleo (largo, ancho, masa,
+altura de la cubierta y tracción) siempre está. Lo opcional (posición y grosor del brazo, marco de ventosas,
+gabinete, remolque, posición de la pila) usa el valor genérico si falta, o la pieza no se dibuja.
 Sin ese bloque, el clon es el de siempre.
 """
 from __future__ import annotations
@@ -67,22 +68,49 @@ class Vehiculo:
     gabinete: tuple[float, float] | None = None   # largo y alto del gabinete trasero, sobre la cubierta
     ventosa: tuple[float, float] = VENTOSA  # marco de ventosas en X e Y
     remolque: tuple[float, float] | None = None   # largo y masa del remolque de paneles
+    rueda_xy: tuple[float, float] = (0.55, 0.55)
 
 
 def vehiculo(fisica: dict | None) -> Vehiculo:
     """Lee el bloque `fisica` de la ficha del catálogo (robot.schema.json). None = clon de siempre."""
     if not fisica:
         return Vehiculo()
-    # El robot real no lleva la pila encima: la toma de un remolque que arrastra por el lado del brazo.
-    pila_x = fisica["largo_m"] / 2 + ENGANCHE_M + fisica["remolque_largo_m"] / 2
+    largo, ancho = fisica["largo_m"], fisica["ancho_m"]
+    montaje_x = fisica.get("brazo_x_m", _montaje_x_generico(largo))
+    grosor = fisica.get("brazo_grosor_m")
+    gabinete = _par(fisica, "gabinete_largo_m", "gabinete_alto_m")
+    remolque = _par(fisica, "remolque_largo_m", "remolque_masa_kg")
     return Vehiculo(
-        largo=fisica["largo_m"], ancho=fisica["ancho_m"], cubierta_z=fisica["altura_cubierta_m"],
-        montaje_x=fisica["brazo_x_m"], pila_x=round(pila_x, 4), hombro_r=round(fisica["brazo_grosor_m"] * 0.75, 3),
-        brazo_lado=fisica["brazo_grosor_m"], antebrazo_lado=fisica["antebrazo_grosor_m"],
+        largo=largo, ancho=ancho, cubierta_z=fisica["altura_cubierta_m"],
+        montaje_x=montaje_x, pila_x=_pila_x(fisica, montaje_x, gabinete, remolque),
+        hombro_r=round(grosor * 0.75, 3) if grosor else HOMBRO_R,
+        brazo_lado=grosor or BRAZO_LADO, antebrazo_lado=fisica.get("antebrazo_grosor_m", ANTEBRAZO_LADO),
         traccion=fisica["traccion"], masa_kg=fisica["masa_kg"],
-        gabinete=(fisica["gabinete_largo_m"], fisica["gabinete_alto_m"]),
-        ventosa=(fisica["ventosa_largo_m"], fisica["ventosa_ancho_m"]),
-        remolque=(fisica["remolque_largo_m"], fisica["remolque_masa_kg"]))
+        gabinete=gabinete, ventosa=_par(fisica, "ventosa_largo_m", "ventosa_ancho_m") or VENTOSA, remolque=remolque,
+        rueda_xy=(round(largo / 2 - RUEDA_R, 4), round(ancho / 2 - RUEDA_ANCHO / 2, 4)))
+
+
+def _montaje_x_generico(largo: float) -> float:
+    return round(largo * MONTAJE_X / BASE[0], 3)
+
+
+def _par(fisica: dict, a: str, b: str) -> tuple[float, float] | None:
+    return (fisica[a], fisica[b]) if a in fisica and b in fisica else None
+
+
+def _pila_x(fisica: dict, montaje_x: float, gabinete: tuple | None, remolque: tuple | None) -> float:
+    largo = fisica["largo_m"]
+    if remolque:
+        # El robot real no lleva la pila encima: la toma de un remolque que arrastra por el lado del brazo.
+        return round(largo / 2 + ENGANCHE_M + remolque[0] / 2, 4)
+    if "pila_x_m" in fisica:
+        return fisica["pila_x_m"]
+    return round((montaje_x + _extremo_libre(largo, montaje_x, gabinete)) / 2, 4)
+
+
+def _extremo_libre(largo: float, montaje_x: float, gabinete: tuple | None) -> float:
+    gabinete_atras = gabinete is not None
+    return largo / 2 if gabinete_atras or montaje_x < 0 else -largo / 2
 
 
 def geometria(alcance_m: float, fisica: dict | None = None) -> dict:
@@ -123,25 +151,40 @@ def _masa_cilindro(r, h):
 
 def _fijas(v: Vehiculo) -> list[dict]:
     """Piezas rígidas pegadas a base_link, con su unión (posición y giro del origen)."""
-    if v.traccion == "ruedas":
-        return [{"link": f"rueda_{i}", "forma": "cilindro", "dims": (RUEDA_R, RUEDA_ANCHO), "centro": (0, 0, 0),
-                 "masa": MASA_RUEDA_KG, "color": "negro", "union": (f"{x} {y} {RUEDA_R}", "1.5708 0 0")}
-                for i, (x, y) in enumerate([(0.55, 0.55), (0.55, -0.55), (-0.55, 0.55), (-0.55, -0.55)])]
+    return [*(_ruedas(v) if v.traccion == "ruedas" else _orugas(v)),
+            *(_gabinete(v) if v.gabinete else []),
+            *(_remolque(v) if v.remolque else [])]
+
+
+def _ruedas(v: Vehiculo) -> list[dict]:
+    rx, ry = v.rueda_xy
+    return [{"link": f"rueda_{i}", "forma": "cilindro", "dims": (RUEDA_R, RUEDA_ANCHO), "centro": (0, 0, 0),
+             "masa": MASA_RUEDA_KG, "color": "negro", "union": (f"{x} {y} {RUEDA_R}", "1.5708 0 0")}
+            for i, (x, y) in enumerate([(rx, ry), (rx, -ry), (-rx, ry), (-rx, -ry)])]
+
+
+def _orugas(v: Vehiculo) -> list[dict]:
     alto, largo, ancho = medidas_oruga(v)
     x = round(v.largo * ORUGA_CENTRO, 4)
-    lista = [{"link": f"oruga_{i}", "forma": "caja", "dims": (largo, ancho, alto), "centro": (0, 0, alto / 2),
-              "masa": round(v.masa_kg * MASA_ORUGA, 1), "color": "negro",
-              "union": (f"{x} {round(lado * (v.ancho - ancho) / 2, 4)} 0", "0 0 0")} for i, lado in enumerate((1, -1))]
+    return [{"link": f"oruga_{i}", "forma": "caja", "dims": (largo, ancho, alto), "centro": (0, 0, alto / 2),
+             "masa": round(v.masa_kg * MASA_ORUGA, 1), "color": "negro",
+             "union": (f"{x} {round(lado * (v.ancho - ancho) / 2, 4)} 0", "0 0 0")} for i, lado in enumerate((1, -1))]
+
+
+def _gabinete(v: Vehiculo) -> list[dict]:
     gl, ga = v.gabinete
-    lista.append({"link": "gabinete", "forma": "caja", "dims": (gl, round(v.ancho - 0.2, 4), ga), "centro": (0, 0, ga / 2),
-                  "masa": round(v.masa_kg * MASA_GABINETE, 1), "color": "cuerpo",
-                  "union": (f"{round(-v.largo / 2 + gl / 2, 4)} 0 {v.cubierta_z}", "0 0 0")})
+    return [{"link": "gabinete", "forma": "caja", "dims": (gl, round(v.ancho - 0.2, 4), ga), "centro": (0, 0, ga / 2),
+             "masa": round(v.masa_kg * MASA_GABINETE, 1), "color": "cuerpo",
+             "union": (f"{round(-v.largo / 2 + gl / 2, 4)} 0 {v.cubierta_z}", "0 0 0")}]
+
+
+def _remolque(v: Vehiculo) -> list[dict]:
     rl, rm = v.remolque
     rx = v.pila_x                           # la pila va centrada sobre el remolque
     ruedas = [(dx, lado) for dx in (-0.45, 0.45) for lado in (1, -1)]
-    lista.append({"link": "remolque", "forma": "caja", "dims": (rl, v.ancho, REMOLQUE_ALTO_M), "centro": (0, 0, REMOLQUE_ALTO_M / 2),
-                  "masa": round(rm * (1 - MASA_RUEDA_REMOLQUE * len(ruedas)), 1), "color": "cuerpo",
-                  "union": (f"{rx} 0 {round(v.cubierta_z - REMOLQUE_ALTO_M, 4)}", "0 0 0")})
+    lista = [{"link": "remolque", "forma": "caja", "dims": (rl, v.ancho, REMOLQUE_ALTO_M), "centro": (0, 0, REMOLQUE_ALTO_M / 2),
+              "masa": round(rm * (1 - MASA_RUEDA_REMOLQUE * len(ruedas)), 1), "color": "cuerpo",
+              "union": (f"{rx} 0 {round(v.cubierta_z - REMOLQUE_ALTO_M, 4)}", "0 0 0")}]
     for i, (dx, lado) in enumerate(ruedas):
         y = round(lado * (v.ancho - REMOLQUE_RUEDA_ANCHO) / 2, 4)
         lista.append({"link": f"rueda_remolque_{i}", "forma": "cilindro", "dims": (REMOLQUE_RUEDA_R, REMOLQUE_RUEDA_ANCHO),
@@ -182,12 +225,14 @@ def piezas(alcance_m: float, fisica: dict | None = None) -> list[dict]:
         cadena.append({"link": link, "forma": forma, "dims": dims, "centro": (0, 0, alto / 2),
                        "masa": round(masa, 3), "color": color})
     fijas = _fijas(v)
-    if v.traccion == "ruedas":
-        suelo, masa_base = RUEDA_R, MASA_BASE_KG
+    suelo = RUEDA_R if v.traccion == "ruedas" else medidas_oruga(v)[0]
+    if v.masa_kg is None:
+        masa_base = MASA_BASE_KG
     else:
-        suelo = medidas_oruga(v)[0]
         propias = [p for p in cadena + fijas if "remolque" not in p["link"]]
         masa_base = round(v.masa_kg - sum(p["masa"] for p in propias), 1)   # el resto de la máquina es chasis
+        if masa_base <= 0:
+            raise ValueError(f"fisica.masa_kg ({v.masa_kg} kg) no alcanza para las piezas del clon")
     alto_base = round(v.cubierta_z - suelo, 4)
     base = {"link": "base_link", "forma": "caja", "dims": (v.largo, v.ancho, alto_base),
             "centro": (0, 0, round(suelo + alto_base / 2, 4)), "masa": masa_base, "color": "cuerpo"}

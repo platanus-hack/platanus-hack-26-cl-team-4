@@ -84,7 +84,7 @@ flowchart LR
 
 - **Fórmula:** `√(d² + dz²) + muñeca + 0,05 m de margen`, con `dz = altura + 0,09 + muñeca − hombro_z`. La muñeca mide 0,30 m.
 - **Depende del robot:** un vehículo más ancho queda más lejos del tubo. Uno más alto sube el hombro. Por eso hay una fila por robot.
-- **Ejemplo (fixture):** tracker de 1,5 m y panel de 2,38 m dan **2,28 m** con la base genérica y **2,53 m** para `leapting-mmr` (1,8 m de ancho).
+- **Ejemplo (fixture):** tracker de 1,5 m y panel de 2,38 m dan **2,28 m** con la base genérica, **2,53 m** para `leapting-mmr` (1,8 m de ancho), **2,86 m** para `relu-bison` (2,1 m) y **2,95 m** para `trinatracker-buildex-e` (2,47 m).
 - **Verificado:** para alturas de 0,8 a 4 m y paneles de 1,7 a 2,8 m, un clon con ese alcance pasa `plan.validar()`.
 
 ### Paso 2: búsqueda web
@@ -134,7 +134,7 @@ flowchart LR
 - **Qué no compara:** los motores y el control reales. Todos los clones usan un brazo de Isaac Lab escalado (`ur10` o `franka_panda`).
 - **Fixture:** `fixtures/comparacion.json` tiene **métricas ilustrativas**, no medidas. Lo dice en `advertencias` y en `explicacion`.
 
-Ejemplo de ranking con dos finalistas (hipotético; hoy solo `leapting-mmr` puede ser finalista):
+Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 
 ```json
 "ranking": [
@@ -172,11 +172,17 @@ Ejemplo de ranking con dos finalistas (hipotético; hoy solo `leapting-mmr` pued
 7. El ganador sale de la regla, no del LLM.
 8. Cada salida cumple su esquema.
 
-### Cambios planeados al esquema (próximo PR, con su código)
+### Cambios al esquema
 
-- **Núcleo de `fisica` obligatorio;** los campos solo solares (`remolque_*`, `ventosa_*`, `gabinete_*`) pasan a opcionales.
-- **Más valores** en `efector` y `fisica.traccion` (hoy solo `ventosa`/`pinza` y `orugas`).
-- **Por qué no ahora:** [`urdf.py`](../../backend/viaz/urdf.py) lee esos campos directo (`fisica["remolque_largo_m"]`, etc.). El cambio va con su código.
+| Cambio | Estado |
+|---|---|
+| Núcleo de `fisica` obligatorio (`largo_m`, `ancho_m`, `masa_kg`, `altura_cubierta_m`, `traccion`). El resto es opcional | **Hecho.** Los pares (`gabinete_*`, `ventosa_*`, `remolque_*`) van juntos o no van (`dependentRequired`) |
+| `fisica.traccion` acepta `ruedas` además de `orugas` | **Hecho** |
+| `fisica.pila_x_m` para robots sin remolque | **Hecho.** Sin el campo, la pila va sobre la cubierta, lejos del gabinete |
+| [`urdf.py`](../../backend/viaz/urdf.py) arma el clon con lo que haya. El clon del Leapting no cambió | **Hecho** (comparado byte a byte) |
+| Más valores en `efector` (hoy `ventosa`/`pinza`) | Planeado |
+| Un campo para una pila fuera del vehículo (horquilla de BUILDEX E) | Planeado |
+| `agentes.clon()` para robots `vehiculo_con_brazo` (hoy solo `base_movil_brazo`) | Planeado |
 
 ## 5. Instrucciones (resumen del prompt)
 
@@ -211,5 +217,5 @@ Ejemplo de ranking con dos finalistas (hipotético; hoy solo `leapting-mmr` pued
 | Costo de 3 finalistas | Cuántos pods y cuántas horas por entrenamiento. 3 finalistas cuestan 3 veces las horas de pod |
 | Prioridad MoSCoW | RF-ROB-08..12, RF-CLO-10..11 y RF-ORQ-07..08 están en **S** hasta que el equipo decida |
 | Alcance de la generalización | Si generalizar `entorno.json`, `tarea.json` y `sim/rl` (hoy solo solares) entra en el hack |
-| Catálogo actual | Solo `leapting-mmr` tiene el núcleo de `fisica`. Sin agregarlo a otras fichas, habrá un solo finalista |
+| Catálogo actual | `leapting-mmr`, `relu-bison` y `trinatracker-buildex-e` tienen el núcleo de `fisica`. `aes-maximo` no lo tiene, porque ninguna foto trae una escala para medirlo. BUILDEX E falla el alcance, con 2,5 m estimados contra 2,95 m necesarios. Una persona decide su alcance real. Hoy hay 2 finalistas |
 | Definición de `fidelidad` | La tabla de §3 es una propuesta |
