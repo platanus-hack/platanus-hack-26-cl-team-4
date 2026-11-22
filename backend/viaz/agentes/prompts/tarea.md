@@ -16,6 +16,7 @@ El espacio puede ser cualquiera: una sala, una bodega, un taller, una línea de 
   - `ordenar`: llevar varios objetos a sus lugares.
   - `inspeccionar`: acercarse a puntos y revisarlos, sin mover nada.
   - `instalar_panel`: dejar un panel sobre el tubo de un tracker. **Solo** si `entorno.json` es `parque_solar`.
+  - `animar_evento`: recorrer el espacio libre y hacer una coreografía frente al público (animar una fiesta, un evento, una presentación). No manipula nada. Ver "Perfil `animar_evento`".
   Si ninguno calza, inventa uno corto o usa `otro`.
 - `descripcion`: una oración en español: qué toma el robot, de dónde y dónde lo deja (o qué revisa).
 - `proposito`: para qué le sirve la tarea al cliente. Es el problema que resuelve, no la acción.
@@ -39,6 +40,7 @@ El espacio puede ser cualquiera: una sala, una bodega, un taller, una línea de 
   - `no_chocar`, `orientacion_fija`, `zona_prohibida`, `otra`: `valor` = `null`.
   - `velocidad_max_m_s`, `distancia_personas_m`, `fuerza_max_n`: `valor` obligatorio, en SI.
 - `pila_paneles`: perfil de `instalar_panel` (`en_robot` y `cantidad`). En cualquier otra tarea devuélvelo como `null`.
+- `animacion`: perfil de `animar_evento` (`puntos`, `coreografia`, `velocidad_m_s`, `distancia_publico_m`). En cualquier otra tarea devuélvelo como `null`.
 
 ## Cómo decidir
 1. Lee el pedido del cliente. Busca dos cosas: **qué** quiere que haga el robot y **para qué**.
@@ -59,6 +61,7 @@ El espacio puede ser cualquiera: una sala, una bodega, un taller, una línea de 
    | `tomar_y_dejar`, `ordenar` | 1 a 5 | 30 a 60 | 0,05 | 10 |
    | `transportar` | 1 a 3 | 60 a 120 | 0,10 | 15 |
    | `inspeccionar` | 3 a 8 puntos | 15 a 30 | 0,10 | 15 |
+   | `animar_evento` | 1 recorrido | 60 a 120 | 0,5 | 30 |
 6. Restricciones:
    - Siempre `no_chocar`.
    - `orientacion_fija` si el objeto no se puede inclinar (panel, bandeja con líquido, caja frágil).
@@ -70,6 +73,17 @@ El espacio puede ser cualquiera: una sala, una bodega, un taller, una línea de 
 - `origen`: la pila sobre el robot. `destino`: el tubo de la fila vecina al pasillo. Ambos con `elemento` = `null`.
 - `pila_paneles.en_robot` = `true`; `pila_paneles.cantidad` entre 3 y 10; `objetivo.cantidad` ≤ `pila_paneles.cantidad`.
 - Restricciones: `no_chocar` ("no chocar con las estructuras") y `orientacion_fija` ("panel horizontal durante el traslado").
+
+## Perfil `animar_evento`
+- `objeto`: `elemento` = `null`, `descripcion` = el público del evento, `masa_kg` = `null`. `origen` y `destino`: `elemento` = `null`, con la descripción del primer y del último punto; `altura_m` = `null`.
+- `animacion.puntos`: de 2 a 6 puntos `{nombre, x_m, y_m}` en el **piso libre**, en el marco de `entorno.json` (origen en una esquina, X a lo largo, Y a lo ancho). El robot camina en línea recta de un punto al siguiente.
+  - Cada punto y cada tramo recto entre puntos queda a `distancia_publico_m` + 0,3 m o más de todo elemento (sillas, tarima, mesas, paredes). Calcula con `posicion_m` y `dimensiones_m`: la huella de un elemento va de x − largo/2 a x + largo/2 y de y − ancho/2 a y + ancho/2 (sin rotación).
+  - Para pasar de un lado a otro de un bloque de sillas, usa un pasillo: agrega un punto en cada extremo del pasillo.
+  - No subas a tarimas ni graderías: el robot camina en el piso (z = 0).
+- `animacion.coreografia`: de 3 a 8 pasos `{movimiento, duracion_s}` que se repiten en cada punto. Movimientos: `avanzar`, `retroceder`, `lateral_izq`, `lateral_der`, `girar_izq`, `girar_der`, `quieto`. Entre 1 y 3 s cada uno.
+- `animacion.velocidad_m_s` ≈ 0,6 (máx. 1,0 en interiores con gente). `animacion.distancia_publico_m` ≈ 0,5.
+- `objetivo.cantidad` = 1 (un recorrido). `criterios_exito.tolerancia_pos_m` = 0,5: cuánto puede errar al llegar a cada punto.
+- Restricciones: `no_chocar`, `distancia_personas_m` (= `distancia_publico_m`) y `velocidad_max_m_s`.
 
 ## Reglas
 - La tarea debe caber en una demo corta: `cantidad` × `ciclo_s` menor a 10 minutos.

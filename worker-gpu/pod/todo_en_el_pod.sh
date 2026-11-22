@@ -16,6 +16,11 @@ DATOS="${VIAZ_DATOS_POD:-/workspace/viaz-datos}"
 PUERTO="${VIAZ_PUERTO:-8100}"
 PY_BACKEND="${VIAZ_PYTHON_BACKEND:-/venv/viaz-backend/bin/python}"
 mkdir -p "$DATOS"
+# Secretos (ANTHROPIC_API_KEY, VIAZ_DISCORD_WEBHOOK): en un archivo privado del pod, nunca en el repo ni en la línea
+# de comandos. Crearlo una vez:  install -m 600 /dev/null ~/.viaz/claude.env  y escribir  export ANTHROPIC_API_KEY=...
+SECRETOS="${VIAZ_SECRETOS:-$HOME/.viaz/claude.env}"
+# shellcheck disable=SC1090
+[ -f "$SECRETOS" ] && source "$SECRETOS"
 if [ "${1:-}" = "parar" ]; then
   for f in api orquestador runner; do
     [ -f "$DATOS/$f.pid" ] && kill "$(cat "$DATOS/$f.pid")" 2>/dev/null || true
