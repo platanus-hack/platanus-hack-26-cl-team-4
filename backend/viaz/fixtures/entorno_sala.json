@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "tipo": "sala",
+  "descripcion": "Sala de reuniones pequeña con una mesa central, cuatro sillas, un estante y cajas sobre la mesa. Una puerta en el lado corto.",
+  "videos": [],
+  "espacio": { "interior": true, "largo_m": 5, "ancho_m": 4, "alto_m": 2.5 },
+  "terreno": { "pendiente_grados": 0, "suelo": "baldosa" },
+  "elementos": [
+    { "nombre": "mesa_central", "categoria": "superficie_trabajo", "forma": "caja",
+      "dimensiones_m": { "largo_m": 1.8, "ancho_m": 0.9, "alto_m": 0.75 },
+      "posicion_m": { "x_m": 2.5, "y_m": 2.0, "z_m": 0 }, "rotacion_grados": 0, "masa_kg": 40, "fijo": true },
+    { "nombre": "sillas", "categoria": "mueble", "forma": "caja",
+      "dimensiones_m": { "largo_m": 1.8, "ancho_m": 0.45, "alto_m": 0.9 },
+      "posicion_m": { "x_m": 2.5, "y_m": 1.1, "z_m": 0 }, "rotacion_grados": 0, "masa_kg": 24, "fijo": false },
+    { "nombre": "estante", "categoria": "mueble", "forma": "caja",
+      "dimensiones_m": { "largo_m": 1.2, "ancho_m": 0.4, "alto_m": 1.8 },
+      "posicion_m": { "x_m": 4.3, "y_m": 3.8, "z_m": 0 }, "rotacion_grados": 0, "masa_kg": 35, "fijo": true },
+    { "nombre": "caja_carton_1", "categoria": "objeto_manipulable", "forma": "caja",
+      "dimensiones_m": { "largo_m": 0.4, "ancho_m": 0.3, "alto_m": 0.25 },
+      "posicion_m": { "x_m": 2.2, "y_m": 2.0, "z_m": 0.75 }, "rotacion_grados": 15, "masa_kg": 3, "fijo": false },
+    { "nombre": "papelero", "categoria": "contenedor", "forma": "cilindro",
+      "dimensiones_m": { "largo_m": 0.3, "ancho_m": 0.3, "alto_m": 0.4 },
+      "posicion_m": { "x_m": 0.4, "y_m": 3.6, "z_m": 0 }, "rotacion_grados": 0, "masa_kg": null, "fijo": false },
+    { "nombre": "puerta", "categoria": "abertura", "forma": "caja",
+      "dimensiones_m": { "largo_m": 0.05, "ancho_m": 0.9, "alto_m": 2.0 },
+      "posicion_m": { "x_m": 0.025, "y_m": 0.8, "z_m": 0 }, "rotacion_grados": 0, "masa_kg": null, "fijo": true }
+  ],
+  "escena_usd": "escena.usd",
+  "fondo_reconstruido_usd": null,
+  "confianza": { "espacio.largo_m": 0.8, "espacio.ancho_m": 0.8, "elementos.mesa_central": 0.8, "elementos.caja_carton_1": 0.6 }
+}

@@ -32,12 +32,40 @@ flowchart LR
 
 ## `entorno.json` (etapa 1)
 
+Sirve para **cualquier espacio**: un núcleo genérico más perfiles opcionales por `tipo`. El parque solar es el perfil del demo.
+
+Espacio genérico (ejemplo completo en [`fixtures/entorno_sala.json`](../backend/viaz/fixtures/entorno_sala.json)):
+
+```json
+{
+  "version": 1,
+  "tipo": "sala",
+  "descripcion": "Sala pequeña con una mesa central y un estante.",
+  "videos": ["sala-1.mp4"],
+  "espacio": { "interior": true, "largo_m": 5, "ancho_m": 4, "alto_m": 2.5 },
+  "terreno": { "pendiente_grados": 0, "suelo": "baldosa" },
+  "elementos": [
+    { "nombre": "mesa_central", "categoria": "superficie_trabajo", "forma": "caja",
+      "dimensiones_m": { "largo_m": 1.8, "ancho_m": 0.9, "alto_m": 0.75 },
+      "posicion_m": { "x_m": 2.5, "y_m": 2.0, "z_m": 0 }, "rotacion_grados": 0, "masa_kg": 40, "fijo": true }
+  ],
+  "escena_usd": "escena.usd",
+  "fondo_reconstruido_usd": null,
+  "confianza": { "espacio.largo_m": 0.8, "elementos.mesa_central": 0.8 }
+}
+```
+
+Parque solar (perfil del demo): el mismo núcleo, más `filas`, `estructura` y `panel`:
+
 ```json
 {
   "version": 1,
   "tipo": "parque_solar",
+  "descripcion": "Sector de un parque solar con trackers de un eje.",
   "videos": ["planta-1.mp4"],
+  "espacio": { "interior": false, "largo_m": 40, "ancho_m": 22, "alto_m": null },
   "terreno": { "pendiente_grados": 2, "suelo": "tierra_compactada", "friccion": 0.6 },
+  "elementos": [],
   "filas": { "cantidad": 3, "largo_m": 30, "separacion_m": 6 },
   "estructura": { "tipo": "tracker_1_eje", "altura_m": 1.5, "inclinacion_grados": 0 },
   "panel": { "largo_m": 2.38, "ancho_m": 1.13, "peso_kg": 32 },
@@ -47,7 +75,13 @@ flowchart LR
 }
 ```
 
-- **Del agente:** el agente llena todo menos `version`, `videos`, `escena_usd` y `fondo_reconstruido_usd`. Esos los pone el orquestador.
+- **`tipo`:** snake_case libre (`sala`, `bodega`, `taller`, `linea_produccion`, `parque_solar`, `otro`...).
+- **Perfiles:** `filas`, `estructura` y `panel` son obligatorios si `tipo` es `parque_solar` y prohibidos en cualquier otro tipo.
+- **Marco genérico:** origen en una esquina del espacio, a nivel del suelo. X a lo largo, Y a lo ancho, Z arriba. En `parque_solar` manda el marco de las filas (sección "Escena").
+- **`elementos`:** cajas o cilindros verticales. `posicion_m` es el centro de la cara inferior; `rotacion_grados` gira sobre Z. Las paredes no van aquí: `generar_escena` las crea si `espacio.interior`.
+- **Física de los elementos:** `fijo: true` es un colisionador inamovible; `fijo: false` con `masa_kg` es un cuerpo rígido. Las `abertura` no llevan colisión.
+- **Etapas siguientes:** hoy Tarea → Inteligencia solo soportan `parque_solar`. Con otro `tipo`, la corrida deja `entorno.json` y `escena.usd` y termina en `error` con un mensaje claro.
+- **Del agente:** el agente llena todo menos `version`, `videos`, `escena_usd` y `fondo_reconstruido_usd`. Esos los pone el orquestador. Los perfiles que no aplican vuelven como `null` y el orquestador los quita.
 - **`confianza` en el agente:** el agente la devuelve como lista `[{campo, valor}]`, porque structured outputs no acepta objetos con claves libres. El orquestador la convierte en objeto.
 - **`escena.usd`:** texto USDA. Lo genera el trabajo de GPU `generar_escena`.
 - **`terreno.friccion`:** opcional, de 0,1 a 1,5. Es el coeficiente de fricción del suelo que usa la física (material de PhysX). El agente Entorno no lo llena. Si falta, `sim/fisica.py` usa el valor del tipo de `suelo`, o 0,6 si no conoce ese tipo. En el parque del demo es un valor estimado: por eso su `confianza` es 0,5.

@@ -151,6 +151,14 @@ def elegir_robot(c: Corrida, cfg: Config, entorno: dict, tarea: dict) -> dict:
     return primero
 
 
+def exigir_pipeline(entorno: dict) -> None:
+    """El mapeo sirve para cualquier espacio; Tarea → Inteligencia todavía solo existe para algunos tipos."""
+    if entorno["tipo"] not in agentes.TIPOS_CON_PIPELINE:
+        raise agentes.ErrorAgente(
+            f"entorno.json y escena.usd listos para '{entorno['tipo']}', pero las etapas siguientes "
+            f"solo soportan: {', '.join(sorted(agentes.TIPOS_CON_PIPELINE))}")
+
+
 def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     if cfg.flujo == "rl":
         return procesar_rl(cfg, eng, store, fila)
@@ -164,6 +172,7 @@ def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     entorno, frames, artefactos = analizar_entorno(c, cfg, store, proyecto)
     c.trabajo_gpu("generar_escena", ["entorno.json"], ["escena.usd"])
     c.etapa("entorno", "listo", ["entorno.json", "escena.usd", *artefactos])
+    exigir_pipeline(entorno)
 
     c.etapa("tarea", "en_curso")
     tarea = agentes.tarea(modo, modelo, proyecto, entorno, frames)
@@ -335,6 +344,7 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
         c.escribir("entorno.json", validar("entorno", entorno))
     c.trabajo_gpu("generar_escena", ["entorno.json"], ["escena.usd"])
     c.etapa("entorno", "listo", ["entorno.json", "escena.usd", *artefactos])
+    exigir_pipeline(entorno)
 
     # 2. Tarea escrita a mano
     c.etapa("tarea", "en_curso")
