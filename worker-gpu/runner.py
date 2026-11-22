@@ -354,7 +354,7 @@ def ejecutar(tipo: str, d: Path, modo: str, isaac_python: str, ctx: Contexto | N
         if modo == "isaac":
             _correr(isaac_python, "validar_clon.py", d)
         else:
-            tarea = _leer(d, "tarea.json") if (d / "tarea.json").exists() else {"objetivo": {"paneles": 1}, "pila_paneles": {"cantidad": 1}}
+            tarea = _leer(d, "tarea.json") if (d / "tarea.json").exists() else {"objetivo": {"cantidad": 1}, "pila_paneles": {"cantidad": 1}}
             v = plan.validar(_leer(d, "entorno.json"), tarea, _leer(d, "clon.json"))
             _escribir(d, "validacion.json", {**v, "fuente": "simulado"})
     elif tipo == "ejecutar_tarea":

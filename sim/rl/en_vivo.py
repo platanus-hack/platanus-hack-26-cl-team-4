@@ -144,7 +144,7 @@ def alargar_fila(a) -> dict:
     tarea = json.loads(Path(a.tarea).read_text(encoding="utf-8"))
     entorno = json.loads(Path(a.entorno).read_text(encoding="utf-8"))
     tarea["pila_paneles"]["cantidad"] = a.paneles
-    tarea["objetivo"]["paneles"] = a.paneles
+    tarea["objetivo"]["cantidad"] = a.paneles
     copia = Path(a.salida_tarea)
     copia.write_text(json.dumps(tarea, ensure_ascii=False, indent=2), encoding="utf-8")
     a.tarea = str(copia)

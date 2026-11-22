@@ -41,7 +41,7 @@ def _claves(n):
 
 @pytest.mark.parametrize("esq", [
     agentes.esquema_agente_entorno(),
-    sin_campos(esquema("tarea"), ["version"]),
+    agentes.esquema_agente_tarea(),
 ], ids=["entorno", "tarea"])
 def test_esquemas_de_agentes_sirven_para_structured_outputs(esq):
     api = para_api(esq)

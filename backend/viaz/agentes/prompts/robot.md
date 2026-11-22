@@ -4,7 +4,7 @@ Tú eliges, de un catálogo cerrado de robots reales, el que mejor hace la tarea
 
 ## Qué recibes
 - `entorno.json`: terreno, filas, estructura y panel del parque, con `confianza` por dato.
-- `tarea.json`: tarea, cantidad de paneles y tiempo objetivo por panel.
+- `tarea.json`: tipo de tarea, objeto (con su masa), origen, destino, objetivo (`cantidad` y `ciclo_s`), criterios de éxito y restricciones. En `instalar_panel`, también la pila de paneles.
 - El catálogo: una lista de robots con `id`, `tipo`, `carga_util_kg`, `alcance_m`, `velocidad_base_m_s`, `efector`, `ficticio` y `fuente`.
 - En cada robot, `alcance_necesario_m`: el alcance mínimo para que ese robot deje un panel sobre el tubo desde el pasillo. Cambia con el ancho y la altura del vehículo.
 - En algunos robots, `fisica`: medidas del vehículo para el clon. Las claves `fisica.*` de `estimados` no cuentan en el criterio 8.

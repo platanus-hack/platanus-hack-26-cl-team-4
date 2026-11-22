@@ -1,31 +1,90 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "tarea.json",
+  "description": "Qué trabajo hace el robot y cómo se mide, en cualquier espacio. Núcleo genérico (objeto, origen, destino, objetivo, criterios de éxito, restricciones) y perfiles por tipo de tarea. Hoy el único perfil es instalar_panel (pila_paneles).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "tarea", "descripcion", "pila_paneles", "objetivo", "restricciones"],
+  "required": ["version", "tarea", "descripcion", "objeto", "origen", "destino", "objetivo", "criterios_exito", "restricciones"],
   "properties": {
     "version": { "const": 1 },
-    "tarea": { "enum": ["instalar_panel"] },
-    "descripcion": { "type": "string" },
-    "pila_paneles": {
+    "tarea": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Tipo de tarea en snake_case: instalar_panel, tomar_y_dejar, transportar, ordenar, inspeccionar, otro..." },
+    "descripcion": { "type": "string", "description": "Una oración: qué toma el robot, de dónde y dónde lo deja (o qué revisa)." },
+    "objeto": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["en_robot", "cantidad"],
+      "required": ["elemento", "descripcion", "masa_kg"],
+      "description": "Lo que el robot manipula o revisa.",
       "properties": {
-        "en_robot": { "type": "boolean" },
-        "cantidad": { "type": "integer", "minimum": 1, "maximum": 30 }
+        "elemento": { "type": ["string", "null"], "description": "nombre de un elemento de entorno.json; null si no está en elementos (ej.: el panel del perfil solar)." },
+        "descripcion": { "type": "string" },
+        "masa_kg": { "type": ["number", "null"], "minimum": 0, "maximum": 1000, "description": "null si no aplica o no se sabe." }
+      }
+    },
+    "origen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elemento", "descripcion"],
+      "properties": {
+        "elemento": { "type": ["string", "null"], "description": "nombre de un elemento de entorno.json; null si es el robot, una zona libre o una estructura del perfil." },
+        "descripcion": { "type": "string" }
+      }
+    },
+    "destino": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elemento", "descripcion"],
+      "properties": {
+        "elemento": { "type": ["string", "null"], "description": "nombre de un elemento de entorno.json; null si es el robot, una zona libre o una estructura del perfil." },
+        "descripcion": { "type": "string" }
       }
     },
     "objetivo": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["paneles", "ciclo_s"],
+      "required": ["cantidad", "ciclo_s"],
       "properties": {
-        "paneles": { "type": "integer", "minimum": 1, "maximum": 30 },
-        "ciclo_s": { "type": "number", "minimum": 1, "maximum": 600 }
+        "cantidad": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Veces que se repite la tarea (paneles, cajas, puntos de inspección)." },
+        "ciclo_s": { "type": "number", "minimum": 1, "maximum": 600, "description": "Tiempo objetivo por repetición." }
       }
     },
-    "restricciones": { "type": "array", "items": { "type": "string" } }
-  }
+    "criterios_exito": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tolerancia_pos_m", "tolerancia_ang_grados", "sin_choques", "tiempo_max_s"],
+      "description": "Cuándo una repetición cuenta como lograda. La simulación los usa para medir el éxito.",
+      "properties": {
+        "tolerancia_pos_m": { "type": "number", "minimum": 0.001, "maximum": 1 },
+        "tolerancia_ang_grados": { "type": "number", "minimum": 0.1, "maximum": 180 },
+        "sin_choques": { "type": "boolean" },
+        "tiempo_max_s": { "type": ["number", "null"], "minimum": 1, "maximum": 3600, "description": "Tope por repetición; null si no hay." }
+      }
+    },
+    "restricciones": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tipo", "valor", "detalle"],
+        "properties": {
+          "tipo": { "enum": ["no_chocar", "orientacion_fija", "velocidad_max_m_s", "distancia_personas_m", "fuerza_max_n", "zona_prohibida", "otra"] },
+          "valor": { "type": ["number", "null"], "description": "Número de la restricción en SI (ej.: 0,5 m/s). null si no tiene número." },
+          "detalle": { "type": "string" }
+        }
+      }
+    },
+    "pila_paneles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en_robot", "cantidad"],
+      "description": "Perfil instalar_panel.",
+      "properties": {
+        "en_robot": { "type": "boolean" },
+        "cantidad": { "type": "integer", "minimum": 1, "maximum": 30 }
+      }
+    }
+  },
+  "if": { "properties": { "tarea": { "const": "instalar_panel" } } },
+  "then": { "required": ["pila_paneles"] },
+  "else": { "not": { "required": ["pila_paneles"] } }
 }

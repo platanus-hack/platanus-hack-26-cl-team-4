@@ -26,7 +26,7 @@ flowchart LR
 | Monitor del entrenamiento | [`monitor-entrenamiento.md`](monitor-entrenamiento.md) | LLM + reglas | [`monitor.md`](../../backend/viaz/agentes/prompts/monitor.md) | RF-MON-01..10 | **Sí (Must)** | Implementado ([`monitor.py`](../../backend/viaz/monitor.py)). Discord sin probar con un webhook real |
 | MCP de Isaac Sim | [`mcp-isaac-sim.md`](mcp-isaac-sim.md) | LLM con herramientas MCP | En el contrato, §5 | Depuración | Opcional | Por definir el servidor |
 | Mapeo de entorno (cualquier espacio) | [`mapeo-terreno.md`](mapeo-terreno.md) | LLM con visión | [`entorno.md`](../../backend/viaz/agentes/prompts/entorno.md) | RF-MAP-01..04 | No (Could): el entorno va a mano | Implementado |
-| Tarea | [`tarea.md`](tarea.md) | LLM con visión | [`tarea.md`](../../backend/viaz/agentes/prompts/tarea.md) | RF-TAR-01 | No (Could): la tarea va a mano | Implementado |
+| Tarea (cualquier tarea) | [`tarea.md`](tarea.md) | LLM con visión + reglas | [`tarea.md`](../../backend/viaz/agentes/prompts/tarea.md) | RF-TAR-01 | No (Could): la tarea va a mano | Implementado |
 
 ## 2. Formato común de un contrato
 

@@ -89,16 +89,45 @@ Parque solar (perfil del demo): el mismo núcleo, más `filas`, `estructura` y `
 
 ## `tarea.json` (etapa 2)
 
+Sirve para **cualquier tarea**: un núcleo genérico más perfiles opcionales por tipo de tarea. `instalar_panel` es el perfil del demo.
+
+Tarea genérica (ejemplo completo en [`fixtures/tarea_sala.json`](../backend/viaz/fixtures/tarea_sala.json), sobre la sala de `entorno_sala.json`):
+
 ```json
 {
   "version": 1,
-  "tarea": "instalar_panel",
-  "descripcion": "Tomar un panel de la pila que lleva el robot y dejarlo sobre el tubo de la fila 1",
-  "pila_paneles": { "en_robot": true, "cantidad": 5 },
-  "objetivo": { "paneles": 5, "ciclo_s": 60 },
-  "restricciones": ["no chocar con las estructuras"]
+  "tarea": "tomar_y_dejar",
+  "descripcion": "Tomar la caja de cartón de la mesa central y dejarla en el estante",
+  "objeto": { "elemento": "caja_carton_1", "descripcion": "caja de cartón", "masa_kg": 3 },
+  "origen": { "elemento": "mesa_central", "descripcion": "cubierta de la mesa central" },
+  "destino": { "elemento": "estante", "descripcion": "repisa del medio" },
+  "objetivo": { "cantidad": 1, "ciclo_s": 45 },
+  "criterios_exito": { "tolerancia_pos_m": 0.05, "tolerancia_ang_grados": 10, "sin_choques": true, "tiempo_max_s": 120 },
+  "restricciones": [
+    { "tipo": "no_chocar", "valor": null, "detalle": "no chocar con la mesa ni el estante" },
+    { "tipo": "velocidad_max_m_s", "valor": 0.5, "detalle": "moverse lento en una sala con personas" }
+  ]
 }
 ```
+
+Perfil `instalar_panel` (el del demo): el mismo núcleo, con `elemento: null` en objeto, origen y destino, más la pila:
+
+```json
+{
+  "tarea": "instalar_panel",
+  "objetivo": { "cantidad": 5, "ciclo_s": 60 },
+  "criterios_exito": { "tolerancia_pos_m": 0.05, "tolerancia_ang_grados": 5, "sin_choques": true, "tiempo_max_s": null },
+  "pila_paneles": { "en_robot": true, "cantidad": 5 }
+}
+```
+
+- **`tarea`:** snake_case libre (`tomar_y_dejar`, `transportar`, `ordenar`, `inspeccionar`, `instalar_panel`, `otro`...).
+- **Perfiles:** `pila_paneles` es obligatorio si `tarea` es `instalar_panel` y prohibido en las demás.
+- **`elemento`:** nombre exacto de un elemento de `entorno.json`, o `null` (el robot, una zona libre o una estructura del perfil).
+- **`criterios_exito`:** la simulación los usa para medir el éxito. El orquestador pasa `tolerancia_pos_m` y `tolerancia_ang_grados` a `entrenar` y `evaluar` (más la cifra fina de 2 cm y 2°, RF-INT-20).
+- **`restricciones`:** `velocidad_max_m_s`, `distancia_personas_m` y `fuerza_max_n` llevan `valor` en SI. Las demás, `valor: null`.
+- **Reglas contra `entorno.json`** (`problemas_tarea`): los elementos existen; el objeto de una manipulación no es `fijo`; origen ≠ destino; `instalar_panel` solo en `parque_solar`; `objetivo.cantidad` ≤ `pila_paneles.cantidad`; `tiempo_max_s` ≥ `ciclo_s`. Valen también para el `tarea.json` escrito a mano.
+- **Etapas siguientes:** hoy Robot → Inteligencia solo simulan `instalar_panel`. Con otra tarea, la corrida deja `entorno.json`, `escena.usd` y `tarea.json` y termina en `error` con un mensaje claro.
 
 ## `robot.json` (etapa 3)
 

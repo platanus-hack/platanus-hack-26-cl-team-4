@@ -43,7 +43,7 @@ El runner lanza cada comando con el Python de Isaac Lab. El comando base sale de
 | Argumento | Archivo | Qué lee el entorno |
 |---|---|---|
 | `--entorno` | `entorno.json` | `filas`, `estructura.altura_m`, `panel.largo_m`, `panel.ancho_m`, `panel.peso_kg`, `terreno` |
-| `--tarea` | `tarea.json` | `pila_paneles.cantidad`, `objetivo.paneles`, `objetivo.ciclo_s` |
+| `--tarea` | `tarea.json` | `pila_paneles.cantidad`, `objetivo.cantidad`, `objetivo.ciclo_s`, `criterios_exito` (tolerancias de éxito) |
 | `--robot` | `robot_cfg.py` | El diccionario `PARAMETROS` (§7). Opcional: la función `crear_articulacion_cfg()` |
 | `--escena` | `escena.usd` | Parte estática de la planta, de `sim/generar_escena.py` |
 
