@@ -117,7 +117,7 @@
       "type": "boolean"
     },
     "fidelidad": {
-      "description": "Qué tan fiel es el clon al robot real. generico: base genérica, sin bloque fisica. medido: usa el bloque fisica de la ficha, con datos publicados o medidos en fotos. verificado: medido, sin claves fisica.* en estimados, y pasó validar_robot y la rúbrica de calidad.",
+      "description": "Qué tan fiel es el clon al robot real. generico: base genérica, sin bloque fisica. medido: usa el bloque fisica de la ficha, con datos publicados o medidos en fotos. verificado: medido, sin claves fisica.* en estimados, y pasó validar_robot y la rúbrica de calidad. El código escribe solo generico o medido.",
       "enum": [
         "generico",
         "medido",
@@ -125,7 +125,7 @@
       ]
     },
     "construccion": {
-      "description": "Cómo se armó el clon: agente constructor o respaldo determinista (RF-CLO-07).",
+      "description": "Cómo se armó el clon: agente constructor, respaldo determinista (RF-CLO-07) o modelo comprobado reusado de una corrida anterior (RF-CLO-10).",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -138,7 +138,8 @@
         "metodo": {
           "enum": [
             "agente",
-            "determinista"
+            "determinista",
+            "comprobado"
           ]
         },
         "intentos": {

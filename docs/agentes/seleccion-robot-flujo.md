@@ -110,9 +110,10 @@ flowchart TD
   M -->|no| CON["Agente constructor<br/>hasta 3 intentos"]
   CON --> VAL["validar_robot<br/>en la escena"]
   VAL --> REG["Registrar el modelo<br/>comprobado"]
-  M -->|sí| CHK["Chequeo corto<br/>en la escena"]
+  M -->|sí| CHK["validar_robot<br/>en esta escena"]
   REG --> ENT["Entrenar<br/>horas completas"]
-  CHK --> ENT
+  CHK -->|pasa| ENT
+  CHK -->|falla| CON
   ENT --> EV["Grabar clips y evaluar"]
   EV --> J[resultado.json]
   H2 -.->|"mismo recorrido"| J
@@ -129,9 +130,9 @@ flowchart TD
 - Los avisos del monitor nombran al finalista, por ejemplo "finalista 2 de 3: relu-bison".
 - `POST /corridas/{id}/detener` sobre el padre detiene el entrenamiento de la hija que corre.
 - Una hija que falla guarda su error en su fila. El padre sigue con el finalista siguiente.
-- Un modelo comprobado es el clon de un robot que ya pasó `validar_robot` y la rúbrica de calidad. Su clave es el `id`, la huella de su ficha y la versión de las piezas de Isaac Lab.
-- Con un modelo comprobado, la corrida se salta el agente constructor.
-- El chequeo en la escena corre siempre, porque el alcance y los choques dependen del lugar.
+- Un modelo comprobado es el ensamblaje de un robot que ya pasó `validar_robot` en alguna escena. Su clave es el `id`, la huella de su ficha y la del catálogo de piezas de Isaac Lab. Un modelo **aprobado**, además, pasó la rúbrica de calidad con una persona.
+- Con un modelo comprobado que pasa, la corrida se salta el agente constructor. Si falla en esta escena, sigue el agente.
+- `validar_robot` en la escena corre siempre, porque el alcance y los choques dependen del lugar.
 - La política entrenada no se reusa entre tareas ni entre lugares.
 - **Costo:** cada finalista entrena las horas completas (`VIAZ_HORAS_ENTRENAMIENTO`). Con 3 finalistas, la corrida tarda 3 veces lo que tarda uno. El log lo dice al empezar.
 - **Llega en:** PR 4 para el modelo comprobado y PR 5 para las corridas hijas.

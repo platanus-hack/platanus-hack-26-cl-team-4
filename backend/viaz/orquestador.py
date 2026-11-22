@@ -20,7 +20,7 @@ from sqlalchemy import select, update
 
 from pathlib import Path
 
-from . import agentes, catalogo, hijas, monitor, urdf
+from . import agentes, catalogo, hijas, modelos, monitor, urdf
 from .agentes import busqueda
 from .catalogo import encontrados
 from . import robot_cfg as rc
@@ -256,21 +256,34 @@ def _clips(h: dict, ultima: int) -> list[dict]:
     return clips
 
 
+def _titulo_intento(metodo: str, intento: int, total: int) -> str:
+    return {"comprobado": "Modelo comprobado en una corrida anterior",
+            "agente": f"Intento {intento} de {total} del agente constructor"}.get(
+        metodo, "Respaldo: ensamblaje por defecto, sin LLM")
+
+
 def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: dict) -> list[str]:
     """Agente constructor con hasta N intentos (RF-CLO-05). Si no logra un robot válido, usa el ensamblaje
-    por defecto, sin LLM (RF-CLO-07). Devuelve los artefactos de la etapa."""
+    por defecto, sin LLM (RF-CLO-07). Antes prueba el modelo comprobado de este robot, si existe (RF-CLO-10/11):
+    pasa por las mismas reglas y por validar_robot con la escena de esta corrida. Devuelve los artefactos."""
     assets = rc.cargar_assets()
     necesario = agentes.alcance_necesario(entorno, robot)
+    clave_modelo = modelos.clave(robot, assets)
+    comprobado = modelos.buscar(c.store, clave_modelo)
     previo, problemas = None, []
     rechazados: list[dict] = []   # intentos que no llegan al pod: van como tarjetas en construccion.mp4
     total = cfg.intentos_constructor
-    candidatos = [("agente", i) for i in range(1, total + 1)] + [("determinista", total + 1)]
+    candidatos = ([("comprobado", 0)] if comprobado else []) + \
+        [("agente", i) for i in range(1, total + 1)] + [("determinista", total + 1)]
     for metodo, intento in candidatos:
-        titulo = (f"Intento {intento} de {total} del agente constructor" if metodo == "agente"
-                  else "Respaldo: ensamblaje por defecto, sin LLM")
+        titulo = _titulo_intento(metodo, intento, total)
         try:
-            ens = (agentes.constructor(cfg.agentes, cfg.modelo, robot, entorno, tarea, assets, intento, problemas, previo)
-                   if metodo == "agente" else validar("ensamblaje", rc.ensamblaje_por_defecto(robot, assets)))
+            if metodo == "comprobado":
+                ens = comprobado
+            elif metodo == "agente":
+                ens = agentes.constructor(cfg.agentes, cfg.modelo, robot, entorno, tarea, assets, intento, problemas, previo)
+            else:
+                ens = validar("ensamblaje", rc.ensamblaje_por_defecto(robot, assets))
         except agentes.ErrorAgente as e:
             problemas, previo = [f"respuesta inválida del agente: {e}"], None
             rechazados.append({"intento": intento, "titulo": titulo, "lineas": ["Respuesta inválida del agente.", str(e)[:90]]})
@@ -283,8 +296,9 @@ def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: 
                                "lineas": [pieza, "Rechazado por las reglas antes de ir a Isaac:", *[x[:95] for x in problemas[:3]]]})
         if not problemas:
             clon = rc.clon(ens, robot, assets, intento)
+            if metodo != "agente":
+                clon["construccion"] = {**clon["construccion"], "metodo": metodo}
             if metodo == "determinista":
-                clon["construccion"] = {**clon["construccion"], "metodo": "determinista"}
                 clon["diferencias_con_real"].insert(0, "el agente constructor no logró un robot válido: se usó el ensamblaje por defecto")
             c.escribir("ensamblaje.json", ens)
             c.escribir("robot_cfg.py", rc.generar(ens, assets))
@@ -297,6 +311,8 @@ def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: 
             if v.get("ok"):
                 clon["validado_en_escena"] = True
                 c.escribir("clon.json", validar("clon", clon))
+                if metodo == "agente":
+                    modelos.registrar(c.store, clave_modelo, ens, robot["id"], c.id)
                 log.info("corrida %s: robot construido (%s, intento %s)", c.id, metodo, intento)
                 return ["ensamblaje.json", "robot_cfg.py", "clon.json", "robot.urdf", "validacion.json"] + \
                     (["construccion.mp4"] if c.existe("construccion.mp4") else [])
