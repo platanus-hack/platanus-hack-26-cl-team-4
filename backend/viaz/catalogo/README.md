@@ -15,6 +15,8 @@ Los archivos que empiezan con `_` no se cargan.
 - **Evidencia:** cada spec de selección tiene una entrada en `evidencia` (`url` y `cita`, la oración exacta de la fuente) o en `estimados` (motivo).
 - **Choque de id:** gana la ficha de `robots/`. Un archivo inválido se salta y queda en el log.
 
+- **Sin revisión:** una ficha encontrada entra como candidata en todas las corridas siguientes, sin que una persona la revise. Si una ficha tiene datos malos, borra su archivo del almacén. El riesgo está descrito en [`seleccion-robot.md`](../../../docs/agentes/seleccion-robot.md).
+
 ### Cómo pasar una ficha encontrada a `robots/`
 
 1. Copia `catalogo/encontrados/<id>.json` del almacén a `robots/<id>.json`.

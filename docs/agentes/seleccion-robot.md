@@ -282,6 +282,17 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 - **Por hacer:** regla de la comparación con empates.
 - **Con Claude:** 3 corridas revisadas a mano por la CLI (ver §5). Falta repetirlas con la API del backend.
 
+## Riesgo aceptado: fichas sin revisar en el catálogo compartido
+
+> Decisión del 2026-11-21. El equipo conoce este riesgo y lo acepta para el hack.
+
+- **Qué pasa:** una ficha que sale de la web queda en el catálogo compartido. Las corridas siguientes la usan como candidata, sin que una persona la revise.
+- **El riesgo:** una página equivocada o maliciosa puede llevar al agente a armar una ficha con specs falsas. Esa ficha pasa las reglas, compite igual que una del catálogo y puede quedar como finalista 1 en cada corrida siguiente.
+- **Lo que protege el código:** el esquema, los valores fijos de `tipo`, `efector` y `traccion`, el tope de largo del texto y las URLs `http` o `https`. Eso frena una orden escondida en el texto. No frena un número falso con una cita falsa.
+- **Cómo detectar una ficha mala:** `seleccion.json → encontrados` lista las fichas nuevas de cada corrida. Cada `robot.json` de un robot encontrado trae `origen: "busqueda"` y su `evidencia`.
+- **Cómo quitarla:** borra `catalogo/encontrados/<id>.json` del almacén. La corrida siguiente ya no la carga.
+- **Cómo cerrar el riesgo después:** cargar del catálogo compartido solo las fichas que una persona marcó como revisadas.
+
 ## Decisiones abiertas
 
 | Tema | Qué decidir |
