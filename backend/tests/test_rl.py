@@ -212,6 +212,25 @@ def test_monitor_clasifica_curvas():
     assert av.enviados[0].startswith("🔴")
 
 
+def test_segunda_corrida_reusa_el_modelo_comprobado(sistema, monkeypatch):
+    url, eng, store = sistema
+    c1 = _correr(url)
+    assert c1["estado"] == "listo", c1["error"]
+
+    def prohibido(*a, **k):
+        raise AssertionError("no debía llamarse al agente constructor")
+
+    monkeypatch.setattr(agentes, "constructor", prohibido)
+    c2 = _correr(url)
+    assert c2["estado"] == "listo", c2["error"]
+    clon = json.loads(store.leer(alm.clave_corrida(c2["id"], "clon.json")))
+    assert clon["construccion"]["metodo"] == "comprobado" and clon["validado_en_escena"] is True
+    assert clon["fidelidad"] == "medido"
+    with eng.connect() as cx:
+        tipos = cx.execute(select(db.trabajos.c.tipo).where(db.trabajos.c.corrida_id == c2["id"])).scalars().all()
+    assert "validar_robot" in tipos
+
+
 def test_constructor_reintenta_y_usa_respaldo(sistema, monkeypatch):
     """Intento 1 con carga falsa → el agente recibe los problemas. Si nunca lo logra, se usa el ensamblaje por defecto."""
     url, _, store = sistema

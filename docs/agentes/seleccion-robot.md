@@ -1,6 +1,6 @@
 # Contrato: agente de selección de robot
 
-> Etapa 3. **Contrato v3** (2026-11-21). **Implementado:** pasos 1 a 4 de la v3 (requisitos, búsqueda web, descarte por reglas, 1 a 3 finalistas). La búsqueda solo se probó contra modelos falsos. Sin corridas hijas: la corrida sigue con el finalista 1.
+> Etapa 3. **Contrato v3** (2026-11-21). **Implementado:** pasos 1 a 4 de la v3 (requisitos, búsqueda web, descarte por reglas, 1 a 3 finalistas) y el primer nivel del paso 6 (modelo comprobado). La búsqueda solo se probó contra modelos falsos. Sin corridas hijas: la corrida sigue con el finalista 1.
 > Requerimientos: RF-ROB-01..12, RF-CLO-10..11, RF-ORQ-07..08, RNF-02, RNF-03.
 > Código: [`orquestador.py`](../../backend/viaz/orquestador.py) → `seleccionar_robot()` une los pasos. Paso 1 en [`agentes/perfiles.py`](../../backend/viaz/agentes/perfiles.py), paso 2 en [`agentes/busqueda.py`](../../backend/viaz/agentes/busqueda.py) y [`catalogo/encontrados.py`](../../backend/viaz/catalogo/encontrados.py), pasos 3 y 4 en [`agentes/seleccion.py`](../../backend/viaz/agentes/seleccion.py) y `agentes.seleccionar()`. Prompts: [`robot.md`](../../backend/viaz/agentes/prompts/robot.md), [`busqueda.md`](../../backend/viaz/agentes/prompts/busqueda.md), [`busqueda_fichas.md`](../../backend/viaz/agentes/prompts/busqueda_fichas.md). Catálogo: [`catalogo/robots/`](../../backend/viaz/catalogo/robots/). Tests: [`test_seleccion.py`](../../backend/tests/test_seleccion.py), [`test_busqueda.py`](../../backend/tests/test_busqueda.py).
 > Explicación paso a paso, con un diagrama por parte: [`seleccion-robot-flujo.md`](seleccion-robot-flujo.md).
@@ -15,8 +15,8 @@
 | 3. Descarte por reglas | `fallas()` genérico: lee solo `requisitos.json`. Un test por requisito | — | — | — |
 | 4. Selección | Modo `fijo`: 1 a 3 finalistas y `seleccion.json`, con tests. Modo `claude`: las reglas de §4 sobre la respuesta, con tests contra un modelo falso | Modo `claude` contra la API del backend, con salida estructurada | — | — |
 | 5. Corridas hijas | `procesar_rl` con el finalista 1 | — | — | Una corrida hija por finalista |
-| 6. Modelo comprobado | — | — | — | Registro y reuso de recetas de clon |
-| 7. Comparación | — | — | Métricas de `fixtures/comparacion.json` (ilustrativas) | Regla, `comparacion.json`, `fidelidad` en el código |
+| 6. Modelo comprobado | Registro y reuso del `ensamblaje.json` en el almacén ([`modelos.py`](../../backend/viaz/modelos.py)), con tests contra un pod falso (`test_modelos.py`, `test_rl.py`). `fidelidad` `generico` o `medido` en cada clon | Reuso con R2 y con `validar_robot` en Isaac | — | Nivel "aprobado" en el código (lo hace una persona por PR). `fidelidad: verificado` |
+| 7. Comparación | — | — | Métricas de `fixtures/comparacion.json` (ilustrativas) | Regla, `comparacion.json` |
 
 - **Esquemas y fixtures v3:** existen y validan (`test_esquemas.py`). La etapa robot de los dos flujos escribe `requisitos.json`, `encontrados.json`, `seleccion.json` y `robot.json` (finalista 1). `fixtures/seleccion.json` sale del modo `fijo`. Nadie escribe `comparacion.json` todavía.
 - **Otro dominio:** con este contrato el agente puede **elegir** para otro dominio. La **simulación** de ese dominio no corre todavía: `entorno.json`, `tarea.json` y `sim/rl` son solo solares.
@@ -59,7 +59,7 @@ flowchart TD
 | Catálogo del repo | `catalogo/robots/*.json`, validado contra `robot.schema.json` al cargar |
 | Catálogo compartido | Fichas que trajo la búsqueda en corridas anteriores: `catalogo/encontrados/<id>.json` en el almacén. Un archivo inválido se salta y queda en el log. En un choque de id gana el repo |
 | Fichas encontradas | Paso de búsqueda de esta corrida, validadas contra `robot.schema.json`. Van al catálogo compartido y a `encontrados.json` de la corrida |
-| Modelos comprobados | `sim/assets_aprobados/<id>/` (receta) + `robot.usd` en el almacén |
+| Modelos comprobados | Almacén: `modelos/<clave>/ensamblaje.json` y `modelo.json`. Los aprobados por una persona están además en `sim/assets_aprobados/<id>/` |
 
 ### Paso 1: perfil de dominio
 
@@ -204,20 +204,28 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 
 ### `clon.json → fidelidad`
 
-| Valor | Significado |
-|---|---|
-| `generico` | Base genérica, sin bloque `fisica` |
-| `medido` | Usa `fisica` de la ficha, con datos publicados o medidos en fotos |
-| `verificado` | `medido`, sin claves `fisica.*` en `estimados`, y pasó `validar_robot` y la rúbrica de calidad |
+| Valor | Significado | Lo escribe |
+|---|---|---|
+| `generico` | Base genérica, sin bloque `fisica` | Código, en cada clon (`modelos.fidelidad()`) |
+| `medido` | Usa `fisica` de la ficha, con datos publicados o medidos en fotos | Código, en cada clon (`modelos.fidelidad()`) |
+| `verificado` | `medido`, sin claves `fisica.*` en `estimados`, y pasó `validar_robot` y la rúbrica de calidad | Nadie todavía. Necesita la rúbrica humana. El código nunca lo escribe |
 
 ### Paso 6: modelo comprobado
 
-- **Cuándo se registra:** el clon pasó `validar_robot` y la rúbrica de [`calidad-virtualizacion.md`](../calidad-virtualizacion.md) §5.
-- **Qué se registra:** `ensamblaje.json`, `robot_cfg.py`, `robot.urdf`, `robot.usd`, `clon.json`, las 4 vistas y la rúbrica.
-- **Clave:** id del robot + hash de su ficha + versión del catálogo de assets de Isaac Lab.
-- **Dónde:** la receta de texto en `sim/assets_aprobados/<id>/`, por PR. `robot.usd` en el almacén.
-- **Al reusar:** se salta el agente constructor. **Siempre** corre un chequeo corto en la escena, porque el alcance y los choques dependen del lugar.
-- **No se reusa:** la política entrenada, ni entre tareas ni entre lugares.
+Hay dos niveles:
+
+| Nivel | Qué significa | Quién lo registra | Dónde |
+|---|---|---|---|
+| **Comprobado** | El ensamblaje del agente constructor pasó `validar_robot` en alguna escena | Código, automático ([`modelos.py`](../../backend/viaz/modelos.py)) | Almacén: `modelos/<clave>/ensamblaje.json` y `modelos/<clave>/modelo.json` |
+| **Aprobado** | Comprobado, y una persona revisó las 4 vistas con la rúbrica de [`calidad-virtualizacion.md`](../calidad-virtualizacion.md) §5 | Una persona, por PR | `sim/assets_aprobados/<id>/` (ver su [README](../../sim/assets_aprobados/README.md)) |
+
+- **Clave:** `<id del robot>-<12 hex>`. El hex es un SHA-256 de un JSON canónico (claves ordenadas) con la ficha del robot sin `justificacion` ni `alternativas`, y el catálogo de assets de Isaac Lab (`rc.cargar_assets()`). Si cambia una spec o una pieza, cambia la clave y el modelo viejo no se usa.
+- **`modelo.json`:** `clave`, `robot_id`, `corrida_id` que lo construyó, `fecha` y `metodo` (`agente`).
+- **Qué se registra:** solo un ensamblaje del agente que pasó `validar_robot`. El respaldo determinista no se registra, porque se recalcula gratis y guardarlo bloquearía un resultado mejor del agente. Un modelo reusado no se vuelve a guardar.
+- **Al reusar:** `construir_robot` prueba primero el candidato `comprobado`, con las mismas reglas (`rc.problemas()`) y con `validar_robot` en el pod, en la escena de esta corrida. El chequeo corre siempre, porque el alcance y los choques dependen del lugar. Si pasa, el agente constructor no se llama y `clon.json` dice `construccion.metodo: comprobado`. Si falla, sigue el agente, y la falla le llega como la de cualquier intento anterior.
+- **Errores:** un archivo guardado que no cumple `ensamblaje.schema.json` se ignora y queda en el log. Un error del almacén al guardar queda en el log y no hace fallar la corrida.
+- **No se reusa:** la política entrenada, ni entre tareas ni entre lugares. No hay código para eso.
+- **Sin probar:** el reuso con R2 y con `validar_robot` real en Isaac. Los tests usan el almacén local y el runner simulado.
 
 ## 4. Reglas que verifica el código
 
@@ -301,4 +309,5 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 | Prioridad MoSCoW | RF-ROB-08..12, RF-CLO-10..11 y RF-ORQ-07..08 están en **S** hasta que el equipo decida |
 | Alcance de la generalización | Si generalizar `entorno.json`, `tarea.json` y `sim/rl` (hoy solo solares) entra en el hack |
 | Catálogo actual | `leapting-mmr`, `relu-bison` y `trinatracker-buildex-e` tienen el núcleo de `fisica`. `aes-maximo` no lo tiene, porque ninguna foto trae una escala para medirlo. BUILDEX E falla el alcance, con 2,5 m estimados contra 2,95 m necesarios. Una persona decide su alcance real. Hoy hay 2 finalistas |
-| Definición de `fidelidad` | La tabla de §3 es una propuesta |
+| Definición de `fidelidad` | La tabla de §3 es una propuesta. El código escribe `generico` y `medido`. Falta decidir cómo se marca `verificado` |
+| Limpieza de modelos comprobados | Nadie los borra. Con una clave nueva, el modelo viejo queda en el almacén |
