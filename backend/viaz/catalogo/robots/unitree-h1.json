@@ -15,8 +15,8 @@
   },
   "modelo_sim": {
     "fuente": "isaac_lab",
-    "cfg": "isaaclab_assets.robots.unitree:H1_CFG",
-    "usd": "Isaac/IsaacLab/Robots/Unitree/H1/h1.usd"
+    "cfg": "isaaclab_assets.robots.unitree:H1_MINIMAL_CFG",
+    "usd": "Isaac/IsaacLab/Robots/Unitree/H1/h1_minimal.usd"
   },
   "capacidades": ["caminar", "transportar"],
   "evidencia": {

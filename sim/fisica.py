@@ -36,7 +36,8 @@ MATERIALES = {
     "objeto":  {"estatica": 0.5, "dinamica": 0.5, "restitucion": 0.0},   # muebles y objetos de espacios genéricos (supuesto)
 }
 # Coeficiente por tipo de suelo (terreno.suelo de entorno.json). Si entorno.json trae terreno.friccion, manda ese valor.
-SUELOS = {"desierto_atacama": 0.6, "tierra_compactada": 0.6, "ripio": 0.6, "arena": 0.5, "pasto": 0.4}
+SUELOS = {"desierto_atacama": 0.6, "tierra_compactada": 0.6, "ripio": 0.6, "arena": 0.5, "pasto": 0.4,
+          "piso_madera": 0.5, "baldosa": 0.5}   # interiores: supuesto, suela de goma sobre piso liso (sin medir)
 
 # ---- Panel ----
 PANEL_ESPESOR_M = 0.04

@@ -25,6 +25,7 @@ Un JSON que describe un **sector representativo** del espacio: el área donde tr
   - `nombre`: corto y concreto (ej.: `mesa_central`, `estante_norte`, `caja_carton_1`).
   - `categoria`: `estructura`, `mueble`, `maquina`, `superficie_trabajo`, `contenedor`, `objeto_manipulable`, `obstaculo`, `abertura` u `otro`.
   - `forma`: `caja` o `cilindro` (vertical; `largo_m` = `ancho_m` = diámetro).
+  - `detalle`: si el elemento es una de estas piezas, dilo para que la escena la dibuje con detalle: `sillas` (un bloque de filas de sillas mirando a −X), `tarima`, `pantalla` (cara a +X), `mesa_alta`, `graderia` (sube hacia +Y), `parlante`, `letras`. Si no, `null`.
   - `dimensiones_m`: `largo_m` en X, `ancho_m` en Y, `alto_m` en Z, antes de rotar.
   - `posicion_m`: centro de la **cara inferior** del objeto. Un objeto en el suelo tiene `z_m` = 0; uno sobre una mesa tiene `z_m` = altura de la mesa.
   - `rotacion_grados`: giro sobre Z, entre −180 y 180.

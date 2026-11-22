@@ -68,7 +68,8 @@
           },
           "rotacion_grados": { "type": "number", "minimum": -180, "maximum": 180, "description": "Giro sobre Z." },
           "masa_kg": { "type": ["number", "null"], "minimum": 0, "description": "null si no se puede estimar." },
-          "fijo": { "type": "boolean", "description": "true: anclado o demasiado pesado para moverlo. false: un robot podría moverlo." }
+          "fijo": { "type": "boolean", "description": "true: anclado o demasiado pesado para moverlo. false: un robot podría moverlo." },
+          "detalle": { "enum": ["sillas", "tarima", "pantalla", "mesa_alta", "graderia", "parlante", "letras"], "description": "Opcional. Pieza que la escena dibuja con detalle (sim/detalles.py); la colisión sigue siendo la caja o el cilindro." }
         }
       }
     },

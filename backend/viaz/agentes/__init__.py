@@ -53,6 +53,10 @@ def esquema_agente_entorno() -> dict:
             esq["required"].append(c)
     # La fricción del suelo no se ve en un video: la escribe el equipo o sale del tipo de suelo (sim/fisica.py).
     esq["properties"]["terreno"]["properties"].pop("friccion", None)
+    # `detalle` es opcional en el contrato; para structured outputs va siempre y acepta null (normalizar_entorno lo quita).
+    el = esq["properties"]["elementos"]["items"]
+    el["properties"]["detalle"] = {"anyOf": [el["properties"]["detalle"], {"type": "null"}]}
+    el["required"] = [*el["required"], "detalle"]
     esq["properties"]["confianza"] = {"type": "array", "items": {
         "type": "object", "additionalProperties": False, "required": ["campo", "valor"],
         "properties": {"campo": {"type": "string"}, "valor": {"type": "number"}}}}
@@ -138,6 +142,9 @@ def normalizar_entorno(datos: dict) -> dict:
         for c in perfil.bloques_propios:
             if c not in propios or datos.get(c) is None:
                 datos.pop(c, None)
+    for el in datos.get("elementos") or []:
+        if el.get("detalle", 0) is None:
+            el.pop("detalle")
     return datos
 
 

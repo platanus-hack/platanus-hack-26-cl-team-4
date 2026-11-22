@@ -75,6 +75,9 @@ ASPECTOS = {
     "abertura": ((0.40, 0.30, 0.20), 0.8, 0.0),
     "otro": ((0.60, 0.60, 0.60), 0.8, 0.0),
 }
+import detalles  # noqa: E402
+
+ASPECTOS.update(detalles.ASPECTOS)
 CATEGORIAS = ("estructura", "maquina", "mueble", "superficie_trabajo", "contenedor", "objeto_manipulable",
               "obstaculo", "abertura", "otro")
 MATERIAL_CATEGORIA = {"estructura": "acero", "maquina": "acero"}   # el resto: "objeto" (fisica.MATERIALES)
@@ -475,8 +478,9 @@ def cuerpos_genericos(entorno: dict) -> list[dict]:
     """Suelo y, si espacio.interior, 4 paredes por fuera de la caja del espacio. Todos fijos, con colisión."""
     e = entorno["espacio"]
     largo, ancho = e["largo_m"], e["ancho_m"]
+    piso = "madera" if "madera" in entorno["terreno"]["suelo"] else "piso"
     lista = [{"nombre": "Suelo", "centro": (largo / 2, ancho / 2, -0.05), "tam": (largo + 2, ancho + 2, 0.1),
-              "aspecto": "piso", "material": "suelo"}]
+              "aspecto": piso, "material": "suelo"}]
     if e["interior"]:
         h, t = e["alto_m"] or ALTO_PARED_SIN_TECHO_M, PARED_ESPESOR_M
         for nombre, centro, tam in (
@@ -500,7 +504,8 @@ def _elemento(i: int, el: dict) -> str:
     centro = (p["x_m"], p["y_m"], p["z_m"] + d["alto_m"] / 2)
     aspecto = el["categoria"] if el["categoria"] in CATEGORIAS else "otro"
     material = MATERIAL_CATEGORIA.get(aspecto, "objeto")
-    dinamico = not el["fijo"] and bool(el["masa_kg"])
+    # Con detalle el elemento queda fijo: sus piezas visuales van en un Xform aparte y no seguirían a un cuerpo libre.
+    dinamico = not el["fijo"] and bool(el["masa_kg"]) and not el.get("detalle")
     apis = ["PhysicsCollisionAPI", "MaterialBindingAPI"] + (["PhysicsRigidBodyAPI", "PhysicsMassAPI"] if dinamico else [])
     if el["forma"] == "cilindro":
         prim = "Cylinder"
@@ -513,6 +518,16 @@ def _elemento(i: int, el: dict) -> str:
         escala = f'\n        float3 xformOp:scale = ({_vec((d["largo_m"], d["ancho_m"], d["alto_m"]))})'
         orden = '["xformOp:translate", "xformOp:rotateZ", "xformOp:scale"]'
     masa = f'\n        float physics:mass = {el["masa_kg"]}' if dinamico else ""
+    piezas = detalles.visual(el)
+    # Con detalle, la caja queda solo para la colisión: se ve el Xform de piezas que va al lado.
+    oculto = '\n        token visibility = "invisible"' if piezas else ""
+    visual = f'''
+    def Xform "{_nombre_usd(el["nombre"], i)}_Visual"
+    {{
+        double3 xformOp:translate = ({_vec((p["x_m"], p["y_m"], p["z_m"]))})
+        float xformOp:rotateZ = {el["rotacion_grados"]}
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateZ"]{piezas}
+    }}''' if piezas else ""
     return f'''
     def {prim} "{_nombre_usd(el["nombre"], i)}" (
         prepend apiSchemas = [{", ".join(f'"{x}"' for x in apis)}]
@@ -524,14 +539,14 @@ def _elemento(i: int, el: dict) -> str:
         uniform token[] xformOpOrder = {orden}
         color3f[] primvars:displayColor = [({_vec(ASPECTOS[aspecto][0])})]{masa}
         rel material:binding = </World/Materiales/Vis{aspecto.capitalize()}>
-        rel material:binding:physics = </World/Materiales/{material.capitalize()}>
-    }}'''
+        rel material:binding:physics = </World/Materiales/{material.capitalize()}>{oculto}
+    }}{visual}'''
 
 
 def escena_generica_usda(entorno: dict, con_texturas: bool = False) -> str:
     """El USD de un espacio que no es parque_solar: suelo, paredes y elementos. Sin cerros, rocas ni paneles."""
     elementos = [(i, el) for i, el in enumerate(entorno.get("elementos", [])) if el["categoria"] != "abertura"]
-    aspectos = ("piso", "pared", *CATEGORIAS)
+    aspectos = ("piso", "pared", "madera", *CATEGORIAS, *detalles.ASPECTOS)
     materiales = (_material("suelo", fisica.material_suelo(entorno)) + _material("acero", fisica.material("acero"))
                   + _material("objeto", fisica.material("objeto")) + "".join(_aspecto(n, con_texturas) for n in aspectos))
     planta = "".join(_cubo(c) for c in cuerpos_genericos(entorno)) + "".join(_elemento(i, el) for i, el in elementos)
@@ -659,7 +674,7 @@ def _escribir_texturas(destino: Path) -> bool:
     except ImportError as e:
         print(f"aviso: sin texturas ({e.name} no está instalado), escena.usd con colores planos", file=sys.stderr)
         return False
-    texturas.generar(destino / TEXTURAS_DIR, list(GRUPOS_TEXTURA))
+    texturas.generar(destino / TEXTURAS_DIR, list(dict.fromkeys((*GRUPOS_TEXTURA, "madera"))))   # madera: tarimas y graderías
     return True
 
 
