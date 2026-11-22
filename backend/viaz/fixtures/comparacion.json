@@ -1,25 +1,26 @@
 {
   "version": 1,
   "ganador": "leapting-mmr",
-  "regla": "Primero la mayor tasa_exito a 5 cm y 5°; si empatan, el menor ciclo_s.",
+  "regla": "Gana el robot con mayor porcentaje de éxito, con un error de hasta 5 cm y 5°. Si empatan, gana el de menor tiempo de ciclo. Si siguen empatados, se ordenan por su código, en orden alfabético.",
   "condiciones": {
     "escena": "escena.usd",
     "horas_entrenamiento": 2,
-    "semillas": [1, 2, 3],
+    "semillas": null,
     "tolerancia_pos_m": 0.05,
     "tolerancia_ang_grados": 5
   },
   "ranking": [
-    { "id": "leapting-mmr", "corrida_id": "ejemplo-hija-1", "puesto": 1, "tasa_exito": 0.9, "ciclo_s": 48, "fidelidad": "medido" },
-    { "id": "relu-bison", "corrida_id": "ejemplo-hija-2", "puesto": 2, "tasa_exito": 0.9, "ciclo_s": 55, "fidelidad": "medido" }
+    { "id": "leapting-mmr", "nombre": "LEAPTING MMR (robot de montaje con navegación automática)", "corrida_id": "ejemplo-hija-1", "puesto": 1, "tasa_exito": 0.9, "ciclo_s": 48, "fidelidad": "medido" },
+    { "id": "relu-bison", "nombre": "Bison (robot de instalación fotovoltaica)", "corrida_id": "ejemplo-hija-2", "puesto": 2, "tasa_exito": 0.9, "ciclo_s": 55, "fidelidad": "medido" }
   ],
   "advertencias": [
-    "Métricas ilustrativas: este archivo es un ejemplo del contrato, no un resultado medido."
+    "Métricas ilustrativas: este archivo es un ejemplo del contrato, no un resultado medido.",
+    "El entrenamiento no fija semillas: parte de la diferencia entre finalistas puede venir del azar."
   ],
   "que_compara": ["alcance", "tamaño", "masa", "carga útil", "velocidad de la base"],
   "que_no_compara": [
     "motores y control del robot real: todos los clones usan un brazo de Isaac Lab escalado (ur10 o franka_panda)",
     "el efector real: la ventosa es un asset genérico de Isaac Lab"
   ],
-  "explicacion": "Ejemplo ilustrativo, sin métricas medidas. Los dos finalistas empatan en tasa_exito; LEAPTING MMR gana por menor ciclo_s. Los números son inventados para mostrar la regla."
+  "explicacion": "Ejemplo ilustrativo, sin métricas medidas. Los dos finalistas empatan con 90% de éxito; LEAPTING MMR gana porque su tiempo de ciclo es menor (48 s contra 55 s). Los números son inventados para mostrar la regla."
 }

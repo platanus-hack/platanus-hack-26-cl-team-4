@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import json
 import math
 import re
 from typing import Any
@@ -14,7 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import insert, select, update
 
 from . import almacen as alm
-from . import db
+from . import db, hijas
 from .config import Config, cargar
 
 
@@ -102,26 +103,31 @@ def create_app(cfg: Config | None = None) -> FastAPI:
             raise HTTPException(404, "no existe la corrida")
         etapas = [{**e, "artefactos": {a: store.url_get(alm.clave_corrida(cid, a)) for a in e["artefactos"]}}
                   for e in c["etapas"]]
-        return {"id": cid, "estado": c["estado"], "etapas": etapas, "error": c["error"]}
+        return {"id": cid, "estado": c["estado"], "etapas": etapas, "error": c["error"], "padre_id": c["padre_id"],
+                "hijas": [{"id": h["id"], "robot_id": _robot_id(store, h["id"]), "estado": h["estado"]}
+                          for h in hijas.de_padre(eng, cid)]}
 
     @app.get("/corridas/{cid}/metricas")
     def metricas_corrida(cid: str, desde: int = -1, limite: int = 2000):
-        """Métricas del entrenamiento desde una iteración (para la curva y para depurar)."""
+        """Métricas del entrenamiento desde una iteración (para la curva y para depurar).
+        Un padre no entrena: devuelve las de su hija activa o ganadora, con su id en `hija_id`."""
         if cid == "demo" and cfg.corrida_demo:
             cid = cfg.corrida_demo
+        hija_id = hijas.hija_visible(eng, store, cid)
         with eng.connect() as cx:
             filas = cx.execute(select(db.metricas.c.datos)
-                               .where(db.metricas.c.corrida_id == cid, db.metricas.c.iteracion > desde)
+                               .where(db.metricas.c.corrida_id == (hija_id or cid), db.metricas.c.iteracion > desde)
                                .order_by(db.metricas.c.iteracion).limit(min(limite, 5000))).scalars().all()
-        return {"corrida_id": cid, "metricas": filas}
+        return {"corrida_id": cid, "hija_id": hija_id, "metricas": filas}
 
     @app.post("/corridas/{cid}/detener", dependencies=[Depends(es_equipo)])
     def detener_corrida(cid: str):
         """El equipo detiene el entrenamiento de una corrida. El pod guarda un checkpoint y termina (RF-MON-08)."""
         with eng.begin() as cx:
+            de_sus_hijas = select(db.corridas.c.id).where(db.corridas.c.padre_id == cid)
             r = cx.execute(update(db.trabajos)
-                           .where(db.trabajos.c.corrida_id == cid, db.trabajos.c.tipo == "entrenar",
-                                  db.trabajos.c.estado.in_(["pendiente", "tomado"]))
+                           .where((db.trabajos.c.corrida_id == cid) | db.trabajos.c.corrida_id.in_(de_sus_hijas),
+                                  db.trabajos.c.tipo == "entrenar", db.trabajos.c.estado.in_(["pendiente", "tomado"]))
                            .values(detener=True))
         if not r.rowcount:
             raise HTTPException(404, "la corrida no tiene un entrenamiento en curso")
@@ -196,6 +202,13 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         return {"ok": True}
 
     return app
+
+
+def _robot_id(store: alm.Almacen, cid: str) -> str | None:
+    clave = alm.clave_corrida(cid, "robot.json")
+    if not store.existe(clave):
+        return None
+    return json.loads(store.leer(clave)).get("id")
 
 
 def _tipo(clave: str) -> str:

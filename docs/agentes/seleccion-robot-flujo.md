@@ -100,51 +100,69 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  S["seleccion.json<br/>1 a 3 finalistas"] --> H1["Corrida hija 1"]
-  S --> H2["Corrida hija 2"]
-  S --> H3["Corrida hija 3"]
+  S["seleccion.json<br/>1 a 3 finalistas"] --> N{"¿Cuántos<br/>finalistas?"}
+  N -->|1| SOLA["La misma corrida sigue<br/>como hoy, sin hijas"]
+  N -->|"2 o 3"| ESC["Copia de entorno.json,<br/>tarea.json y escena.usd"]
+  ESC --> H1["Corrida hija 1<br/>robot.json del finalista 1"]
+  H1 -->|"termina o falla"| H2["Corrida hija 2"]
+  H2 -->|"termina o falla"| H3["Corrida hija 3"]
   H1 --> M{"¿Hay un modelo<br/>comprobado de este robot?"}
   M -->|no| CON["Agente constructor<br/>hasta 3 intentos"]
   CON --> VAL["validar_robot<br/>en la escena"]
   VAL --> REG["Registrar el modelo<br/>comprobado"]
   M -->|sí| CHK["validar_robot<br/>en esta escena"]
-  REG --> ENT["Entrenar"]
+  REG --> ENT["Entrenar<br/>horas completas"]
   CHK -->|pasa| ENT
   CHK -->|falla| CON
-  ENT --> EV["Evaluar"]
-  EV --> J[evaluacion.json]
+  ENT --> EV["Grabar clips y evaluar"]
+  EV --> J[resultado.json]
   H2 -.->|"mismo recorrido"| J
   H3 -.->|"mismo recorrido"| J
 ```
 
-- Una corrida hija es una corrida normal con el robot ya fijado. Reusa el flujo de hoy sin cambios.
+- **Un finalista:** la corrida sigue igual que antes. No hay hijas ni `comparacion.json`.
+- **Dos o tres finalistas:** cada uno corre en una corrida hija. La hija es una fila de `corridas` con `padre_id`.
+- La corrida padre arma la escena una vez. Cada hija recibe una copia y el `robot.json` de su finalista.
+- Las hijas corren en orden, una después de otra, dentro de la corrida padre. Hay un solo pod.
+- Una hija nunca entra a la cola. `procesar_una` no la toma.
+- La hija corre las mismas etapas que la corrida de un finalista: clon e inteligencia (`entrenar_y_evaluar`).
+- El estado de la hija pasa a la corrida padre (`clonando`, `entrenando`, `evaluando`). No hay estados nuevos.
+- Los avisos del monitor nombran al finalista, por ejemplo "finalista 2 de 3: relu-bison".
+- `POST /corridas/{id}/detener` sobre el padre detiene el entrenamiento de la hija que corre.
+- Una hija que falla guarda su error en su fila. El padre sigue con el finalista siguiente.
 - Un modelo comprobado es el ensamblaje de un robot que ya pasó `validar_robot` en alguna escena. Su clave es el `id`, la huella de su ficha y la del catálogo de piezas de Isaac Lab. Un modelo **aprobado**, además, pasó la rúbrica de calidad con una persona.
 - Con un modelo comprobado que pasa, la corrida se salta el agente constructor. Si falla en esta escena, sigue el agente.
 - `validar_robot` en la escena corre siempre, porque el alcance y los choques dependen del lugar.
 - La política entrenada no se reusa entre tareas ni entre lugares.
-- **Costo:** con un pod, 3 finalistas tardan 3 veces lo que tarda uno.
+- **Costo:** cada finalista entrena las horas completas (`VIAZ_HORAS_ENTRENAMIENTO`). Con 3 finalistas, la corrida tarda 3 veces lo que tarda uno. El log lo dice al empezar.
 - **Llega en:** PR 4 para el modelo comprobado y PR 5 para las corridas hijas.
 
 ## 6. Las reglas eligen al ganador
 
 ```mermaid
 flowchart LR
-  J1["evaluacion.json<br/>finalista 1"] --> CMP["Comparación<br/>código"]
-  J2["evaluacion.json<br/>finalista 2"] --> CMP
-  J3["evaluacion.json<br/>finalista 3"] --> CMP
+  J1["resultado.json<br/>finalista 1"] --> CMP["Comparación<br/>código"]
+  J2["resultado.json<br/>finalista 2"] --> CMP
+  J3["resultado.json<br/>finalista 3"] --> CMP
   CMP --> R1{"¿Mayor tasa<br/>de éxito?"}
   R1 -->|empate| R2{"¿Menor tiempo<br/>de ciclo?"}
+  R2 -->|empate| R3["Id en orden<br/>alfabético"]
   R1 -->|"uno gana"| G["Ganador"]
-  R2 --> G
+  R2 -->|"uno gana"| G
+  R3 --> G
   G --> EXP["El agente redacta<br/>la explicación"]
-  CMP --> ADV["Advertencias:<br/>fidelidad distinta"]
+  CMP --> ADV["Advertencias: hija que falló,<br/>fidelidad distinta, semillas"]
   EXP --> OUT[comparacion.json]
   ADV --> OUT
+  OUT --> P["Corrida padre: artefactos<br/>de la ganadora"]
 ```
 
-- Los 3 finalistas usan la misma escena, las mismas horas de entrenamiento y las mismas semillas.
-- El código elige al ganador. El agente solo redacta la explicación, porque el resultado debe salir igual cada vez.
-- Cada clon declara su `fidelidad`: `generico`, `medido` o `verificado`. Si los finalistas tienen niveles distintos, el resultado lo advierte.
+- Los finalistas usan la misma escena, las mismas horas de entrenamiento y las mismas tolerancias.
+- **Semillas:** el entrenamiento no fija semillas (`sim/rl/entrenar.py` no tiene ese parámetro). `condiciones.semillas` vale `null` y una advertencia lo dice.
+- El código elige al ganador (`comparacion.py`). El agente solo redacta la explicación, porque el resultado debe salir igual cada vez. Si la llamada falla, queda una frase de plantilla.
+- Una hija que falló queda fuera del ranking, con una advertencia. Si fallan todas, la corrida padre queda en `error`.
+- Cada clon declara su `fidelidad`: `generico`, `medido` o `verificado`. Sin ese campo, el código usa `medido` si la ficha tiene `fisica` y `generico` si no. Si los finalistas tienen niveles distintos, el resultado lo advierte.
+- La corrida padre recibe una copia de los artefactos de la ganadora y su `robot.json`. Así la web muestra al padre igual que hoy, más `comparacion.json`.
 - **Lo que la simulación compara:** alcance, tamaño, masa, carga útil y velocidad.
 - **Lo que no compara:** los motores y el control de cada marca. Todos los clones usan el mismo brazo escalado.
 - **Llega en:** PR 5.

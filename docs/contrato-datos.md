@@ -167,16 +167,18 @@ Perfil `instalar_panel` (el del demo): el mismo núcleo, con `elemento: null` en
 
 ## Selección v3: `requisitos.json`, `seleccion.json`, `comparacion.json`
 
-> **Estado:** la etapa robot de los dos flujos escribe `requisitos.json`, `encontrados.json` y `seleccion.json` ([`agentes.seleccionar()`](../backend/viaz/agentes/__init__.py)). Nadie escribe `comparacion.json` todavía. Detalle en [`agentes/seleccion-robot.md`](agentes/seleccion-robot.md).
+> **Estado:** la etapa robot de los dos flujos escribe `requisitos.json`, `encontrados.json` y `seleccion.json` ([`agentes.seleccionar()`](../backend/viaz/agentes/__init__.py)). El flujo `rl` con 2 o 3 finalistas escribe `comparacion.json` en la corrida padre. Detalle en [`agentes/seleccion-robot.md`](agentes/seleccion-robot.md).
 
 | Archivo | Lo escribe | Contenido | Esquema | Ejemplo |
 |---|---|---|---|---|
 | `requisitos.json` | Perfil de dominio (código) | Objeto, carga mínima, efectores y tipos aceptados, movilidad, pendiente, alcance mínimo por robot, preferencias, advertencias | [`requisitos.schema.json`](../backend/viaz/esquemas/requisitos.schema.json) | [`fixtures/requisitos.json`](../backend/viaz/fixtures/requisitos.json) |
 | `encontrados.json` | Código (paso 2) | Lista de las fichas válidas que trajo la búsqueda web en esta corrida (formato de `robot.schema.json` sin `justificacion` ni `alternativas`). Vacía si no corrió | [`robot.schema.json`](../backend/viaz/esquemas/robot.schema.json) | — |
-| `seleccion.json` | Código + agente de selección | Estado de la búsqueda, encontrados, descartados con fallas, 1 a 3 finalistas, alternativas | [`seleccion.schema.json`](../backend/viaz/esquemas/seleccion.schema.json) | [`fixtures/seleccion.json`](../backend/viaz/fixtures/seleccion.json) |
-| `comparacion.json` | Código (regla) + agente (explicación) | Ganador, regla, condiciones comunes, ranking con fidelidad, qué compara y qué no | [`comparacion.schema.json`](../backend/viaz/esquemas/comparacion.schema.json) | [`fixtures/comparacion.json`](../backend/viaz/fixtures/comparacion.json) (métricas ilustrativas) |
+| `seleccion.json` | Código + agente de selección | Estado de la búsqueda, encontrados, descartados con fallas, 1 a 3 finalistas, alternativas. Cada fila trae `id` y `nombre` de la ficha | [`seleccion.schema.json`](../backend/viaz/esquemas/seleccion.schema.json) | [`fixtures/seleccion.json`](../backend/viaz/fixtures/seleccion.json) |
+| `comparacion.json` | Código (regla) + agente (explicación) | Ganador, regla en español simple, condiciones comunes, ranking (`id`, `nombre`, métricas, fidelidad), qué compara y qué no | [`comparacion.schema.json`](../backend/viaz/esquemas/comparacion.schema.json) | [`fixtures/comparacion.json`](../backend/viaz/fixtures/comparacion.json) (métricas ilustrativas) |
 
-- **Un `robot.json` por finalista,** con el formato de arriba. Hoy la corrida guarda solo el del finalista 1. Las corridas hijas, una por finalista, no existen todavía.
+- **Un `robot.json` por finalista,** con el formato de arriba. Con 1 finalista, la corrida guarda ese `robot.json` y sigue sola.
+- **Corridas hijas (flujo `rl`, 2 o 3 finalistas):** una fila de `corridas` por finalista, con `padre_id` = id del padre. Cada hija tiene su carpeta `corridas/<id_hija>/` con una copia de `entorno.json`, `tarea.json` y `escena.usd` del padre y el `robot.json` de su finalista. Las hijas nunca nacen en `en_cola`: las corre el padre, en orden.
+- **Corrida padre:** al final recibe una copia de los artefactos de la hija ganadora, su `robot.json` y `comparacion.json` (etapa inteligencia). Mientras corren las hijas, el padre toma el estado de la hija activa.
 - **`robot.json → alternativas`:** lista a cada otro candidato: los otros finalistas (`finalista N`), las alternativas (su `por_que_no`) y los descartados (sus fallas).
 
 ## `clon.json` (etapa 4) + `robot.urdf` + `validacion.json`
@@ -251,10 +253,10 @@ Para la web:
 |---|---|---|---|
 | `POST` | `/proyectos` | `{"nombre", "descripcion", "videos": ["<archivo>"]}` | `201 {"id", "subida": [{"archivo", "url_firmada"}]}` |
 | `POST` | `/proyectos/{id}/corridas` | — | `201 {"corrida_id"}` |
-| `GET` | `/corridas/{id}` | — | `200 {"id", "estado", "etapas": [{"nombre", "estado", "artefactos": {"<archivo>": "<url>"}}], "error"}` |
+| `GET` | `/corridas/{id}` | — | `200 {"id", "estado", "etapas": [{"nombre", "estado", "artefactos": {"<archivo>": "<url>"}}], "error", "padre_id", "hijas": [{"id", "robot_id", "estado"}]}`. `padre_id` es `null` en una corrida sin padre. `hijas` está vacía si la corrida no tiene hijas |
 | `GET` | `/corridas/demo` | — | La corrida de `VIAZ_CORRIDA_DEMO` |
-| `GET` | `/corridas/{id}/metricas?desde=N` | — | `200 {"corrida_id", "metricas": [<línea de metricas.jsonl>]}` |
-| `POST` | `/corridas/{id}/detener` | — (header `Authorization: Bearer <VIAZ_ADMIN_TOKEN>`) | `200` · `404` si no hay entrenamiento en curso |
+| `GET` | `/corridas/{id}/metricas?desde=N` | — | `200 {"corrida_id", "hija_id", "metricas": [<línea de metricas.jsonl>]}`. Un padre no entrena: `metricas` son las de la hija que corre ahora y, al terminar, las de la ganadora. `hija_id` es esa hija, o `null` en una corrida sin hijas |
+| `POST` | `/corridas/{id}/detener` | — (header `Authorization: Bearer <VIAZ_ADMIN_TOKEN>`) | `200` · `404` si no hay entrenamiento en curso. Sobre un padre, detiene también el entrenamiento de sus hijas |
 | `GET` | `/salud` | — | `200 {"ok", "agentes", "almacen"}` |
 
 - **Subida:** la web sube cada video con `PUT` a su `url_firmada` (R2 o `/archivos/...` en local).

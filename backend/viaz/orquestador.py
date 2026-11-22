@@ -6,7 +6,8 @@ Toma corridas en_cola, corre los agentes en orden, encola los trabajos de GPU y 
 
 Dos flujos (VIAZ_FLUJO):
 - rl (demo): entorno y tarea a mano → selección de robot → agente constructor → entrenar (con el monitor)
-  → grabar clips → evaluar. Ver docs/requerimientos.md §1.1.
+  → grabar clips → evaluar. Ver docs/requerimientos.md §1.1. Con 2 o 3 finalistas, cada uno corre en una corrida
+  hija y el código elige al ganador (hijas.py, comparacion.py).
 - planificador (anterior): agentes Entorno y Tarea → robot → clon determinista → ejecutar_tarea.
 """
 from __future__ import annotations
@@ -15,81 +16,21 @@ import json
 import logging
 import time
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import select, update
 
 from pathlib import Path
 
-from . import agentes, catalogo, modelos, monitor, urdf
+from . import agentes, catalogo, hijas, modelos, monitor, urdf
 from .agentes import busqueda
 from .catalogo import encontrados
 from . import robot_cfg as rc
 from . import almacen as alm
 from . import db
 from .config import Config, cargar
+from .corrida import Corrida
 from .esquemas import validar
 
 log = logging.getLogger("viaz.orquestador")
-
-
-class Corrida:
-    def __init__(self, cfg: Config, eng, store: alm.Almacen, fila: dict):
-        self.cfg, self.eng, self.store = cfg, eng, store
-        self.id = fila["id"]
-        self.proyecto_id = fila["proyecto_id"]
-        self.etapas = fila["etapas"]
-        self.etapa_actual: str | None = None
-
-    # ---- archivos ----
-    def escribir(self, archivo: str, contenido: dict | str):
-        texto = json.dumps(contenido, ensure_ascii=False, indent=2) if isinstance(contenido, dict) else contenido
-        tipo = {"json": "application/json", "jsonl": "application/x-ndjson", "py": "text/x-python"}.get(
-            archivo.rsplit(".", 1)[-1], "text/plain")
-        self.store.escribir(alm.clave_corrida(self.id, archivo), texto.encode("utf-8"), tipo)
-
-    def leer_json(self, archivo: str) -> dict:
-        return json.loads(self.store.leer(alm.clave_corrida(self.id, archivo)))
-
-    def existe(self, archivo: str) -> bool:
-        return self.store.existe(alm.clave_corrida(self.id, archivo))
-
-    # ---- estado ----
-    def guardar(self, **campos):
-        with self.eng.begin() as cx:
-            cx.execute(update(db.corridas).where(db.corridas.c.id == self.id)
-                       .values(etapas=self.etapas, actualizado=db.ahora(), **campos))
-
-    def etapa(self, nombre: str, estado: str, artefactos: list[str] | None = None, estado_corrida: str | None = None):
-        for e in self.etapas:
-            if e["nombre"] == nombre:
-                e["estado"] = estado
-                if artefactos is not None:
-                    e["artefactos"] = artefactos
-        self.etapas = [dict(e) for e in self.etapas]  # copia nueva: SQLAlchemy detecta el cambio del JSON
-        self.etapa_actual = nombre if estado == "en_curso" else self.etapa_actual
-        self.guardar(**({"estado": estado_corrida} if estado_corrida else {}))
-
-    # ---- GPU ----
-    def trabajo_gpu(self, tipo: str, entradas: list[str], salidas: list[str], parametros: dict | None = None,
-                    espera_s: float | None = None, al_esperar=None) -> str:
-        tid = db.nuevo_id()
-        with self.eng.begin() as cx:
-            cx.execute(insert(db.trabajos).values(id=tid, corrida_id=self.id, tipo=tipo,
-                                                  entradas=entradas, salidas=salidas, parametros=parametros or {}))
-        log.info("corrida %s: encolé %s (%s)", self.id, tipo, tid)
-        espera = espera_s if espera_s is not None else self.cfg.espera_trabajo_s
-        limite = time.monotonic() + espera
-        while time.monotonic() < limite:
-            if al_esperar is not None:
-                al_esperar(tid)
-            with self.eng.connect() as cx:
-                t = cx.execute(select(db.trabajos.c.estado, db.trabajos.c.error)
-                               .where(db.trabajos.c.id == tid)).mappings().first()
-            if t["estado"] == "ok":
-                return tid
-            if t["estado"] == "error":
-                raise agentes.ErrorAgente(f"el sim runner falló en {tipo}: {t['error']}")
-            time.sleep(min(1.0, max(0.05, espera / 1000)))
-        raise agentes.ErrorAgente(f"el sim runner no terminó {tipo} en {espera:.0f} s (¿pod apagado?)")
 
 
 def medir_videos(c: Corrida, cfg: Config, store: alm.Almacen, proyecto: dict) -> tuple[dict | None, bytes | None]:
@@ -161,20 +102,18 @@ def seleccionar_robot(cfg: Config, store: alm.Almacen, entorno: dict,
     return r, res.fichas
 
 
-def elegir_robot(c: Corrida, cfg: Config, entorno: dict, tarea: dict) -> dict:
+def elegir_robot(c: Corrida, cfg: Config, entorno: dict, tarea: dict) -> list[dict]:
     """Etapa robot (selección v3, pasos 1 a 4)."""
     c.etapa("robot", "en_curso", estado_corrida="eligiendo_robot")
     r, nuevas = seleccionar_robot(cfg, c.store, entorno, tarea)
     c.escribir("encontrados.json", json.dumps(nuevas, ensure_ascii=False, indent=2))
     c.escribir("requisitos.json", r.requisitos)
     c.escribir("seleccion.json", r.seleccion)
-    primero, *sin_correr = r.robots_por_puesto
-    c.escribir("robot.json", primero)
-    log.info("corrida %s: búsqueda %s (%s); sigue con %s; finalistas sin correr: %s", c.id,
-             r.seleccion["busqueda"]["estado"], r.seleccion["busqueda"]["detalle"], primero["id"],
-             ", ".join(x["id"] for x in sin_correr) or "ninguno")
+    c.escribir("robot.json", r.robots_por_puesto[0])
+    log.info("corrida %s: búsqueda %s (%s); finalistas: %s", c.id, r.seleccion["busqueda"]["estado"],
+             r.seleccion["busqueda"]["detalle"], ", ".join(x["id"] for x in r.robots_por_puesto))
     c.etapa("robot", "listo", ["requisitos.json", "encontrados.json", "seleccion.json", "robot.json"])
-    return primero
+    return r.robots_por_puesto
 
 
 def exigir_pipeline(entorno: dict, tarea: dict | None = None) -> None:
@@ -219,7 +158,7 @@ def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     exigir_pipeline(entorno, tarea)
 
     # 3. Robot
-    robot = elegir_robot(c, cfg, entorno, tarea)
+    robot = elegir_robot(c, cfg, entorno, tarea)[0]
 
     # 4. Clon
     c.etapa("clon", "en_curso", estado_corrida="clonando")
@@ -261,12 +200,12 @@ def _manual(ruta: str, fixture: str) -> dict:
 class Vigia:
     """Corre el monitor mientras el pod entrena: lee métricas de la API, escribe monitoreo.jsonl y hitos.json, avisa."""
 
-    def __init__(self, c: Corrida, cfg: Config):
+    def __init__(self, c: Corrida, cfg: Config, etiqueta: str = ""):
         self.c, self.cfg = c, cfg
         self.todas: list[dict] = []
         self.chequeos: list[dict] = []
         self.hitos_antes: dict = {}
-        self.avisador = monitor.Avisador(cfg.discord_webhook)
+        self.avisador = monitor.Avisador(cfg.discord_webhook, etiqueta=etiqueta)
         self.proximo = time.monotonic() + cfg.monitor_s
 
     def _nuevas(self) -> list[dict]:
@@ -406,18 +345,31 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     c.escribir("tarea.json", tarea)
     c.etapa("tarea", "listo", ["tarea.json"])
     exigir_pipeline(entorno, tarea)
-    tol_pos, tol_ang, tols_evaluar = tolerancias(tarea)
 
     # 3. Selección de robot
-    robot = elegir_robot(c, cfg, entorno, tarea)
+    robots = elegir_robot(c, cfg, entorno, tarea)
+    if len(robots) == 1:
+        entrenar_y_evaluar(c, cfg, robots[0], entorno, tarea)
+        return
+    tol_pos, tol_ang, _ = tolerancias(tarea)
+    condiciones = {"escena": "escena.usd", "horas_entrenamiento": cfg.horas_entrenamiento, "semillas": None,
+                   "tolerancia_pos_m": tol_pos, "tolerancia_ang_grados": tol_ang}
+    hijas.correr_finalistas(c, robots, condiciones,
+                            lambda hija, robot, etiqueta: entrenar_y_evaluar(hija, cfg, robot, entorno, tarea, etiqueta))
+
+
+def entrenar_y_evaluar(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: dict,
+                       etiqueta: str = "") -> hijas.Artefactos:
+    tol_pos, tol_ang, tols_evaluar = tolerancias(tarea)
 
     # 4. Agente constructor
     c.etapa("clon", "en_curso", estado_corrida="clonando")
-    c.etapa("clon", "listo", construir_robot(c, cfg, robot, entorno, tarea))
+    de_clon = construir_robot(c, cfg, robot, entorno, tarea)
+    c.etapa("clon", "listo", de_clon)
 
     # 5. Entrenamiento (con el monitor), clips y evaluación
     c.etapa("inteligencia", "en_curso", estado_corrida="entrenando")
-    vigia = Vigia(c, cfg)
+    vigia = Vigia(c, cfg, etiqueta)
     latido_s = max(1.0, min(300.0, cfg.monitor_s / 2))
     c.trabajo_gpu("entrenar", ENTRADAS_RL, ["curva.json", "checkpoints.json"],
                   {"horas": cfg.horas_entrenamiento, "tolerancia_pos_m": tol_pos, "tolerancia_ang_grados": tol_ang, "latido_s": latido_s},
@@ -446,26 +398,21 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     artefactos += [a for a in ("video.mp4", "trayectoria.json") if c.existe(a)]
     c.etapa("inteligencia", "listo", artefactos, estado_corrida="listo")
     log.info("corrida %s lista: %s", c.id, resultado["metricas"])
+    return de_clon, artefactos
 
 
 def procesar_una(cfg: Config, eng, store: alm.Almacen) -> bool:
     """Procesa una corrida en cola. Devuelve False si no había ninguna."""
-    fila = db.tomar_con_lock(eng, db.corridas, db.corridas.c.estado == "en_cola",
+    fila = db.tomar_con_lock(eng, db.corridas, (db.corridas.c.estado == "en_cola") & db.corridas.c.padre_id.is_(None),
                              {"estado": "analizando_entorno", "actualizado": db.ahora()})
     if fila is None:
         return False
     log.info("corrida %s: empiezo", fila["id"])
-    c = None
     try:
         procesar(cfg, eng, store, fila)
     except Exception as e:  # la corrida queda en error con el motivo; el orquestador sigue con la siguiente
         log.exception("corrida %s falló", fila["id"])
-        with eng.connect() as cx:
-            etapas = cx.execute(select(db.corridas.c.etapas).where(db.corridas.c.id == fila["id"])).scalar_one()
-        etapas = [{**e, "estado": "error"} if e["estado"] == "en_curso" else e for e in etapas]
-        with eng.begin() as cx:
-            cx.execute(update(db.corridas).where(db.corridas.c.id == fila["id"])
-                       .values(estado="error", error=f"{type(e).__name__}: {e}"[:2000], etapas=etapas, actualizado=db.ahora()))
+        hijas.registrar_error(eng, fila["id"], e)
     return True
 
 

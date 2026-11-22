@@ -125,6 +125,9 @@ def test_por_reglas_en_el_catalogo_real(entorno, tarea, fichas):
     for campo in ("finalistas", "alternativas", "descartados"):
         assert _ids(sel[campo]) == _ids(esperado[campo])
     assert sel["descartados"] == esperado["descartados"]
+    for campo in ("finalistas", "alternativas", "descartados"):
+        assert [f["nombre"] for f in sel[campo]] == [f["nombre"] for f in esperado[campo]]
+        assert all(f["nombre"] == fichas[f["id"]]["nombre"] for f in sel[campo])
 
 
 def test_el_demo_sigue_eligiendo_el_leapting(entorno, tarea, fichas):
@@ -246,7 +249,13 @@ def test_el_modelo_elige_entre_los_que_pasan(monkeypatch, entorno, tarea, fichas
     llamadas = _con_modelo(monkeypatch, BUENA)
     r = agentes.seleccionar("claude", "modelo-x", entorno, tarea, fichas)
     sel = validar("seleccion", r.seleccion)
-    assert sel["finalistas"] == BUENA["finalistas"] and sel["alternativas"] == BUENA["alternativas"]
+    sin_nombre = {c: [{k: v for k, v in f.items() if k != "nombre"} for f in sel[c]] for c in ("finalistas", "alternativas")}
+    assert sin_nombre["finalistas"] == BUENA["finalistas"] and sin_nombre["alternativas"] == BUENA["alternativas"]
+    for campo in ("finalistas", "alternativas", "descartados"):
+        assert all(f["nombre"] == fichas[f["id"]]["nombre"] for f in sel[campo])
+    assert "nombre" not in esquema_fila(llamadas[0]["esquema"], "finalistas")
+    assert "nombre" not in esquema_fila(llamadas[0]["esquema"], "alternativas")
+    assert all("nombre" not in a for a in r.robots_por_puesto[0]["alternativas"])
     assert _ids(sel["descartados"]) == ["trinatracker-buildex-e"]
     assert _ids(r.robots_por_puesto) == ["leapting-mmr", "relu-bison"]
     assert r.robots_por_puesto[0]["carga_util_kg"] == fichas["leapting-mmr"]["carga_util_kg"]
@@ -255,6 +264,10 @@ def test_el_modelo_elige_entre_los_que_pasan(monkeypatch, entorno, tarea, fichas
     assert sorted(ids) == ["aes-maximo", "leapting-mmr", "relu-bison", "viaz-instalador-ficticio"]
     texto = llamadas[0]["contenido"][-1]["text"]
     assert "requisitos.json" in texto and "trinatracker-buildex-e" not in texto.split("Candidatos")[1]
+
+
+def esquema_fila(esquema: dict, campo: str) -> dict:
+    return esquema["properties"][campo]["items"]["properties"]
 
 
 def _cambiada(**cambios) -> dict:
@@ -283,7 +296,8 @@ def test_si_nadie_pasa_el_codigo_decide_y_el_modelo_explica(monkeypatch, entorno
     esperado = agentes.seleccionar("fijo", "x", pesado, tarea, fichas).seleccion["finalistas"][0]["id"]
     llamadas = _con_modelo(monkeypatch, {"justificacion": "Ningún candidato cumple. Explicación."})
     sel = agentes.seleccionar("claude", "modelo-x", pesado, tarea, fichas).seleccion
-    assert sel["finalistas"] == [{"id": esperado, "puesto": 1, "justificacion": "Ningún candidato cumple. Explicación."}]
+    assert sel["finalistas"] == [{"id": esperado, "nombre": fichas[esperado]["nombre"], "puesto": 1,
+                                  "justificacion": "Ningún candidato cumple. Explicación."}]
     assert list(llamadas[0]["esquema"]["properties"]) == ["justificacion"]
 
 
@@ -292,7 +306,8 @@ def test_si_ningun_valido_tiene_nucleo_el_codigo_decide_y_el_modelo_explica(monk
     llamadas = _con_modelo(monkeypatch, {"justificacion": justificacion})
     r = agentes.seleccionar("claude", "modelo-x", entorno, tarea, _solo_sin_nucleo(fichas))
     sel = validar("seleccion", r.seleccion)
-    assert sel["finalistas"] == [{"id": "aes-maximo", "puesto": 1, "justificacion": justificacion}]
+    assert sel["finalistas"] == [{"id": "aes-maximo", "nombre": fichas["aes-maximo"]["nombre"], "puesto": 1,
+                                  "justificacion": justificacion}]
     assert _ids(sel["alternativas"]) == ["viaz-instalador-ficticio"]
     assert "núcleo" in sel["alternativas"][0]["por_que_no"]
     assert len(llamadas) == 1 and list(llamadas[0]["esquema"]["properties"]) == ["justificacion"]

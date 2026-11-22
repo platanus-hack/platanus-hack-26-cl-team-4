@@ -1,8 +1,8 @@
 # Contrato: agente de selección de robot
 
-> Etapa 3. **Contrato v3** (2026-11-21). **Implementado:** pasos 1 a 4 de la v3 (requisitos, búsqueda web, descarte por reglas, 1 a 3 finalistas) y el primer nivel del paso 6 (modelo comprobado). La búsqueda solo se probó contra modelos falsos. Sin corridas hijas: la corrida sigue con el finalista 1.
+> Etapa 3. **Contrato v3** (2026-11-21). **Implementado:** pasos 1 a 5 y 7 de la v3 (requisitos, búsqueda web, descarte por reglas, 1 a 3 finalistas, una corrida hija por finalista y la comparación) y el primer nivel del paso 6 (modelo comprobado). La búsqueda solo se probó contra modelos falsos. Las corridas hijas y la comparación solo se probaron con el sim runner simulado, no en Isaac.
 > Requerimientos: RF-ROB-01..12, RF-CLO-10..11, RF-ORQ-07..08, RNF-02, RNF-03.
-> Código: [`orquestador.py`](../../backend/viaz/orquestador.py) → `seleccionar_robot()` une los pasos. Paso 1 en [`agentes/perfiles.py`](../../backend/viaz/agentes/perfiles.py), paso 2 en [`agentes/busqueda.py`](../../backend/viaz/agentes/busqueda.py) y [`catalogo/encontrados.py`](../../backend/viaz/catalogo/encontrados.py), pasos 3 y 4 en [`agentes/seleccion.py`](../../backend/viaz/agentes/seleccion.py) y `agentes.seleccionar()`. Prompts: [`robot.md`](../../backend/viaz/agentes/prompts/robot.md), [`busqueda.md`](../../backend/viaz/agentes/prompts/busqueda.md), [`busqueda_fichas.md`](../../backend/viaz/agentes/prompts/busqueda_fichas.md). Catálogo: [`catalogo/robots/`](../../backend/viaz/catalogo/robots/). Tests: [`test_seleccion.py`](../../backend/tests/test_seleccion.py), [`test_busqueda.py`](../../backend/tests/test_busqueda.py).
+> Código: [`orquestador.py`](../../backend/viaz/orquestador.py) → `seleccionar_robot()` une los pasos. Paso 1 en [`agentes/perfiles.py`](../../backend/viaz/agentes/perfiles.py), paso 2 en [`agentes/busqueda.py`](../../backend/viaz/agentes/busqueda.py) y [`catalogo/encontrados.py`](../../backend/viaz/catalogo/encontrados.py), pasos 3 y 4 en [`agentes/seleccion.py`](../../backend/viaz/agentes/seleccion.py) y `agentes.seleccionar()`, paso 5 en [`hijas.py`](../../backend/viaz/hijas.py), paso 7 en [`comparacion.py`](../../backend/viaz/comparacion.py). Prompts: [`robot.md`](../../backend/viaz/agentes/prompts/robot.md), [`busqueda.md`](../../backend/viaz/agentes/prompts/busqueda.md), [`busqueda_fichas.md`](../../backend/viaz/agentes/prompts/busqueda_fichas.md), [`comparacion.md`](../../backend/viaz/agentes/prompts/comparacion.md). Catálogo: [`catalogo/robots/`](../../backend/viaz/catalogo/robots/). Tests: [`test_seleccion.py`](../../backend/tests/test_seleccion.py), [`test_busqueda.py`](../../backend/tests/test_busqueda.py), [`test_hijas.py`](../../backend/tests/test_hijas.py), [`test_comparacion.py`](../../backend/tests/test_comparacion.py).
 > Explicación paso a paso, con un diagrama por parte: [`seleccion-robot-flujo.md`](seleccion-robot-flujo.md).
 > Esquemas v3: [`requisitos`](../../backend/viaz/esquemas/requisitos.schema.json), [`seleccion`](../../backend/viaz/esquemas/seleccion.schema.json), [`comparacion`](../../backend/viaz/esquemas/comparacion.schema.json). Ejemplos en [`fixtures/`](../../backend/viaz/fixtures/).
 
@@ -14,11 +14,12 @@
 | 2. Búsqueda web | Borrador → ficha, evidencia por dato, inválidas con motivo, duplicados, estados, catálogo compartido (`AlmacenLocal`) y límites de configuración, con tests contra modelos falsos | Las dos llamadas contra la API real. `AlmacenR2.listar` (sin credenciales en los tests). Los dos prompts nuevos | — | — |
 | 3. Descarte por reglas | `fallas()` genérico: lee solo `requisitos.json`. Un test por requisito | — | — | — |
 | 4. Selección | Modo `fijo`: 1 a 3 finalistas y `seleccion.json`, con tests. Modo `claude`: las reglas de §4 sobre la respuesta, con tests contra un modelo falso | Modo `claude` contra la API del backend, con salida estructurada | — | — |
-| 5. Corridas hijas | `procesar_rl` con el finalista 1 | — | — | Una corrida hija por finalista |
+| 5. Corridas hijas | Con 2 o 3 finalistas, una corrida hija por finalista, en orden, con la escena copiada y las horas completas. Una hija que falla no hace fallar al padre. Detener el padre detiene a la hija. Probado con el sim runner simulado | Las hijas en Isaac, en el pod real | Las métricas del sim runner simulado (`fuente: simulado`) | — |
 | 6. Modelo comprobado | Registro y reuso del `ensamblaje.json` en el almacén ([`modelos.py`](../../backend/viaz/modelos.py)), con tests contra un pod falso (`test_modelos.py`, `test_rl.py`). `fidelidad` `generico` o `medido` en cada clon | Reuso con R2 y con `validar_robot` en Isaac | — | Nivel "aprobado" en el código (lo hace una persona por PR). `fidelidad: verificado` |
-| 7. Comparación | — | — | Métricas de `fixtures/comparacion.json` (ilustrativas) | Regla, `comparacion.json` |
+| 7. Comparación | Regla, `comparacion.json`, advertencias y explicación de plantilla, con tests. `fidelidad` desde `clon.json` o desde la ficha | La explicación del modo `claude` contra la API real (el test usa un modelo falso) | Métricas de `fixtures/comparacion.json` (ilustrativas) | Semillas fijas en el entrenamiento |
 
-- **Esquemas y fixtures v3:** existen y validan (`test_esquemas.py`). La etapa robot de los dos flujos escribe `requisitos.json`, `encontrados.json`, `seleccion.json` y `robot.json` (finalista 1). `fixtures/seleccion.json` sale del modo `fijo`. Nadie escribe `comparacion.json` todavía.
+- **Esquemas y fixtures v3:** existen y validan (`test_esquemas.py`). La etapa robot de los dos flujos escribe `requisitos.json`, `encontrados.json`, `seleccion.json` y `robot.json` (finalista 1). `fixtures/seleccion.json` sale del modo `fijo`. El flujo `rl` con 2 o 3 finalistas escribe `comparacion.json` en la corrida padre.
+- **Flujo `planificador`:** sigue solo con el finalista 1. No tiene corridas hijas.
 - **Otro dominio:** con este contrato el agente puede **elegir** para otro dominio. La **simulación** de ese dominio no corre todavía: `entorno.json`, `tarea.json` y `sim/rl` son solo solares.
 
 ## Flujo v3
@@ -36,9 +37,9 @@ flowchart TD
   D -->|pasan| S["4. Selección<br/>LLM"]
   D -->|fallas| SEL
   S --> SEL["seleccion.json<br/>1 a 3 finalistas"]
-  SEL --> H["5. Corrida hija por finalista<br/>robot.json + procesar_rl"]
+  SEL --> H["5. Corrida hija por finalista<br/>robot.json + entrenar_y_evaluar"]
   REG[("6. Modelos comprobados")] -.reuso.-> H
-  H --> EV[evaluacion.json × N]
+  H --> EV[resultado.json × N]
   EV --> C["7. Comparación<br/>código decide, LLM explica"]
   C --> CO[comparacion.json]
 ```
@@ -47,7 +48,7 @@ flowchart TD
 
 - **Decide:** qué robots reales sirven para la tarea en ese lugar, y cuáles 1 a 3 vale la pena entrenar.
 - **Explica:** el cliente lee cada justificación en la web. Debe ser verificable con números.
-- **No decide:** las specs ni el ganador. Las specs salen de la ficha (RNF-02). El ganador sale de una regla sobre `evaluacion.json`.
+- **No decide:** las specs ni el ganador. Las specs salen de la ficha (RNF-02). El ganador sale de una regla sobre `resultado.json` de cada corrida hija.
 - **Por qué cambia:** la v2 solo sirve para paneles y solo elige del catálogo. VIAZ virtualiza cualquier industria.
 
 ## 2. Entradas
@@ -163,9 +164,10 @@ flowchart LR
 | `requisitos` | Código | Nombre del archivo usado |
 | `busqueda` | Código | `estado` (`completa`, `cortada`, `fallida`, `omitida`), `detalle`, `invalidas` |
 | `encontrados` | Código | Ids de las fichas válidas que trajo la búsqueda **en esta corrida**. Una ficha del catálogo compartido de una corrida anterior es un candidato normal y no va aquí |
-| `descartados` | Código | `{id, fallas}` del paso 3 |
-| `finalistas` | Agente | 1 a 3 `{id, puesto, justificacion}`. El tope fijo es 3. `VIAZ_MAX_FINALISTAS` puede bajarlo y vale 3 por defecto |
-| `alternativas` | Agente | Candidatos válidos no finalistas, con `por_que_no` |
+| `descartados` | Código | `{id, nombre, fallas}` del paso 3 |
+| `finalistas` | Agente | 1 a 3 `{id, nombre, puesto, justificacion}`. El tope fijo es 3. `VIAZ_MAX_FINALISTAS` puede bajarlo y vale 3 por defecto |
+| `alternativas` | Agente | Candidatos válidos no finalistas, `{id, nombre, por_que_no}` |
+| `*.nombre` | Código | `nombre` de la ficha, para que la web no muestre ids. Opcional en el esquema. En modo modelo lo agrega el código después de `comprobar()`: el modelo no lo devuelve |
 
 ### `encontrados.json`
 
@@ -174,32 +176,37 @@ flowchart LR
 ### `robot.json` (uno por finalista)
 
 - **Mismo formato que hoy.** El constructor y el flujo RL no cambian.
-- Cada finalista corre en una **corrida hija** que reutiliza `procesar_rl` con el robot fijo.
+- Con 2 o 3 finalistas, cada uno corre en una **corrida hija**: una fila de `corridas` con `padre_id`. La hija recibe una copia de `entorno.json`, `tarea.json` y `escena.usd` del padre, y su propio `robot.json`.
+- La hija corre `entrenar_y_evaluar`: las etapas clon e inteligencia, las mismas de una corrida con un finalista.
+- Las hijas corren en orden dentro de la corrida padre. Cada una entrena las horas completas de `VIAZ_HORAS_ENTRENAMIENTO`.
+- Con un finalista no hay hijas: la corrida sigue igual que antes.
 - Las specs se copian de la ficha (catálogo o encontrada), nunca de la respuesta del modelo.
 
 ### `comparacion.json`
 
 | Campo | Lo llena | Regla |
 |---|---|---|
-| `ganador`, `regla`, `ranking` | Código | Primero `tasa_exito` (tolerancia de entrenamiento), luego menor `ciclo_s` |
-| `condiciones` | Código | Misma escena, mismas horas, mismas semillas y tolerancias para todos |
-| `ranking[].fidelidad` | Código | Copia de `clon.json → fidelidad` |
-| `advertencias` | Código | Niveles de fidelidad distintos y corridas hijas que fallaron |
+| `ganador`, `ranking` | Código | Primero `tasa_exito` (tolerancia de entrenamiento), luego menor `ciclo_s`, luego el id en orden alfabético. Los dos valores salen de `resultado.json → metricas` de la hija. `ciclo_s` vale `null` sin éxitos. Cada fila trae `nombre` de la ficha si existe |
+| `regla` | Código | La misma regla en español simple, sin nombres de campos: "Gana el robot con mayor porcentaje de éxito… Si empatan, gana el de menor tiempo de ciclo…" |
+| `condiciones` | Código | Misma escena (`escena.usd` copiada), mismas horas y mismas tolerancias para todos. `semillas` vale `null`, porque el entrenamiento no fija semillas |
+| `ranking[].fidelidad` | Código | Copia de `clon.json → fidelidad`. Sin ese campo: `medido` si la ficha tiene `fisica`, `generico` si no |
+| `advertencias` | Código | Corridas hijas que fallaron, niveles de fidelidad distintos, semillas sin fijar y métricas del entorno simulado |
 | `que_compara`, `que_no_compara` | Código | Texto fijo (ver abajo) |
-| `explicacion` | Agente | Explica la regla. No la cambia |
+| `explicacion` | Agente | Explica la regla. No la cambia. Nombra a los robots por su `nombre` y no usa nombres de campos. En modo `fijo`, o si la llamada falla, una frase de plantilla |
 
 - **Qué compara la simulación:** alcance, tamaño, masa, carga útil y velocidad de la base.
 - **Qué no compara:** los motores y el control reales. Todos los clones usan un brazo de Isaac Lab escalado (`ur10` o `franka_panda`).
 - **Fixture:** `fixtures/comparacion.json` tiene **métricas ilustrativas**, no medidas. Lo dice en `advertencias` y en `explicacion`.
+- **Corrida padre:** recibe una copia de los artefactos de la hija ganadora (`clon.json`, `robot.urdf`, `resultado.json`, videos, curva y los demás que existan), su `robot.json` y `comparacion.json`. La web la muestra igual que una corrida de un finalista.
 
 Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 
 ```json
 "ranking": [
-  { "id": "leapting-mmr", "corrida_id": "hija-1", "puesto": 1, "tasa_exito": 0.92, "ciclo_s": 48, "fidelidad": "medido" },
-  { "id": "otro-robot",   "corrida_id": "hija-2", "puesto": 2, "tasa_exito": 0.92, "ciclo_s": 55, "fidelidad": "generico" }
+  { "id": "leapting-mmr", "nombre": "LEAPTING MMR", "corrida_id": "hija-1", "puesto": 1, "tasa_exito": 0.92, "ciclo_s": 48, "fidelidad": "medido" },
+  { "id": "otro-robot",   "nombre": "Otro robot",   "corrida_id": "hija-2", "puesto": 2, "tasa_exito": 0.92, "ciclo_s": 55, "fidelidad": "generico" }
 ],
-"advertencias": ["Los clones tienen fidelidad distinta (medido y generico): la diferencia puede venir del clon."]
+"advertencias": ["Los clones tienen fidelidad distinta (genérica y medida): la diferencia puede venir del clon."]
 ```
 
 ### `clon.json → fidelidad`
@@ -277,6 +284,7 @@ Hay dos niveles:
 | No se puede guardar una ficha en el catálogo compartido | Queda en el log. La ficha sigue como candidata en esta corrida |
 | Una corrida hija falla | Queda fuera del ranking, con aviso en `comparacion.advertencias` |
 | Todas las corridas hijas fallan | Corrida padre en `error` |
+| La explicación del modelo falla | Queda la frase de plantilla y el log lo dice. La corrida sigue |
 
 ## 7. Pruebas
 
@@ -287,7 +295,9 @@ Hay dos niveles:
 - **Hoy (`test_busqueda.py`):** borrador → ficha, un alcance estimado con base que entra como candidato, cada motivo de rechazo (también un estimado vacío o corto), núcleo de `fisica` incompleto, duplicados, limpieza del texto de la web, los cuatro estados, la llamada A con un cliente falso (`pause_turn`, citas, rechazo, tiempo), la llamada B con un `pedir_json` falso, el catálogo compartido en `AlmacenLocal`, un finalista encontrado y los límites de configuración. Ningún test usa la red ni la API.
 - **Hoy (`test_flujo.py`, `test_rl.py`):** los dos flujos guardan `requisitos.json`, `encontrados.json` y `seleccion.json`, con `busqueda.estado` = `omitida` en modo `fijo`.
 - **Sin probar:** la búsqueda contra la API real y `AlmacenR2.listar`.
-- **Por hacer:** regla de la comparación con empates.
+- **Hoy (`test_comparacion.py`):** la regla con empates, el ciclo `null` sin éxitos, una hija que falló, todas fallidas, la fidelidad, las advertencias, la validación contra el esquema y la explicación con un modelo falso o con la plantilla.
+- **Hoy (`test_hijas.py`):** dos finalistas en dos hijas con la misma escena y las horas completas, una hija que falla, todas que fallan, un finalista sin hijas, `procesar_una` que no toma hijas, detener el padre, la API y la migración de `padre_id`.
+- **Sin probar:** las corridas hijas en Isaac y en el pod real. La explicación del modo `claude` contra la API.
 - **Con Claude:** 3 corridas revisadas a mano por la CLI (ver §5). Falta repetirlas con la API del backend.
 
 ## Riesgo aceptado: fichas sin revisar en el catálogo compartido
@@ -305,9 +315,11 @@ Hay dos niveles:
 
 | Tema | Qué decidir |
 |---|---|
-| Costo de 3 finalistas | Cuántos pods y cuántas horas por entrenamiento. 3 finalistas cuestan 3 veces las horas de pod |
+| Costo de 3 finalistas | Hoy cada finalista entrena las horas completas, en un solo pod y en orden. 3 finalistas cuestan 3 veces las horas de pod y tardan 3 veces más. Falta decidir si conviene repartir las horas o usar más pods |
+| Semillas | El entrenamiento no fija semillas. Parte de la diferencia entre finalistas puede venir del azar. Falta un parámetro de semilla en `sim/rl/entrenar.py` |
 | Prioridad MoSCoW | RF-ROB-08..12, RF-CLO-10..11 y RF-ORQ-07..08 están en **S** hasta que el equipo decida |
 | Alcance de la generalización | Si generalizar `entorno.json`, `tarea.json` y `sim/rl` (hoy solo solares) entra en el hack |
 | Catálogo actual | `leapting-mmr`, `relu-bison` y `trinatracker-buildex-e` tienen el núcleo de `fisica`. `aes-maximo` no lo tiene, porque ninguna foto trae una escala para medirlo. BUILDEX E falla el alcance, con 2,5 m estimados contra 2,95 m necesarios. Una persona decide su alcance real. Hoy hay 2 finalistas |
 | Definición de `fidelidad` | La tabla de §3 es una propuesta. El código escribe `generico` y `medido`. Falta decidir cómo se marca `verificado` |
+| Guardado de modelos | Hoy solo se guarda la receta (`ensamblaje.json`, cerca de 1 KB). Pendiente: decidir dónde viven los archivos para siempre, guardar el `robot.usd` construido con su física, medir antes el tamaño real de los archivos y borrar los modelos viejos cuando cambia una ficha. Acordado el 2026-11-21 dejarlo para después |
 | Limpieza de modelos comprobados | Nadie los borra. Con una clave nueva, el modelo viejo queda en el almacén |

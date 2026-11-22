@@ -352,7 +352,7 @@ def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], top
                                  f"con sus fallas {seleccion.fallas(elegido, requisitos)}")
         datos = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.ESQUEMA_JUSTIFICACION,
                            contenido=[{"type": "text", "text": texto}])
-        return seleccion.armar([{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
+        return seleccion.armar(fichas, [{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
                                [], descartados, busqueda, encontrados)
     orden = seleccion.ordenadas(pasan, requisitos)
     if not any(seleccion.tiene_nucleo(f) for f in orden):
@@ -362,7 +362,7 @@ def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], top
                                  "elegido por el código, el primero por las preferencias; el clon usa la base genérica")
         datos = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.ESQUEMA_JUSTIFICACION,
                            contenido=[{"type": "text", "text": texto}])
-        return seleccion.armar([{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
+        return seleccion.armar(fichas, [{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
                                seleccion.alternativas_sin_nucleo(orden, elegido), descartados, busqueda,
                                encontrados)
     texto = _texto_seleccion(requisitos, tope, orden, "Candidatos que pasaron el descarte por reglas, "
@@ -370,7 +370,7 @@ def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], top
     eleccion = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.esquema_eleccion([f["id"] for f in orden]),
                           contenido=[{"type": "text", "text": texto}])
     seleccion.comprobar(eleccion, pasan, tope)
-    return seleccion.armar(eleccion["finalistas"], eleccion["alternativas"], descartados, busqueda, encontrados)
+    return seleccion.armar(fichas, eleccion["finalistas"], eleccion["alternativas"], descartados, busqueda, encontrados)
 
 
 def seleccionar(modo: str, modelo: str, entorno_json: dict, tarea_json: dict, catalogo: dict[str, dict],
