@@ -762,9 +762,18 @@ body:has(.apertura-viaz) .cabecera { top: 100svh; }
 
 .pitch-cierre {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.1fr);
   align-items: center;
-  gap: clamp(24px, 6vw, 88px);
+  gap: clamp(24px, 4vw, 64px);
+}
+
+.pitch-cierre-video { margin: 0; min-width: 0; }
+.pitch-cierre-video figcaption { margin-top: 10px; color: var(--viaz-tenue); font-size: .9rem; text-align: center; }
+
+/* Pantallas medianas: texto y QR arriba, video abajo a todo el ancho. */
+@media (max-width: 1100px) {
+  .pitch-cierre { grid-template-columns: minmax(0, 1fr) auto; }
+  .pitch-cierre-video { grid-column: 1 / -1; justify-self: center; width: min(100%, 720px); }
 }
 
 .pitch-qr {
