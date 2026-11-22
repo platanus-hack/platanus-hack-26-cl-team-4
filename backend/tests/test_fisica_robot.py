@@ -71,7 +71,7 @@ def test_un_robot_sin_ficha_fisica_conserva_el_clon_de_siempre():
 
 
 def test_el_clon_del_leapting_lleva_su_geometria(entorno, tarea, leapting):
-    clon, texto = agentes.clon(agentes.robot("fijo", "x", entorno, tarea, catalogo.cargar()))
+    clon, texto = agentes.clon(agentes.seleccionar("fijo", "x", entorno, tarea, catalogo.cargar()).robots_por_puesto[0])
     g = clon["geometria"]
     assert clon["robot_id"] == "leapting-mmr"
     assert g["cubierta_z_m"] == leapting["fisica"]["altura_cubierta_m"]
@@ -83,7 +83,7 @@ def test_el_clon_del_leapting_lleva_su_geometria(entorno, tarea, leapting):
 
 
 def test_el_plan_alcanza_con_la_geometria_real(entorno, tarea):
-    clon, _ = agentes.clon(agentes.robot("fijo", "x", entorno, tarea, catalogo.cargar()))
+    clon, _ = agentes.clon(agentes.seleccionar("fijo", "x", entorno, tarea, catalogo.cargar()).robots_por_puesto[0])
     assert plan.validar(entorno, tarea, clon) == {"ok": True, "problemas": [], "paneles_planificados": 5}
     d = plan.distancia_pasillo(entorno, clon["geometria"])
     # el vehículo de 1,8 m de ancho no invade el panel ya instalado
@@ -93,11 +93,11 @@ def test_el_plan_alcanza_con_la_geometria_real(entorno, tarea):
     assert tray["pila"]["pos_m"][0] == clon["geometria"]["pila_x_m"]
 
 
-def test_el_alcance_necesario_depende_del_robot(entorno, leapting):
+def test_el_alcance_necesario_depende_del_robot(entorno, tarea, leapting):
     assert agentes.alcance_necesario(entorno) == 2.28          # clon de siempre
     necesario = agentes.alcance_necesario(entorno, leapting)
     assert 2.28 < necesario <= leapting["alcance_m"]           # el vehículo ancho queda más lejos del tubo
-    assert agentes.eleccion_por_reglas(entorno, catalogo.cargar())["id"] == "leapting-mmr"
+    assert agentes.seleccionar("fijo", "x", entorno, tarea, catalogo.cargar()).robots_por_puesto[0]["id"] == "leapting-mmr"
 
 
 NUCLEO = {"largo_m": 2.0, "ancho_m": 1.2, "masa_kg": 500, "altura_cubierta_m": 0.9, "traccion": "ruedas"}

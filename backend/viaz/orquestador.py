@@ -137,6 +137,20 @@ def analizar_entorno(c: Corrida, cfg: Config, store: alm.Almacen, proyecto: dict
     return entorno, frames, artefactos
 
 
+def elegir_robot(c: Corrida, cfg: Config, entorno: dict, tarea: dict) -> dict:
+    """Etapa robot (selección v3, pasos 1, 3 y 4)."""
+    c.etapa("robot", "en_curso", estado_corrida="eligiendo_robot")
+    r = agentes.seleccionar(cfg.agentes, cfg.modelo, entorno, tarea, catalogo.cargar(), cfg.max_finalistas)
+    c.escribir("requisitos.json", r.requisitos)
+    c.escribir("seleccion.json", r.seleccion)
+    primero, *sin_correr = r.robots_por_puesto
+    c.escribir("robot.json", primero)
+    log.info("corrida %s: sigue con %s; finalistas sin correr: %s", c.id, primero["id"],
+             ", ".join(x["id"] for x in sin_correr) or "ninguno")
+    c.etapa("robot", "listo", ["requisitos.json", "seleccion.json", "robot.json"])
+    return primero
+
+
 def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     if cfg.flujo == "rl":
         return procesar_rl(cfg, eng, store, fila)
@@ -157,10 +171,7 @@ def procesar(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     c.etapa("tarea", "listo", ["tarea.json"])
 
     # 3. Robot
-    c.etapa("robot", "en_curso", estado_corrida="eligiendo_robot")
-    robot = agentes.robot(modo, modelo, entorno, tarea, catalogo.cargar())
-    c.escribir("robot.json", robot)
-    c.etapa("robot", "listo", ["robot.json"])
+    robot = elegir_robot(c, cfg, entorno, tarea)
 
     # 4. Clon
     c.etapa("clon", "en_curso", estado_corrida="clonando")
@@ -332,10 +343,7 @@ def procesar_rl(cfg: Config, eng, store: alm.Almacen, fila: dict) -> None:
     c.etapa("tarea", "listo", ["tarea.json"])
 
     # 3. Selección de robot
-    c.etapa("robot", "en_curso", estado_corrida="eligiendo_robot")
-    robot = agentes.robot(cfg.agentes, cfg.modelo, entorno, tarea, catalogo.cargar())
-    c.escribir("robot.json", robot)
-    c.etapa("robot", "listo", ["robot.json"])
+    robot = elegir_robot(c, cfg, entorno, tarea)
 
     # 4. Agente constructor
     c.etapa("clon", "en_curso", estado_corrida="clonando")
