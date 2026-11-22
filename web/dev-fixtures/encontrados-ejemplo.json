@@ -1,0 +1,28 @@
+[
+  {
+    "version": 1,
+    "id": "ejemplo-instalador-web",
+    "nombre": "Instalador de ejemplo (ficha de prueba)",
+    "fabricante": "Fabricante de ejemplo",
+    "tipo": "vehiculo_con_brazo",
+    "ficticio": false,
+    "carga_util_kg": 60,
+    "alcance_m": 3.2,
+    "velocidad_base_m_s": 0.5,
+    "efector": "ventosa",
+    "fuente": { "url": "javascript:alert('no debe ser enlace')", "consultado": "2026-11-21" },
+    "justificacion": "Ficha de prueba para la página de desarrollo. No es un robot real.",
+    "alternativas": [],
+    "origen": "busqueda",
+    "capacidades": ["instalar_panel"],
+    "evidencia": {
+      "carga_util_kg": { "url": "https://example.com/ficha", "cita": "Carga útil máxima de 60 kg por panel." },
+      "velocidad_base_m_s": { "url": "https://example.com/ficha", "cita": "Avanza a 0,5 m/s entre filas." },
+      "efector": { "url": "https://example.com/ficha", "cita": "Toma cada panel con ventosas de vacío." },
+      "tipo": { "url": "https://example.com/ficha", "cita": "Vehículo con orugas y brazo montado <script>alert(1)</script>." }
+    },
+    "estimados": {
+      "alcance_m": "La fuente no publica el alcance. Lo estimamos con el largo del brazo en la foto lateral."
+    }
+  }
+]

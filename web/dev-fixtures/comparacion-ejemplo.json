@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "ganador": "leapting-mmr",
+  "regla": "Gana el robot con mayor porcentaje de éxito, con un error de hasta 5 cm y 5°. Si empatan, gana el de menor tiempo de ciclo.",
+  "condiciones": {
+    "escena": "escena.usd",
+    "horas_entrenamiento": 1.5,
+    "semillas": null,
+    "tolerancia_pos_m": 0.05,
+    "tolerancia_ang_grados": 5
+  },
+  "ranking": [
+    { "id": "leapting-mmr", "nombre": "LEAPTING MMR (robot de montaje con navegación automática)", "corrida_id": "ejemplo-hija-1", "puesto": 1, "tasa_exito": 0.925, "ciclo_s": 47.6, "fidelidad": "medido" },
+    { "id": "ejemplo-instalador-web", "nombre": "Instalador de ejemplo (ficha de prueba)", "corrida_id": "ejemplo-hija-2", "puesto": 2, "tasa_exito": 0, "ciclo_s": null, "fidelidad": "generico" }
+  ],
+  "advertencias": [
+    "Métricas ilustrativas: este archivo es un ejemplo de la página de desarrollo, no un resultado medido.",
+    "Los clones tienen fidelidad distinta (medida y genérica): parte de la diferencia puede venir del clon.",
+    "La corrida hija de Bison falló y quedó fuera del ranking."
+  ],
+  "que_compara": ["alcance", "tamaño", "masa", "carga útil", "velocidad de la base"],
+  "que_no_compara": [
+    "motores y control del robot real: todos los clones usan un brazo de Isaac Lab escalado (ur10 o franka_panda)",
+    "el efector real: la ventosa es un asset genérico de Isaac Lab"
+  ],
+  "explicacion": "Ejemplo ilustrativo, sin métricas medidas."
+}

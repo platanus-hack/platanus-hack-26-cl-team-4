@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "id": "leapting-mmr",
+  "nombre": "LEAPTING MMR (robot de montaje con navegación automática)",
+  "fabricante": "LEAPTING (丽天, China)",
+  "tipo": "base_movil_brazo",
+  "ficticio": false,
+  "carga_util_kg": 100,
+  "alcance_m": 3.1,
+  "velocidad_base_m_s": 0.42,
+  "efector": "ventosa",
+  "fuente": {
+    "url": "https://www.leapting.com/en/product/zj/",
+    "consultado": "2026-11-21"
+  },
+  "fisica": {
+    "largo_m": 3.145,
+    "ancho_m": 1.8,
+    "masa_kg": 4500,
+    "traccion": "orugas",
+    "altura_cubierta_m": 1.25,
+    "brazo_x_m": 0.5,
+    "gabinete_largo_m": 1.08,
+    "gabinete_alto_m": 0.75,
+    "brazo_grosor_m": 0.44,
+    "antebrazo_grosor_m": 0.3,
+    "ventosa_largo_m": 1.9,
+    "ventosa_ancho_m": 0.5,
+    "remolque_largo_m": 2.35,
+    "remolque_masa_kg": 2300
+  },
+  "estimados": {
+    "fisica.altura_cubierta_m": "No publicada. Medido en la foto lateral del fabricante, con el largo de 3,145 m como escala: cerca de 1,25 m.",
+    "fisica.brazo_x_m": "No publicado. Medido en la foto lateral del fabricante, con el largo de 3,145 m como escala: la base del brazo va a 0,5 m del centro, hacia adelante.",
+    "fisica.gabinete": "No publicado. Medido en la foto lateral del fabricante, con el largo de 3,145 m como escala: 1,08 m de largo y 0,75 m sobre la cubierta.",
+    "fisica.brazo_grosor": "No publicado. Medido en la foto lateral del fabricante, con el largo de 3,145 m como escala: el brazo con su funda mide cerca de 0,44 m y el antebrazo 0,30 m.",
+    "fisica.ventosa": "No publicado. Medido en los videos del fabricante: el marco de 8 ventosas mide cerca de 1,9 × 0,5 m.",
+    "fisica.remolque": "El fabricante publica 2,35 m de largo y 2 300 kg. El clon lo dibuja como una plataforma plana del ancho del vehículo, pegada a la base; el real mide 2,4 m de ancho con su volteador."
+  }
+}
