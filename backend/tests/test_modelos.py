@@ -137,9 +137,9 @@ def test_modelo_que_falla_en_la_nueva_escena_vuelve_al_agente(store, cfg, monkey
     vistos: list = []
     original = agentes.constructor
 
-    def espia(modo, modelo, robot, entorno, tarea, assets, intento, problemas=None, previo=None):
+    def espia(modo, modelo, robot, entorno, tarea, assets, intento, problemas=None, previo=None, **k):
         vistos.append(list(problemas or []))
-        return original(modo, modelo, robot, entorno, tarea, assets, intento, problemas, previo)
+        return original(modo, modelo, robot, entorno, tarea, assets, intento, problemas, previo, **k)
 
     monkeypatch.setattr(agentes, "constructor", espia)
     c2, clon2 = _construir(store, cfg, "c2", r, respuestas=[False, True])
@@ -204,3 +204,28 @@ def test_error_al_guardar_no_hace_fallar_la_corrida(tmp_path, cfg, caplog):
         _, clon = _construir(store, cfg, "c1", r)
     assert clon["construccion"]["metodo"] == "agente" and clon["validado_en_escena"]
     assert any("R2 no responde" in m for m in caplog.messages)
+
+
+def _textos_del_constructor(store, cfg, monkeypatch) -> list[str]:
+    _, _, r = _fixtures()
+    textos: list[str] = []
+
+    def pedir_json(contenido, **k):
+        textos.append(contenido[0]["text"])
+        return rc.ensamblaje_por_defecto(r, rc.cargar_assets())
+
+    monkeypatch.setattr(agentes, "pedir_json", pedir_json)
+    _construir(store, cfg, "c1", r)
+    return textos
+
+
+def test_el_prompt_del_constructor_dice_el_total_configurado(store, tmp_path, monkeypatch):
+    cfg = Config(dir_local=tmp_path / "archivos", agentes="claude", intentos_constructor=5)
+    textos = _textos_del_constructor(store, cfg, monkeypatch)
+    assert textos and textos[0].endswith("Intento 1 de 5.")
+
+
+def test_el_prompt_del_constructor_por_defecto_dice_de_3(store, tmp_path, monkeypatch):
+    cfg = Config(dir_local=tmp_path / "archivos", agentes="claude")
+    textos = _textos_del_constructor(store, cfg, monkeypatch)
+    assert textos and textos[0].endswith("Intento 1 de 3.")

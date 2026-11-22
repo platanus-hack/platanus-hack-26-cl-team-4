@@ -293,7 +293,8 @@ def construir_robot(c: Corrida, cfg: Config, robot: dict, entorno: dict, tarea: 
             if metodo == "comprobado":
                 ens = comprobado
             elif metodo == "agente":
-                ens = agentes.constructor(cfg.agentes, cfg.modelo, robot, entorno, tarea, assets, intento, problemas, previo)
+                ens = agentes.constructor(cfg.agentes, cfg.modelo, robot, entorno, tarea, assets, intento, problemas, previo,
+                                          total_intentos=total)
             else:
                 ens = validar("ensamblaje", rc.ensamblaje_por_defecto(robot, assets))
         except agentes.ErrorAgente as e:

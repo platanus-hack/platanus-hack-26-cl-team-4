@@ -237,9 +237,9 @@ def test_constructor_reintenta_y_usa_respaldo(sistema, monkeypatch):
     vistos: list = []
     original = agentes.constructor
 
-    def agente_torpe(modo, modelo, robot, entorno, tarea, assets, intento, problemas=None, previo=None):
+    def agente_torpe(modo, modelo, robot, entorno, tarea, assets, intento, problemas=None, previo=None, **k):
         vistos.append(list(problemas or []))
-        ens = original(modo, modelo, robot, entorno, tarea, assets, intento, problemas, previo)
+        ens = original(modo, modelo, robot, entorno, tarea, assets, intento, problemas, previo, **k)
         return {**ens, "carga_util_kg": 1}  # siempre miente sobre la carga útil
 
     monkeypatch.setattr(agentes, "constructor", agente_torpe)
