@@ -1,0 +1,191 @@
+<?xml version="1.0"?>
+<robot name="leapting-mmr">
+  <material name="cuerpo"><color rgba="0.95 0.75 0.1 1"/></material>
+  <material name="brazo"><color rgba="0.85 0.85 0.88 1"/></material>
+  <material name="negro"><color rgba="0.1 0.1 0.1 1"/></material>
+
+  <link name="base_link">
+    <visual><origin xyz="0 0 0.9"/><geometry><box size="3.145 1.8 0.7"/></geometry><material name="cuerpo"/></visual>
+    <collision><origin xyz="0 0 0.9"/><geometry><box size="3.145 1.8 0.7"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.9"/><mass value="2987.7"/>
+      <inertia ixx="928.67675" iyy="2584.61570" izz="3269.29695" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <link name="oruga_0">
+    <visual><origin xyz="0 0 0.275"/><geometry><box size="2.201 0.36 0.55"/></geometry><material name="negro"/></visual>
+    <collision><origin xyz="0 0 0.275"/><geometry><box size="2.201 0.36 0.55"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.275"/><mass value="540.0"/>
+      <inertia ixx="19.44450" iyy="231.61055" izz="223.83005" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+  <joint name="oruga_0_fija" type="fixed"><parent link="base_link"/><child link="oruga_0"/><origin xyz="0.4088 0.72 0" rpy="0 0 0"/></joint>
+
+  <link name="oruga_1">
+    <visual><origin xyz="0 0 0.275"/><geometry><box size="2.201 0.36 0.55"/></geometry><material name="negro"/></visual>
+    <collision><origin xyz="0 0 0.275"/><geometry><box size="2.201 0.36 0.55"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.275"/><mass value="540.0"/>
+      <inertia ixx="19.44450" iyy="231.61055" izz="223.83005" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+  <joint name="oruga_1_fija" type="fixed"><parent link="base_link"/><child link="oruga_1"/><origin xyz="0.4088 -0.72 0" rpy="0 0 0"/></joint>
+
+  <link name="gabinete">
+    <visual><origin xyz="0 0 0.375"/><geometry><box size="1.08 1.6 0.75"/></geometry><material name="cuerpo"/></visual>
+    <collision><origin xyz="0 0 0.375"/><geometry><box size="1.08 1.6 0.75"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.375"/><mass value="360.0"/>
+      <inertia ixx="93.67500" iyy="51.86700" izz="111.79200" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+  <joint name="gabinete_fija" type="fixed"><parent link="base_link"/><child link="gabinete"/><origin xyz="-1.0325 0 1.25" rpy="0 0 0"/></joint>
+
+  <link name="remolque">
+    <visual><origin xyz="0 0 0.09"/><geometry><box size="2.35 1.8 0.18"/></geometry><material name="cuerpo"/></visual>
+    <collision><origin xyz="0 0 0.09"/><geometry><box size="2.35 1.8 0.18"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.09"/><mass value="1932.0"/>
+      <inertia ixx="526.85640" iyy="894.33890" izz="1410.76250" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+  <joint name="remolque_fija" type="fixed"><parent link="base_link"/><child link="remolque"/><origin xyz="3.0475 0 1.07" rpy="0 0 0"/></joint>
+
+  <link name="rueda_remolque_0">
+    <visual><origin xyz="0 0 0"/><geometry><cylinder radius="0.36" length="0.26"/></geometry><material name="negro"/></visual>
+    <collision><origin xyz="0 0 0"/><geometry><cylinder radius="0.36" length="0.26"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0"/><mass value="92.0"/>
+      <inertia ixx="3.49907" iyy="3.49907" izz="5.96160" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+  <joint name="rueda_remolque_0_fija" type="fixed"><parent link="base_link"/><child link="rueda_remolque_0"/><origin xyz="2.5975 0.77 0.36" rpy="1.5708 0 0"/></joint>
+
+  <link name="rueda_remolque_1">
+    <visual><origin xyz="0 0 0"/><geometry><cylinder radius="0.36" length="0.26"/></geometry><material name="negro"/></visual>
+    <collision><origin xyz="0 0 0"/><geometry><cylinder radius="0.36" length="0.26"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0"/><mass value="92.0"/>
+      <inertia ixx="3.49907" iyy="3.49907" izz="5.96160" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+  <joint name="rueda_remolque_1_fija" type="fixed"><parent link="base_link"/><child link="rueda_remolque_1"/><origin xyz="2.5975 -0.77 0.36" rpy="1.5708 0 0"/></joint>
+
+  <link name="rueda_remolque_2">
+    <visual><origin xyz="0 0 0"/><geometry><cylinder radius="0.36" length="0.26"/></geometry><material name="negro"/></visual>
+    <collision><origin xyz="0 0 0"/><geometry><cylinder radius="0.36" length="0.26"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0"/><mass value="92.0"/>
+      <inertia ixx="3.49907" iyy="3.49907" izz="5.96160" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+  <joint name="rueda_remolque_2_fija" type="fixed"><parent link="base_link"/><child link="rueda_remolque_2"/><origin xyz="3.4975 0.77 0.36" rpy="1.5708 0 0"/></joint>
+
+  <link name="rueda_remolque_3">
+    <visual><origin xyz="0 0 0"/><geometry><cylinder radius="0.36" length="0.26"/></geometry><material name="negro"/></visual>
+    <collision><origin xyz="0 0 0"/><geometry><cylinder radius="0.36" length="0.26"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0"/><mass value="92.0"/>
+      <inertia ixx="3.49907" iyy="3.49907" izz="5.96160" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+  <joint name="rueda_remolque_3_fija" type="fixed"><parent link="base_link"/><child link="rueda_remolque_3"/><origin xyz="3.4975 -0.77 0.36" rpy="1.5708 0 0"/></joint>
+
+  <link name="hombro">
+    <visual><origin xyz="0 0 0.15"/><geometry><cylinder radius="0.33" length="0.3"/></geometry><material name="brazo"/></visual>
+    <collision><origin xyz="0 0 0.15"/><geometry><cylinder radius="0.33" length="0.3"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.15"/><mass value="14.963"/>
+      <inertia ixx="0.51959" iyy="0.51959" izz="0.81474" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <joint name="shoulder_pan" type="revolute">
+    <parent link="base_link"/><child link="hombro"/>
+    <origin xyz="0.5 0 1.25"/><axis xyz="0 0 1"/>
+    <limit lower="-3.1" upper="3.1" effort="1500" velocity="1.5"/>
+    <dynamics damping="5.0" friction="0.0"/>
+  </joint>
+
+  <link name="brazo">
+    <visual><origin xyz="0 0 0.728"/><geometry><box size="0.44 0.44 1.456"/></geometry><material name="brazo"/></visual>
+    <collision><origin xyz="0 0 0.728"/><geometry><box size="0.44 0.44 1.456"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.728"/><mass value="30.192"/>
+      <inertia ixx="5.82086" iyy="5.82086" izz="0.97420" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <joint name="shoulder_lift" type="revolute">
+    <parent link="hombro"/><child link="brazo"/>
+    <origin xyz="0 0 0.3"/><axis xyz="0 1 0"/>
+    <limit lower="-3.1" upper="3.1" effort="3000" velocity="1.5"/>
+    <dynamics damping="5.0" friction="0.0"/>
+  </joint>
+
+  <link name="antebrazo">
+    <visual><origin xyz="0 0 0.672"/><geometry><box size="0.3 0.3 1.344"/></geometry><material name="brazo"/></visual>
+    <collision><origin xyz="0 0 0.672"/><geometry><box size="0.3 0.3 1.344"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.672"/><mass value="18.398"/>
+      <inertia ixx="2.90740" iyy="2.90740" izz="0.27597" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <joint name="elbow" type="revolute">
+    <parent link="brazo"/><child link="antebrazo"/>
+    <origin xyz="0 0 1.456"/><axis xyz="0 1 0"/>
+    <limit lower="-3.1" upper="3.1" effort="1500" velocity="1.5"/>
+    <dynamics damping="5.0" friction="0.0"/>
+  </joint>
+
+  <link name="muneca_1">
+    <visual><origin xyz="0 0 0.075"/><geometry><cylinder radius="0.07" length="0.15"/></geometry><material name="brazo"/></visual>
+    <collision><origin xyz="0 0 0.075"/><geometry><cylinder radius="0.07" length="0.15"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.075"/><mass value="1.87"/>
+      <inertia ixx="0.00580" iyy="0.00580" izz="0.00458" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <joint name="wrist_1" type="revolute">
+    <parent link="antebrazo"/><child link="muneca_1"/>
+    <origin xyz="0 0 1.344"/><axis xyz="0 1 0"/>
+    <limit lower="-3.1" upper="3.1" effort="400" velocity="1.5"/>
+    <dynamics damping="5.0" friction="0.0"/>
+  </joint>
+
+  <link name="muneca_2">
+    <visual><origin xyz="0 0 0.05"/><geometry><cylinder radius="0.06" length="0.1"/></geometry><material name="brazo"/></visual>
+    <collision><origin xyz="0 0 0.05"/><geometry><cylinder radius="0.06" length="0.1"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.05"/><mass value="0.916"/>
+      <inertia ixx="0.00159" iyy="0.00159" izz="0.00165" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <joint name="wrist_2" type="revolute">
+    <parent link="muneca_1"/><child link="muneca_2"/>
+    <origin xyz="0 0 0.15"/><axis xyz="0 0 1"/>
+    <limit lower="-3.1" upper="3.1" effort="200" velocity="1.5"/>
+    <dynamics damping="5.0" friction="0.0"/>
+  </joint>
+
+  <link name="efector">
+    <visual><origin xyz="0 0 0.025"/><geometry><box size="1.9 0.5 0.05"/></geometry><material name="negro"/></visual>
+    <collision><origin xyz="0 0 0.025"/><geometry><box size="1.9 0.5 0.05"/></geometry></collision>
+    <inertial>
+      <origin xyz="0 0 0.025"/><mass value="6.0"/>
+      <inertia ixx="0.12625" iyy="1.80625" izz="1.93000" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <joint name="wrist_3" type="revolute">
+    <parent link="muneca_2"/><child link="efector"/>
+    <origin xyz="0 0 0.1"/><axis xyz="1 0 0"/>
+    <limit lower="-3.1" upper="3.1" effort="200" velocity="1.5"/>
+    <dynamics damping="5.0" friction="0.0"/>
+  </joint>
+</robot>

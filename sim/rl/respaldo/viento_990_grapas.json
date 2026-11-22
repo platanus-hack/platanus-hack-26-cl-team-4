@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "checkpoint": "model_990.pt",
+  "grapas": true,
+  "rieles": true,
+  "secuencias": 32,
+  "llegaron_al_ultimo_panel": 31,
+  "paneles_por_copia": 3,
+  "direccion": "de lado y 40° hacia arriba",
+  "rafaga_s": 1.5,
+  "rafagas": [
+    {
+      "viento_m_s": 10.0,
+      "fuerza_n": 65.2,
+      "fuerza_sobre_peso": 0.21,
+      "paneles": 93,
+      "corridos_1cm": 0,
+      "volados_10cm": 0,
+      "desplazamiento_max_m": 0.0,
+      "desplazamiento_medio_m": 0.0
+    },
+    {
+      "viento_m_s": 20.0,
+      "fuerza_n": 260.9,
+      "fuerza_sobre_peso": 0.83,
+      "paneles": 93,
+      "corridos_1cm": 0,
+      "volados_10cm": 0,
+      "desplazamiento_max_m": 0.0,
+      "desplazamiento_medio_m": 0.0
+    },
+    {
+      "viento_m_s": 30.0,
+      "fuerza_n": 587.0,
+      "fuerza_sobre_peso": 1.87,
+      "paneles": 93,
+      "corridos_1cm": 0,
+      "volados_10cm": 0,
+      "desplazamiento_max_m": 0.0,
+      "desplazamiento_medio_m": 0.0
+    },
+    {
+      "viento_m_s": 40.0,
+      "fuerza_n": 1043.5,
+      "fuerza_sobre_peso": 3.32,
+      "paneles": 93,
+      "corridos_1cm": 0,
+      "volados_10cm": 0,
+      "desplazamiento_max_m": 0.0,
+      "desplazamiento_medio_m": 0.0
+    }
+  ]
+}

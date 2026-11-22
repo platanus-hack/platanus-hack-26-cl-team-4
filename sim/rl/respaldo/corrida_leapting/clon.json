@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "robot_id": "leapting-mmr",
+  "usd": null,
+  "urdf": "robot.urdf",
+  "piezas": {
+    "base": "base_movil_simple",
+    "brazo": "ur10",
+    "efector": "ventosa_larga"
+  },
+  "escala": {
+    "alcance_m": 3.1,
+    "carga_util_kg": 100.0
+  },
+  "geometria": {
+    "l1_m": 1.456,
+    "l2_m": 1.344,
+    "muneca_m": 0.3,
+    "montaje_x_m": 0.5,
+    "hombro_z_m": 1.55,
+    "cubierta_z_m": 1.25,
+    "pila_x_m": 3.0475,
+    "medio_ancho_m": 0.9
+  },
+  "diferencias_con_real": [
+    "brazo UR10 escalado ×2.192 para igualar el alcance de 3.1 m",
+    "límites de esfuerzo subidos a 3705 N·m para la carga útil de 100 kg",
+    "la navegación de la base es programada; el aprendizaje por refuerzo controla el brazo",
+    "geometría aproximada con piezas de Isaac Lab, sin las mallas del fabricante"
+  ],
+  "validado_en_escena": false,
+  "construccion": {
+    "metodo": "agente",
+    "intentos": 1,
+    "ensamblaje": "ensamblaje.json",
+    "robot_cfg": "robot_cfg.py"
+  }
+}

@@ -49,9 +49,41 @@ Ráfaga de 1,5 s de lado y 40° hacia arriba sobre cada panel ya instalado. Pane
   trababa al levantarlo. Por eso los rieles miden 60 % del largo.
 - **Conclusión:** la física nueva necesita re-entrenar el aterrizaje del panel. No basta con cambiar la geometría.
 
-### Re-entrenamiento con rieles desde model_609
+### Re-entrenamiento con rieles desde model_609 → model_990
 
-Ver la sección siguiente: se completa cuando termina la corrida en el pod (`/workspace/entorno_rl/entrenamiento_rieles`).
+Rieles a ras del tubo original y tubo 4 cm más abajo (`VIAZ_RIELES_BAJO_TUBO_M=0`), ventosa como unión fija, sin viento.
+4096 copias. Se detuvo solo en la iteración 990 (28 min): criterio cumplido y la curva ya no subía.
+
+| Hito | Iteración | Minuto | Éxito sin ayuda (media de 10 iteraciones) |
+|---|---|---|---|
+| Inicio (model_609) | 609 | 0 | 0 % |
+| Primer éxito | 639 | 3 | éxitos aislados |
+| 50 % | 787 | 14 | 66 % |
+| Umbral (criterio) | 918 | 23 | 97,5 % |
+| Final | 990 | 28 | 97,8 % |
+
+### Evaluación de model_990 con la física nueva (sin teletransporte)
+
+| Prueba | v1 (model_609, física vieja) | v2 (model_990, rieles y grapas) |
+|---|---|---|
+| 100 episodios, éxito a 5 cm y 5° | 100 % | **99 %** |
+| 100 episodios, éxito a 2 cm y 2° | 97 % | 84 % |
+| 100 secuencias de 4 paneles, completas | 100 con teletransporte · **79 sin él** | **93**, con grapas físicas |
+| Paneles instalados en las secuencias | 400 de 400 (teletransporte) | 379 de 386 (98,2 %) |
+| Choques y caídas | 0 y 0 | 0 y 0 |
+| Error medio de posición | 1,0 cm | 1,3–1,4 cm |
+| Paneles que se vuelan con 20 m/s sin grapas | 96 de 96 | 90 de 93 |
+| Paneles que se mueven con 40 m/s con grapas | 0 | 0 |
+
+- Las 7 secuencias incompletas fallan por tiempo en el segundo panel: no hay choques ni caídas.
+- La precisión fina (2 cm) baja de 97 % a 84 %: el panel ya no se acomoda deslizándolo sobre el tubo.
+- Archivos: `sim/rl/respaldo/model_990_rieles.pt`, `evaluacion_990_rieles.json`, `secuencia_990_rieles_grapas.json`,
+  `viento_990_*.json`. Videos de los 4 hitos: `clips_fisica/` en el pod.
+
+### Siguiente: ventosa real y viento
+
+Re-entrenamiento desde model_990 con `VIAZ_AGARRE=succion` (fuerza de la ventosa limitada a 2 × g × carga útil) y
+ráfagas de hasta 8 m/s sobre el panel que se maneja (`VIAZ_VIENTO_M_S=8`). Corre en `/workspace/entorno_rl/entrenamiento_succion`.
 
 ## Cómo correrlo en el pod
 

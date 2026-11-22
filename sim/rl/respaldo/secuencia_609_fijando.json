@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "checkpoint": "model_609.pt",
+  "secuencias": 100,
+  "paneles_por_secuencia": 4,
+  "fijar_instalados": true,
+  "tolerancia": {
+    "pos_m": 0.05,
+    "ang_grados": 5.0
+  },
+  "tolerancia_fina": {
+    "pos_m": 0.02,
+    "ang_grados": 2.0
+  },
+  "secuencias_completas": 100,
+  "tasa_exito_secuencia": 1.0,
+  "paneles_intentados": 400,
+  "paneles_instalados": 400,
+  "tasa_exito_panel": 1.0,
+  "choques": 0,
+  "caidas": 0,
+  "tiempo_agotado": 0,
+  "duracion_secuencia_s": 17.14,
+  "ciclo_por_panel_s": 4.28,
+  "por_panel": [
+    {
+      "panel": 0,
+      "intentos": 100,
+      "exitos": 100,
+      "tasa_exito": 1.0,
+      "exitos_fino": 94,
+      "choques": 0,
+      "caidas": 0,
+      "tiempo_agotado": 0,
+      "ciclo_politica_s": 2.12,
+      "viaje_s": null,
+      "error_pos_medio_m": 0.0094
+    },
+    {
+      "panel": 1,
+      "intentos": 100,
+      "exitos": 100,
+      "tasa_exito": 1.0,
+      "exitos_fino": 98,
+      "choques": 0,
+      "caidas": 0,
+      "tiempo_agotado": 0,
+      "ciclo_politica_s": 2.12,
+      "viaje_s": 2.85,
+      "error_pos_medio_m": 0.0091
+    },
+    {
+      "panel": 2,
+      "intentos": 100,
+      "exitos": 100,
+      "tasa_exito": 1.0,
+      "exitos_fino": 98,
+      "choques": 0,
+      "caidas": 0,
+      "tiempo_agotado": 0,
+      "ciclo_politica_s": 2.16,
+      "viaje_s": 2.84,
+      "error_pos_medio_m": 0.0074
+    },
+    {
+      "panel": 3,
+      "intentos": 100,
+      "exitos": 100,
+      "tasa_exito": 1.0,
+      "exitos_fino": 100,
+      "choques": 0,
+      "caidas": 0,
+      "tiempo_agotado": 0,
+      "ciclo_politica_s": 2.15,
+      "viaje_s": 2.84,
+      "error_pos_medio_m": 0.0071
+    }
+  ],
+  "fuente": "isaac"
+}

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "robot_id": "leapting-mmr",
+  "base": {
+    "asset": "base_movil_simple",
+    "altura_cubierta_m": 0.8
+  },
+  "brazo": {
+    "asset": "ur10",
+    "escala_alcance": 2.192,
+    "esfuerzo_max_nm": 3705
+  },
+  "efector": {
+    "asset": "ventosa_larga"
+  },
+  "carga_util_kg": 100,
+  "velocidad_max_rad_s": 2.0,
+  "diferencias_con_real": [
+    "brazo UR10 escalado ×2.192 para igualar el alcance de 3.1 m",
+    "límites de esfuerzo subidos a 3705 N·m para la carga útil de 100 kg"
+  ],
+  "razonamiento": "Modo fijo: UR10 con ventosa larga, la combinación con tareas de ejemplo en Isaac Lab, escalada al robot real."
+}

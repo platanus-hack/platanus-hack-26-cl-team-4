@@ -1,0 +1,45 @@
+{
+  "ventana": 10,
+  "ultima_iteracion": 609,
+  "hitos": [
+    {
+      "nombre": "1_inicio",
+      "iteracion": 0,
+      "hito": "inicio",
+      "alcanzado": true,
+      "exito_sin_ayuda_media": 0.0,
+      "exito_con_ayuda_media": 0.0,
+      "tiempo_s": 20.9
+    },
+    {
+      "nombre": "2_primer_exito",
+      "iteracion": 100,
+      "hito": "primer_exito",
+      "alcanzado": true,
+      "en_iteracion": 89,
+      "exito_sin_ayuda_media": 0.0016,
+      "exito_con_ayuda_media": 0.2416,
+      "tiempo_s": 518.4
+    },
+    {
+      "nombre": "3_exito_50",
+      "iteracion": 400,
+      "hito": "exito_50",
+      "alcanzado": true,
+      "en_iteracion": 376,
+      "exito_sin_ayuda_media": 0.7635,
+      "exito_con_ayuda_media": 0.0,
+      "tiempo_s": 1510.4
+    },
+    {
+      "nombre": "4_umbral_alcanzado",
+      "iteracion": 485,
+      "hito": "umbral_alcanzado",
+      "alcanzado": true,
+      "en_iteracion": 485,
+      "exito_sin_ayuda_media": 0.9919,
+      "exito_con_ayuda_media": 0.0,
+      "tiempo_s": 1827.5
+    }
+  ]
+}
