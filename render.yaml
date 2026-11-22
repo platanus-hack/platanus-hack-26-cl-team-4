@@ -50,6 +50,10 @@ services:
         sync: false
       - key: VIAZ_CORRIDA_DEMO   # id de la corrida de respaldo para /corridas/demo
         sync: false
+      - key: VIAZ_MAX_CORRIDAS_ACTIVAS   # POST /corridas sin token: tope de gasto de Claude y GPU
+        value: "2"
+      - key: VIAZ_VENTANA_CORRIDAS_H   # grabar_clips + evaluar pueden esperar 6 h sin tocar la fila
+        value: "7"
       - { key: R2_ENDPOINT, sync: false }
       - { key: R2_BUCKET, sync: false }
       - { key: R2_ACCESS_KEY_ID, sync: false }

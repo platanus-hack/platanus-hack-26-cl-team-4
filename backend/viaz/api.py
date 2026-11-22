@@ -4,15 +4,17 @@
 """
 from __future__ import annotations
 
+import hmac
 import json
 import math
 import re
+from datetime import timedelta
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import insert, select, update
+from sqlalchemy import func, insert, select, text, update
 
 from . import almacen as alm
 from . import db, hijas
@@ -50,6 +52,15 @@ def _nombre_seguro(nombre: str) -> str:
     return limpio[:100] or "video.mp4"
 
 
+CANDADO_TOPE_CORRIDAS = 7_301_001
+
+
+def tomar_candado_tope(cx, tope: int) -> None:
+    """Serializa contar e insertar entre POST simultáneos. Postgres suelta el candado al cerrar la transacción."""
+    if tope > 0 and cx.dialect.name == "postgresql":
+        cx.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": CANDADO_TOPE_CORRIDAS})
+
+
 def create_app(cfg: Config | None = None) -> FastAPI:
     cfg = cfg or cargar()
     eng = db.motor(cfg.db_url)
@@ -60,11 +71,11 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     app.state.cfg, app.state.eng, app.state.almacen = cfg, eng, store
 
     def es_worker(authorization: str = Header(default="")):
-        if authorization != f"Bearer {cfg.worker_token}":
+        if not hmac.compare_digest(authorization.encode(), f"Bearer {cfg.worker_token}".encode()):
             raise HTTPException(401, "token de worker inválido")
 
     def es_equipo(authorization: str = Header(default="")):
-        if authorization != f"Bearer {cfg.admin_token}":
+        if not hmac.compare_digest(authorization.encode(), f"Bearer {cfg.admin_token}".encode()):
             raise HTTPException(401, "token del equipo inválido")
 
     @app.get("/salud")
@@ -86,6 +97,14 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         with eng.begin() as cx:
             if cx.execute(select(db.proyectos.c.id).where(db.proyectos.c.id == pid)).first() is None:
                 raise HTTPException(404, "no existe el proyecto")
+            tomar_candado_tope(cx, cfg.max_corridas_activas)
+            if cfg.max_corridas_activas and cx.execute(
+                    select(func.count()).select_from(db.corridas)
+                    .where(db.corridas.c.padre_id.is_(None), db.corridas.c.estado.not_in(["listo", "error"]),
+                           db.corridas.c.actualizado > db.ahora() - timedelta(hours=cfg.ventana_corridas_h))
+            ).scalar_one() >= cfg.max_corridas_activas:
+                raise HTTPException(429, f"ya hay {cfg.max_corridas_activas} corridas en curso; "
+                                         "espera a que termine una y vuelve a intentarlo")
             cid = db.nuevo_id()
             etapas = [{"nombre": e, "estado": "pendiente", "artefactos": []} for e in db.ETAPAS]
             cx.execute(insert(db.corridas).values(id=cid, proyecto_id=pid, estado="en_cola", etapas=etapas))
