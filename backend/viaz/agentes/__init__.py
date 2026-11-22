@@ -275,6 +275,48 @@ def problemas_tarea(t: dict, entorno_json: dict) -> list[str]:
     for r in t["restricciones"]:
         if r["tipo"] in RESTRICCIONES_CON_VALOR and r["valor"] is None:
             problemas.append(f"la restricción {r['tipo']} necesita un valor")
+    return problemas + problemas_calidad(t, entorno_json)
+
+
+# Calidad (docs/agentes/tarea.md §9): reglas del prompt que el esquema no expresa.
+DURACION_MAX_S = 600     # la tarea cabe en una demo corta: cantidad × ciclo_s
+# Misma geometría que sim/plan.py (INICIO_X, HOLGURA_SLOT). Una prueba revisa que no se separen.
+INICIO_FILA_M = 2.0      # el primer panel va a 2 m del inicio de la fila
+HOLGURA_PANEL_M = 0.02   # separación entre paneles instalados
+
+
+def paneles_que_caben(entorno_json: dict) -> int:
+    """Paneles que caben en una fila del perfil parque_solar. Igual que sim/plan.py → caben()."""
+    p = entorno_json["panel"]
+    return int((entorno_json["filas"]["largo_m"] - INICIO_FILA_M) // (p["ancho_m"] + HOLGURA_PANEL_M))
+
+
+def problemas_calidad(t: dict, entorno_json: dict) -> list[str]:
+    """Duración, restricciones y perfil instalar_panel. El prompt las pide en "Antes de responder"; el código las repite."""
+    problemas = []
+    n, ciclo = t["objetivo"]["cantidad"], t["objetivo"]["ciclo_s"]
+    if n * ciclo > DURACION_MAX_S:
+        problemas.append(f"objetivo.cantidad × objetivo.ciclo_s = {n} × {ciclo:g} s = {n * ciclo:g} s, "
+                         f"más que {DURACION_MAX_S} s: la tarea no cabe en una demo corta")
+    rs = t["restricciones"]
+    tipos = [r["tipo"] for r in rs]
+    if "no_chocar" not in tipos:
+        problemas.append("falta la restricción no_chocar: va siempre")
+    if not 1 <= len(rs) <= 5:
+        problemas.append(f"hay {len(rs)} restricciones; deben ser de 1 a 5")
+    claves = [(r["tipo"], r["valor"], " ".join(r["detalle"].lower().split()).rstrip(".")) for r in rs]
+    if len(set(claves)) < len(claves):
+        problemas.append("hay restricciones repetidas")
+    if "pila_paneles" in t:   # perfil instalar_panel
+        pila = t["pila_paneles"]["cantidad"]
+        if not 3 <= pila <= 10:
+            problemas.append(f"pila_paneles.cantidad es {pila}; en instalar_panel debe estar entre 3 y 10")
+        if not 30 <= ciclo <= 120:
+            problemas.append(f"objetivo.ciclo_s es {ciclo:g} s; en instalar_panel debe estar entre 30 y 120")
+        if "orientacion_fija" not in tipos:
+            problemas.append("falta la restricción orientacion_fija (panel horizontal durante el traslado)")
+        if "filas" in entorno_json and "panel" in entorno_json and n > (caben := paneles_que_caben(entorno_json)):
+            problemas.append(f"objetivo.cantidad es {n}, pero en una fila caben {caben} paneles")
     return problemas
 
 
