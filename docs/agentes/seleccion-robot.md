@@ -1,8 +1,8 @@
 # Contrato: agente de selección de robot
 
-> Etapa 3. **Contrato v3** (2026-11-21). **Implementado: v2** (un robot, catálogo cerrado, criterios solares en el prompt).
+> Etapa 3. **Contrato v3** (2026-11-21). **Implementado:** pasos 1, 3 y 4 de la v3 (requisitos, descarte por reglas, 1 a 3 finalistas). Sin búsqueda web ni corridas hijas: la corrida sigue con el finalista 1.
 > Requerimientos: RF-ROB-01..12, RF-CLO-10..11, RF-ORQ-07..08, RNF-02, RNF-03.
-> Código v2: [`agentes/__init__.py`](../../backend/viaz/agentes/__init__.py) → `robot()`. Prompt v2: [`prompts/robot.md`](../../backend/viaz/agentes/prompts/robot.md). Catálogo: [`catalogo/robots/`](../../backend/viaz/catalogo/robots/).
+> Código: [`agentes/__init__.py`](../../backend/viaz/agentes/__init__.py) → `seleccionar()`, con el paso 1 en [`agentes/perfiles.py`](../../backend/viaz/agentes/perfiles.py) y los pasos 3 y 4 en [`agentes/seleccion.py`](../../backend/viaz/agentes/seleccion.py). Prompt: [`prompts/robot.md`](../../backend/viaz/agentes/prompts/robot.md). Catálogo: [`catalogo/robots/`](../../backend/viaz/catalogo/robots/). Tests: [`test_seleccion.py`](../../backend/tests/test_seleccion.py).
 > Explicación paso a paso, con un diagrama por parte: [`seleccion-robot-flujo.md`](seleccion-robot-flujo.md).
 > Esquemas v3: [`requisitos`](../../backend/viaz/esquemas/requisitos.schema.json), [`seleccion`](../../backend/viaz/esquemas/seleccion.schema.json), [`comparacion`](../../backend/viaz/esquemas/comparacion.schema.json). Ejemplos en [`fixtures/`](../../backend/viaz/fixtures/).
 
@@ -10,15 +10,15 @@
 
 | Paso | Real y probado | Sin probar | Falso o de relleno | No existe |
 |---|---|---|---|---|
-| 1. Requisitos (perfil de dominio) | Reglas solares en `_fallas()` y `alcance_necesario()`, con tests | — | — | `requisitos.json` y el perfil `solar` como código aparte |
+| 1. Requisitos (perfil de dominio) | Perfil `solar` (`perfiles.py`). Su salida es igual a `fixtures/requisitos.json`. Un dominio sin perfil da `ErrorAgente` | — | — | Perfiles de otros dominios |
 | 2. Búsqueda web | — | — | — | Todo el paso |
-| 3. Descarte por reglas | `_fallas()` para el dominio solar | — | — | Descarte genérico que lee `requisitos.json` |
-| 4. Selección | Un robot (`robot()`, modo `fijo` con tests; modo `claude` revisado a mano) | — | — | 1 a 3 finalistas, `seleccion.json` |
-| 5. Corridas hijas | `procesar_rl` con un robot | — | — | Una corrida hija por finalista |
+| 3. Descarte por reglas | `fallas()` genérico: lee solo `requisitos.json`. Un test por requisito | — | — | — |
+| 4. Selección | Modo `fijo`: 1 a 3 finalistas y `seleccion.json`, con tests. Modo `claude`: las reglas de §4 sobre la respuesta, con tests contra un modelo falso | Modo `claude` contra la API del backend, con salida estructurada | — | — |
+| 5. Corridas hijas | `procesar_rl` con el finalista 1 | — | — | Una corrida hija por finalista |
 | 6. Modelo comprobado | — | — | — | Registro y reuso de recetas de clon |
 | 7. Comparación | — | — | Métricas de `fixtures/comparacion.json` (ilustrativas) | Regla, `comparacion.json`, `fidelidad` en el código |
 
-- **Esquemas y fixtures v3:** existen y validan (`test_esquemas.py`). Ningún código los escribe ni los lee todavía.
+- **Esquemas y fixtures v3:** existen y validan (`test_esquemas.py`). La etapa robot de los dos flujos escribe `requisitos.json`, `seleccion.json` y `robot.json` (finalista 1). `fixtures/seleccion.json` sale del modo `fijo`. Nadie escribe `comparacion.json` todavía.
 - **Otro dominio:** con este contrato el agente puede **elegir** para otro dominio. La **simulación** de ese dominio no corre todavía: `entorno.json`, `tarea.json` y `sim/rl` son solo solares.
 
 ## Flujo v3
@@ -63,7 +63,7 @@ flowchart TD
 ### Paso 1: perfil de dominio
 
 - **Qué hace:** traduce el dominio a requisitos neutros. La selección lee `requisitos.json`. No lee "panel" ni "tubo".
-- **Perfil `solar`:** contiene las reglas de hoy (`_fallas()`, `alcance_necesario()`). Otro dominio agrega su propio perfil.
+- **Perfil `solar`:** contiene las reglas solares (`perfil_solar()`, `alcance_necesario()`). Otro dominio agrega su propio perfil al registro `PERFILES` y su tipo de entorno a `DOMINIO_POR_TIPO_DE_ENTORNO`.
 
 | Campo de `requisitos.json` | Perfil `solar` |
 |---|---|
@@ -72,7 +72,7 @@ flowchart TD
 | `efectores_aceptados` | `["ventosa"]` |
 | `movilidad`, `tipos_aceptados` | `movil`. Con pendiente mayor a 10°, solo `vehiculo_con_brazo`. Nunca `brazo_fijo` |
 | `por_robot[].alcance_min_m` | `alcance_necesario(entorno, ficha)` |
-| `preferencias` | Velocidad de base, margen de carga y alcance, real sobre ficticio, menos specs estimadas |
+| `preferencias` | En este orden: `real_sobre_ficticio`, `menos_specs_estimadas`, `mayor_margen_carga_alcance`, `mayor_velocidad_base`. Un dato publicado pesa más que la velocidad. Cada criterio es una clave de orden en `seleccion.PREFERENCIAS`. Un criterio desconocido da `ErrorAgente` |
 | `advertencias` | Cada dato de `entorno.confianza` menor a 1 |
 
 #### Cálculo de `alcance_min_m` (perfil `solar`)
@@ -186,8 +186,10 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 
 ## 5. Instrucciones (resumen del prompt)
 
-- **Hoy (v2):** el prompt trae los criterios solares (carga ≥ panel, ventosa, alcance, tipo según pendiente). No cambia en este PR.
-- **v3:** el prompt de selección lee `requisitos.json` y no nombra el dominio. Ordena los candidatos que pasan con `preferencias`.
+- **Hoy (v3):** el prompt lee `requisitos.json` y no nombra el dominio. Recibe solo los candidatos que pasan, ordenados por `preferencias`. Devuelve finalistas y alternativas.
+- **Ninguno pasa:** el código elige el candidato y el modelo solo escribe la justificación.
+- **Probado a mano el 2026-11-21:** el prompt v3 corrió 3 veces contra el modelo real por la CLI, con la entrada que arma el código. Las 2 respuestas del caso normal pasaron `comprobar()`. La del caso sin candidatos dijo en su primera oración que ninguno cumple.
+- **Sin probar:** la llamada del backend con salida estructurada de la API. Los tests usan un modelo falso.
 - **Búsqueda:** un prompt nuevo, con búsqueda web, que devuelve fichas del catálogo. **[Por escribir]**
 - **Sigue igual:** decir si un robot es ficticio, advertir datos con confianza baja y usar vocabulario ISO 8373 (RF-WEB-11).
 
@@ -207,8 +209,10 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 - **Hoy:** cada ficha del catálogo valida y su `id` coincide con el archivo. Los 3 fixtures v3 validan contra su esquema.
 - **Hoy:** `requisitos.json → por_robot` coincide con `alcance_necesario()` para cada ficha (`test_esquemas.py`).
 - **Regla de alcance:** `alcance_necesario()` vs `sim/plan.py` → `validar()` (ver §2).
-- **Por hacer:** descarte por reglas con fichas que fallan cada requisito, tope de finalistas y regla de la comparación con empates.
-- **Con Claude:** revisar a mano 3 corridas. La justificación debe citar carga, alcance y terreno.
+- **Hoy (`test_seleccion.py`):** perfil `solar` igual al fixture, una falla por requisito, finalistas del catálogo real, tope de 1 a 3, ninguno pasa, núcleo de `fisica`, `robot.json` por finalista y cada regla de §4 sobre la respuesta de un modelo falso.
+- **Hoy (`test_flujo.py`, `test_rl.py`):** los dos flujos guardan `requisitos.json` y `seleccion.json`.
+- **Por hacer:** regla de la comparación con empates.
+- **Con Claude:** 3 corridas revisadas a mano por la CLI (ver §5). Falta repetirlas con la API del backend.
 
 ## Decisiones abiertas
 

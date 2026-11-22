@@ -92,7 +92,7 @@ flowchart LR
 
 ## Selección v3: `requisitos.json`, `seleccion.json`, `comparacion.json`
 
-> **Contrato, sin código.** Los esquemas y los fixtures existen y validan. Ninguna etapa escribe ni lee estos archivos todavía. Detalle en [`agentes/seleccion-robot.md`](agentes/seleccion-robot.md).
+> **Estado:** la etapa robot de los dos flujos escribe `requisitos.json` y `seleccion.json` ([`agentes.seleccionar()`](../backend/viaz/agentes/__init__.py)). Nadie escribe `comparacion.json` todavía. Detalle en [`agentes/seleccion-robot.md`](agentes/seleccion-robot.md).
 
 | Archivo | Lo escribe | Contenido | Esquema | Ejemplo |
 |---|---|---|---|---|
@@ -100,7 +100,8 @@ flowchart LR
 | `seleccion.json` | Código + agente de selección | Estado de la búsqueda, encontrados, descartados con fallas, 1 a 3 finalistas, alternativas | [`seleccion.schema.json`](../backend/viaz/esquemas/seleccion.schema.json) | [`fixtures/seleccion.json`](../backend/viaz/fixtures/seleccion.json) |
 | `comparacion.json` | Código (regla) + agente (explicación) | Ganador, regla, condiciones comunes, ranking con fidelidad, qué compara y qué no | [`comparacion.schema.json`](../backend/viaz/esquemas/comparacion.schema.json) | [`fixtures/comparacion.json`](../backend/viaz/fixtures/comparacion.json) (métricas ilustrativas) |
 
-- **Un `robot.json` por finalista,** con el formato de arriba, en su corrida hija.
+- **Un `robot.json` por finalista,** con el formato de arriba. Hoy la corrida guarda solo el del finalista 1. Las corridas hijas, una por finalista, no existen todavía.
+- **`robot.json → alternativas`:** lista a cada otro candidato: los otros finalistas (`finalista N`), las alternativas (su `por_que_no`) y los descartados (sus fallas).
 
 ## `clon.json` (etapa 4) + `robot.urdf` + `validacion.json`
 
