@@ -82,7 +82,7 @@ Reglas:
 
 - [ ] Elegir el servidor MCP para Isaac Sim y verificar que funciona con la versión del pod ([`infraestructura.md`](../infraestructura.md)).
 - [ ] Escribir el `CLAUDE.md` del pod con las instrucciones de §5.
-- [ ] Documentar el túnel SSH para usarlo desde un Mac.
+- [ ] Documentar el puerto del túnel del servidor MCP para usarlo desde un Mac. El alias SSH `viaz-pod` ya está en [`infraestructura.md`](../infraestructura.md) §4.
 
 ## Calidad visual
 

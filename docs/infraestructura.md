@@ -53,11 +53,41 @@ flowchart LR
 ## 4. Variables de entorno del pod
 
 ```bash
-API_URL=https://<api>.onrender.com   # API en Render
+VIAZ_API=https://<api>.onrender.com  # API en Render
 WORKER_TOKEN=...                     # mismo valor que en Render
 ```
 
 El pod las lee del gestor de secretos del proveedor o de un `.env` fuera de git. Ver [`requerimientos.md`](requerimientos.md) §7.3.
+
+### Acceso SSH a la instancia (solo desarrollo)
+
+El pipeline no usa SSH. El runner pide los trabajos a la API, así que Render no necesita ningún dato de la instancia.
+
+Usan SSH solo dos cosas:
+
+- Los agentes de desarrollo (Claude Code en la máquina de cada persona).
+- El agente MCP de Isaac Sim ([`agentes/mcp-isaac-sim.md`](agentes/mcp-isaac-sim.md)).
+
+**Cuidado:** el repo es público. Nunca escribas el host, el puerto, el usuario ni la llave de la instancia en el repo, en un commit, en un PR ni en un issue.
+
+Los datos de conexión viven en el `~/.ssh/config` de cada persona, con el alias `viaz-pod`.
+
+1. Registra tu llave pública en Vast.ai (en las llaves de la cuenta o en la instancia).
+2. Agrega este bloque a tu `~/.ssh/config`:
+
+   ```text
+   Host viaz-pod
+     HostName <ip-o-host-de-vast>
+     Port <puerto>
+     User root
+     IdentityFile ~/.ssh/<tu-llave>
+     IdentitiesOnly yes
+   ```
+
+3. Prueba la conexión: `ssh viaz-pod nvidia-smi`.
+4. Si Vast.ai cambia la IP o el puerto después de un reinicio, corrige solo tu alias.
+
+Los agentes y los scripts usan siempre `ssh viaz-pod` (también `scp` y `rsync`), nunca la dirección directa.
 
 ## 5. Montar el pod en un comando
 
