@@ -64,26 +64,34 @@ Rieles a ras del tubo original y tubo 4 cm más abajo (`VIAZ_RIELES_BAJO_TUBO_M=
 
 ### Evaluación de model_990 con la física nueva (sin teletransporte)
 
-| Prueba | v1 (model_609, física vieja) | v2 (model_990, rieles y grapas) |
-|---|---|---|
-| 100 episodios, éxito a 5 cm y 5° | 100 % | **99 %** |
-| 100 episodios, éxito a 2 cm y 2° | 97 % | 84 % |
-| 100 secuencias de 4 paneles, completas | 100 con teletransporte · **79 sin él** | **93**, con grapas físicas |
-| Paneles instalados en las secuencias | 400 de 400 (teletransporte) | 379 de 386 (98,2 %) |
-| Choques y caídas | 0 y 0 | 0 y 0 |
-| Error medio de posición | 1,0 cm | 1,3–1,4 cm |
-| Paneles que se vuelan con 20 m/s sin grapas | 96 de 96 | 90 de 93 |
-| Paneles que se mueven con 40 m/s con grapas | 0 | 0 |
+| Prueba | v1 (model_609, física vieja) | v2 (model_990, rieles y grapas) | **v3 (model_1164, + ventosa real y viento)** |
+|---|---|---|---|
+| 100 episodios, éxito a 5 cm y 5° | 100 % | 99 % | **99 %** |
+| 100 episodios, éxito a 2 cm y 2° | 97 % | 84 % | 83 % |
+| 100 secuencias de 4 paneles, completas | 100 con teletransporte · 79 sin él | 93, con grapas físicas | **98**, con grapas físicas |
+| Paneles instalados en las secuencias | 400 de 400 (teletransporte) | 379 de 386 (98,2 %) | **393 de 395 (99,5 %)** |
+| Choques y caídas | 0 y 0 | 0 y 0 | 0 y 0 |
+| Error medio de posición | 1,0 cm | 1,3–1,4 cm | 1,1–1,2 cm |
+| Paneles que se vuelan con 20 m/s sin grapas | 96 de 96 | 90 de 93 | — |
+| Paneles que se mueven con 40 m/s con grapas | 0 | 0 | — |
+
+v3 se evalúa en sus condiciones de entrenamiento: ventosa con fuerza limitada (`VIAZ_AGARRE=succion`) y ráfagas de hasta
+8 m/s sobre el panel que se maneja (`VIAZ_VIENTO_M_S=8`). Re-entrenado desde model_990: se detuvo solo en la iteración 1164,
+a los 9 min, con 99 % de éxito sin ayuda.
 
 - Las 7 secuencias incompletas fallan por tiempo en el segundo panel: no hay choques ni caídas.
 - La precisión fina (2 cm) baja de 97 % a 84 %: el panel ya no se acomoda deslizándolo sobre el tubo.
 - Archivos: `sim/rl/respaldo/model_990_rieles.pt`, `evaluacion_990_rieles.json`, `secuencia_990_rieles_grapas.json`,
   `viento_990_*.json`. Videos de los 4 hitos: `clips_fisica/` en el pod.
 
-### Siguiente: ventosa real y viento
+- v3: `sim/rl/respaldo/model_1164_succion_viento.pt`, `evaluacion_1164_succion_viento.json`, `secuencia_1164_succion_viento.json`.
 
-Re-entrenamiento desde model_990 con `VIAZ_AGARRE=succion` (fuerza de la ventosa limitada a 2 × g × carga útil) y
-ráfagas de hasta 8 m/s sobre el panel que se maneja (`VIAZ_VIENTO_M_S=8`). Corre en `/workspace/entorno_rl/entrenamiento_succion`.
+### Lo que sigue simplificado
+
+- **Base móvil:** se mueve por código, sin tracción ni orugas que toquen el suelo.
+- **Suelo:** plano. El terreno realista es solo visual.
+- **Grapa:** rígida. No modela la carga a la que se rompe una grapa real.
+- **Masa del brazo:** unos 72 kg, menos que un brazo industrial real de 100 kg de carga útil.
 
 ## Cómo correrlo en el pod
 

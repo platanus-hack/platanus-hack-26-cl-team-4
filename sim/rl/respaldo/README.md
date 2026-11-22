@@ -12,6 +12,8 @@ flowchart LR
 
 | Archivo | Qué es |
 |---|---|
+| `model_1164_succion_viento.pt` | **Política más real**: rieles, grapas, ventosa con fuerza limitada y viento hasta 8 m/s. 98 de 100 secuencias, 0 choques. Re-entrenada desde model_990 |
+| `evaluacion_1164_succion_viento.json`, `secuencia_1164_succion_viento.json` | Su evaluación con `VIAZ_AGARRE=succion` y `VIAZ_VIENTO_M_S=8` |
 | `model_990_rieles.pt` | **Política para la física nueva** (rieles y grapas, docs/fisica-real.md). Re-entrenada desde model_609 |
 | `evaluacion_990_rieles.json`, `secuencia_990_rieles_grapas.json` | 99 % a 5 cm y 5°; 93 de 100 secuencias con grapas físicas |
 | `viento_990_grapas.json`, `viento_990_sin_grapas.json` | Ráfagas de 10 a 40 m/s sobre los paneles instalados |
