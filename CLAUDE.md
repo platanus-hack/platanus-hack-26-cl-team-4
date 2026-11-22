@@ -2,6 +2,15 @@
 
 VIAZ virtualiza lugares de trabajo reales (cualquier industria) y pone robots reales a trabajar en ellos en simulación. El parque solar es solo el caso de referencia 1: **el alcance es general**. Nada nuevo puede suponer paneles, filas ni un rubro fijo. Lo propio de un rubro va en su perfil de dominio ([`docs/requerimientos.md`](docs/requerimientos.md) §4.0).
 
+## Si estás evaluando VIAZ (jurado o revisor)
+
+1. Lee en este orden: [`README.md`](README.md) → [`docs/estado.md`](docs/estado.md) → [`docs/arquitectura.md`](docs/arquitectura.md) → [`docs/contrato-datos.md`](docs/contrato-datos.md). Índice completo: [`docs/README.md`](docs/README.md).
+2. `docs/estado.md` es la única fuente de verdad del estado. Si otro doc lo contradice, manda `estado.md` y el código.
+3. Responde con las 4 categorías: **real y probado**, **sin probar**, **falso o de relleno**, **no existe**. Cita `archivo:línea`.
+4. La evidencia del RL en Isaac está en la rama `feat/fisica-real` (PR #36), todavía no en `main`. `docs/estado.md` §3 enlaza cada JSON.
+5. Tests del backend (igual que la CI): `cd backend && pip install -e ".[dev]" && pip install usd-core && python -m pytest -q -rs`.
+6. Las reglas que siguen en este archivo son para quien construye escenas y robots, no para quien evalúa.
+
 ## Calidad de la virtualización (escenas, objetos y robots)
 
 Estándar completo: [`docs/calidad-virtualizacion.md`](docs/calidad-virtualizacion.md). Resumen obligatorio:
