@@ -32,6 +32,7 @@ OJO = (-4.5, -10.5, 5.8)
 MIRA = (4.6, 1.2, 1.1)
 # Crear este archivo detiene la ventana en vivo sin matar el proceso (se borra al partir).
 DETENER = Path("/workspace/entorno_rl/DETENER_VIVO")
+PAUSA_FINAL_S = 2.0   # en la grabación, la fila terminada se queda en pantalla antes de la secuencia siguiente
 
 
 def main() -> None:
@@ -44,10 +45,15 @@ def main() -> None:
     ap.add_argument("--vueltas", type=int, default=0, help="secuencias a mostrar. 0: hasta cerrar la ventana")
     ap.add_argument("--rapido", action="store_true", help="no espera al reloj: corre tan rápido como pueda")
     ap.add_argument("--paneles", type=int, default=6, help="paneles seguidos por secuencia (la pila lleva los mismos)")
+    ap.add_argument("--grabar", type=Path, help="graba un mp4 sin ventana, sin paneles de la interfaz (usar con --vueltas)")
+    ap.add_argument("--resolucion", default="1920x1080", help="ancho x alto del video de --grabar")
     a = ap.parse_args()
-    a.headless = False
+    # Con --grabar corre sin ventana y con cámaras: puede correr al lado de la ventana en vivo.
+    a.headless = bool(a.grabar)
+    a.enable_cameras = bool(a.grabar)
     a.salida_tarea = "/workspace/entorno_rl/vivo_tarea.json"
-    DETENER.unlink(missing_ok=True)
+    if not a.grabar:
+        DETENER.unlink(missing_ok=True)
     app = AppLauncher(a).app
     comun.ejecutar(app, lambda: en_vivo(a, app))
 
@@ -87,6 +93,20 @@ def vestir(entorno, detallado: str, terreno: str) -> dict:
             UsdGeom.Imageable(p).MakeInvisible()
             escondidos.append(p.GetName())
     informe["escondidos"] = escondidos
+
+    # 2b. Con rieles a ras (geometría real), el tubo físico va más abajo (viaz_escena.poner_rieles). El tubo del
+    # terreno baja lo mismo para que lo que se ve calce con lo que toca el robot. Los rieles de la copia se ven.
+    import fisica
+
+    r = fisica.RIELES
+    if r["activos"] and r["bajo_tubo_m"] <= 0:
+        tubo = stage.GetPrimAtPath("/World/Terreno/Planta/Fila0_Tubo")
+        if tubo.IsValid():
+            api = UsdGeom.XformCommonAPI(tubo)
+            t, rot, esc, piv, orden = api.GetXformVectors(Usd.TimeCode.Default())
+            api.SetTranslate(Gf.Vec3d(t[0], t[1], t[2] - r["alto_m"]))
+            informe["tubo_terreno_bajado_m"] = r["alto_m"]
+    informe["rieles_visibles"] = len([h for h in copia.GetChildren() if h.GetName().startswith("Riel")])
 
     # 3. Robot detallado: copia los materiales y la malla "detalle" de cada eslabón, y esconde sus formas simples.
     capa = Sdf.Layer.FindOrOpen(detallado)
@@ -171,6 +191,49 @@ def alargar_fila(a) -> dict:
     return {"paneles": a.paneles, "tramo_m": tramo, "ultimo_slot_hasta_m": round(ultimo, 3)}
 
 
+class Grabadora:
+    """Cuadros de la cámara del visor a un mp4 H.264 de alta calidad, sin archivos intermedios."""
+
+    def __init__(self, a, env_gym, entorno, dt: float):
+        import subprocess
+
+        import video
+        from rl import grabacion
+
+        self.env_gym = env_gym
+        self.ancho, self.alto = entorno.cfg.viewer.resolution
+        self.salida = Path(a.grabar)
+        self.salida.parent.mkdir(parents=True, exist_ok=True)
+        self.fps = round(1 / dt)
+        self.cuadros, self.ultimo = 0, None
+        grabacion.camara_lateral(entorno)
+        grabacion.descartar_inicio(env_gym)
+        self.proceso = subprocess.Popen(
+            [video.ffmpeg(), "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
+             "-s", f"{self.ancho}x{self.alto}", "-r", str(self.fps), "-i", "-", "-c:v", "libx264", "-preset", "slow",
+             "-crf", "16", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(self.salida)],
+            stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    def cuadro(self) -> None:
+        rgb = self.env_gym.render()
+        self.ultimo = rgb[..., :3].tobytes()
+        self.proceso.stdin.write(self.ultimo)
+        self.cuadros += 1
+
+    def pausa(self, segundos: float) -> None:
+        for _ in range(int(segundos * self.fps) if self.ultimo else 0):
+            self.proceso.stdin.write(self.ultimo)
+            self.cuadros += 1
+
+    def cerrar(self) -> dict:
+        self.proceso.stdin.close()
+        error = self.proceso.stderr.read().decode(errors="replace")
+        if self.proceso.wait() != 0:
+            raise RuntimeError(f"ffmpeg falló: {error[-800:]}")
+        return {"video": str(self.salida), "cuadros": self.cuadros, "segundos": round(self.cuadros / self.fps, 1),
+                "resolucion": f"{self.ancho}x{self.alto}"}
+
+
 def en_vivo(a, app) -> dict:
     import torch
 
@@ -194,10 +257,13 @@ def en_vivo(a, app) -> dict:
         cfg = crear_original(*args, **kwargs)
         cfg.viewer.eye, cfg.viewer.lookat = OJO, MIRA
         cfg.viewer.origin_type, cfg.viewer.env_index = "env", 0
+        if a.grabar:
+            ancho, alto = (int(x) for x in a.resolucion.lower().split("x"))
+            cfg.viewer.resolution = (ancho, alto)
         return cfg
 
     ent.crear_cfg = crear_cfg
-    env_gym = comun.crear_entorno(a, 1, paneles=0, secuencia=True, en_pila=a.paneles)
+    env_gym = comun.crear_entorno(a, 1, render=bool(a.grabar), paneles=0, secuencia=True, en_pila=a.paneles)
     entorno = env_gym.unwrapped
     print(json.dumps({"vestido": vestido}, ensure_ascii=False), flush=True)
     env, politica = comun.cargar_politica(env_gym, a.checkpoint)
@@ -205,11 +271,16 @@ def en_vivo(a, app) -> dict:
 
     obs, _ = env.reset()
     dt = entorno.step_dt
+    grabadora = Grabadora(a, env_gym, entorno, dt) if a.grabar else None
     vueltas, instalados, intentos = 0, 0, 0
     with torch.inference_mode():
         while app.is_running() and not DETENER.exists():
             t0 = time.perf_counter()
             obs, _, fin, _ = env.step(politica(obs))
+            if grabadora and not bool(fin[0]):   # el cuadro del fin ya muestra la escena reiniciada
+                grabadora.cuadro()
+            if grabadora and bool(fin[0]):
+                grabadora.pausa(PAUSA_FINAL_S)    # la fila completa se queda en pantalla un momento
             if bool(entorno.panel_fin[0]):
                 r = {k: round(float(v[0]), 4) for k, v in entorno.final.items()}
                 intentos += 1
@@ -221,11 +292,14 @@ def en_vivo(a, app) -> dict:
                 print(json.dumps({"secuencia": vueltas, "instalados": instalados, "intentos": intentos}), flush=True)
                 if a.vueltas and vueltas >= a.vueltas:
                     break
-            if not a.rapido:
+            if not a.rapido and not grabadora:
                 espera = dt - (time.perf_counter() - t0)
                 if espera > 0:
                     time.sleep(espera)
-    return {"ok": True, "secuencias": vueltas, "paneles_instalados": instalados, "intentos": intentos}
+    informe = {"ok": True, "secuencias": vueltas, "paneles_instalados": instalados, "intentos": intentos}
+    if grabadora:
+        informe["grabacion"] = grabadora.cerrar()
+    return informe
 
 
 if __name__ == "__main__":
