@@ -85,7 +85,7 @@ def test_flujo_completo(entorno_local):
     assert [e["estado"] for e in c["etapas"]] == ["listo"] * 5
 
     artefactos = {a: u for e in c["etapas"] for a, u in e["artefactos"].items()}
-    for nombre in ("entorno", "tarea", "robot", "clon", "resultado", "trayectoria"):
+    for nombre in ("entorno", "tarea", "requisitos", "seleccion", "robot", "clon", "resultado", "trayectoria"):
         validar(nombre, requests.get(artefactos[f"{nombre}.json"], timeout=5).json())
     assert requests.get(artefactos["escena.usd"], timeout=5).text.startswith("#usda 1.0")
     assert "<robot" in requests.get(artefactos["robot.urdf"], timeout=5).text

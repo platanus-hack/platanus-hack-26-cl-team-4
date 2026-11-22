@@ -5,6 +5,8 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .esquemas import esquema
+
 
 def _url_db(url: str) -> str:
     # Render entrega postgres://... o postgresql://...; SQLAlchemy con psycopg 3 necesita postgresql+psycopg://
@@ -12,6 +14,20 @@ def _url_db(url: str) -> str:
         if url.startswith(prefijo):
             return "postgresql+psycopg://" + url[len(prefijo):]
     return url
+
+
+TOPE_FINALISTAS: int = esquema("seleccion")["properties"]["finalistas"]["maxItems"]
+
+
+def validar_max_finalistas(valor: int | str) -> int:
+    """Cuántos finalistas puede devolver la selección: 1 a TOPE_FINALISTAS."""
+    try:
+        n = int(valor)
+    except (TypeError, ValueError):
+        raise ValueError(f"VIAZ_MAX_FINALISTAS debe ser un entero de 1 a {TOPE_FINALISTAS}; vale {valor!r}") from None
+    if not 1 <= n <= TOPE_FINALISTAS:
+        raise ValueError(f"VIAZ_MAX_FINALISTAS debe estar entre 1 y {TOPE_FINALISTAS}; vale {n}")
+    return n
 
 
 @dataclass(frozen=True)
@@ -48,6 +64,8 @@ class Config:
     horas_entrenamiento: float = field(default_factory=lambda: float(os.getenv("VIAZ_HORAS_ENTRENAMIENTO", "4")))
     episodios_evaluacion: int = field(default_factory=lambda: int(os.getenv("VIAZ_EPISODIOS_EVALUACION", "100")))
     intentos_constructor: int = field(default_factory=lambda: int(os.getenv("VIAZ_INTENTOS_CONSTRUCTOR", "3")))
+    max_finalistas: int = field(default_factory=lambda: validar_max_finalistas(
+        os.getenv("VIAZ_MAX_FINALISTAS", str(TOPE_FINALISTAS))))
     # Monitor del entrenamiento (RF-MON): cada cuánto chequea y a dónde avisa.
     monitor_s: float = field(default_factory=lambda: float(os.getenv("VIAZ_MONITOR_S", "600")))
     discord_webhook: str = field(default_factory=lambda: os.getenv("VIAZ_DISCORD_WEBHOOK", ""))

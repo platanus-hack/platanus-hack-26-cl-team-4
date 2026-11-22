@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from viaz import agentes, catalogo, urdf
+from viaz.agentes import seleccion
 from viaz.esquemas import NOMBRES, ErrorEsquema, esquema, para_api, sin_campos, validar
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -76,7 +77,7 @@ def test_fixtures_de_seleccion_v3_son_coherentes_con_el_catalogo():
     candidatos = [f["id"] for f in sel["finalistas"]] + [a["id"] for a in sel["alternativas"]]
     assert sorted(candidatos + [d["id"] for d in sel["descartados"]]) == sorted(robots)
     assert {d["id"]: d["fallas"] for d in sel["descartados"]} == {
-        i: agentes._fallas(r, e) for i, r in robots.items() if agentes._fallas(r, e)}
+        i: seleccion.fallas(r, req) for i, r in robots.items() if seleccion.fallas(r, req)}
     nucleo = {"largo_m", "ancho_m", "masa_kg", "altura_cubierta_m", "traccion"}
     assert all(nucleo <= set(robots[f["id"]].get("fisica", {})) for f in sel["finalistas"])
     assert comp["ganador"] == sel["finalistas"][0]["id"]
@@ -94,14 +95,14 @@ def test_validar_rechaza_datos_fuera_de_contrato():
 def test_robot_fijo_toma_las_specs_del_catalogo():
     e = json.loads((agentes.FIXTURES / "entorno.json").read_text(encoding="utf-8"))
     t = json.loads((agentes.FIXTURES / "tarea.json").read_text(encoding="utf-8"))
-    r = agentes.robot("fijo", "x", e, t, catalogo.cargar())
+    r = agentes.seleccionar("fijo", "x", e, t, catalogo.cargar()).robots_por_puesto[0]
     assert r["carga_util_kg"] == catalogo.cargar()[r["id"]]["carga_util_kg"]
 
 
 def test_plan_llega_a_la_estructura_y_a_la_pila():
     e = json.loads((agentes.FIXTURES / "entorno.json").read_text(encoding="utf-8"))
     t = json.loads((agentes.FIXTURES / "tarea.json").read_text(encoding="utf-8"))
-    clon, texto_urdf = agentes.clon(agentes.robot("fijo", "x", e, t, catalogo.cargar()))
+    clon, texto_urdf = agentes.clon(agentes.seleccionar("fijo", "x", e, t, catalogo.cargar()).robots_por_puesto[0])
     assert plan.validar(e, t, clon)["ok"]
     tray = plan.generar(e, t, clon)
     validar("trayectoria", tray)

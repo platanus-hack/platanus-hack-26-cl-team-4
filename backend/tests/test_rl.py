@@ -92,7 +92,7 @@ def test_flujo_rl_completo(sistema):
     c = _correr(url)
     assert c["estado"] == "listo", c["error"]
     a = _artefactos(c)
-    for n in ("entorno", "tarea", "robot", "clon", "resultado", "evaluacion", "ensamblaje", "hitos", "curva"):
+    for n in ("entorno", "tarea", "requisitos", "seleccion", "robot", "clon", "resultado", "evaluacion", "ensamblaje", "hitos", "curva"):
         validar(n, requests.get(a[f"{n}.json"], timeout=5).json())
     clon = requests.get(a["clon.json"], timeout=5).json()
     assert clon["validado_en_escena"] and clon["construccion"]["metodo"] == "agente"
@@ -171,7 +171,7 @@ def test_latido_con_nan_pide_detener(tmp_path):
 def _fixtures():
     e = json.loads((FIX / "entorno.json").read_text(encoding="utf-8"))
     t = json.loads((FIX / "tarea.json").read_text(encoding="utf-8"))
-    return e, t, agentes.robot("fijo", "x", e, t, catalogo.cargar())
+    return e, t, agentes.seleccionar("fijo", "x", e, t, catalogo.cargar()).robots_por_puesto[0]
 
 
 def test_reglas_del_constructor():
