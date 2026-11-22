@@ -49,12 +49,8 @@ class Corrida:
                            .values(estado=campos["estado"], actualizado=db.ahora()))
 
     def etapa(self, nombre: str, estado: str, artefactos: list[str] | None = None, estado_corrida: str | None = None):
-        for e in self.etapas:
-            if e["nombre"] == nombre:
-                e["estado"] = estado
-                if artefactos is not None:
-                    e["artefactos"] = artefactos
-        self.etapas = [dict(e) for e in self.etapas]  # copia nueva: SQLAlchemy detecta el cambio del JSON
+        cambios = {"estado": estado, **({"artefactos": artefactos} if artefactos is not None else {})}
+        self.etapas = [{**e, **cambios} if e["nombre"] == nombre else dict(e) for e in self.etapas]
         self.etapa_actual = nombre if estado == "en_curso" else self.etapa_actual
         self.guardar(**({"estado": estado_corrida} if estado_corrida else {}))
 

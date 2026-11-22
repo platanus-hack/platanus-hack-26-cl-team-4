@@ -437,7 +437,8 @@ def esquema_agente_constructor(assets: dict) -> dict:
 
 
 def constructor(modo: str, modelo: str, robot_json: dict, entorno_json: dict, tarea_json: dict, assets: dict,
-                intento: int, problemas_previos: list[str] | None = None, previo: dict | None = None) -> dict:
+                intento: int, problemas_previos: list[str] | None = None, previo: dict | None = None,
+                total_intentos: int = 3) -> dict:
     """Devuelve ensamblaje.json validado contra su esquema. Las reglas del robot real las revisa robot_cfg.problemas()."""
     from .. import robot_cfg as rc
     if modo == "fijo":
@@ -450,7 +451,7 @@ def constructor(modo: str, modelo: str, robot_json: dict, entorno_json: dict, ta
                  f"Reglas: alcance resultante = alcance del brazo × escala_alcance + largo del efector, "
                  f"±5 % del real; esfuerzo_max_nm ≥ (carga + masa del efector) × 9,81 × alcance × {rc.FACTOR_ESFUERZO}.\n\n"
                  f"Catálogo de assets:\n{json.dumps(assets, ensure_ascii=False)}\n\n"
-                 f"Intento {intento} de 3.")
+                 f"Intento {intento} de {total_intentos}.")
         if previo is not None:
             texto += (f"\n\nEnsamblaje del intento anterior:\n{json.dumps(previo, ensure_ascii=False)}"
                       f"\nProblemas:\n- " + "\n- ".join(problemas_previos or []))
