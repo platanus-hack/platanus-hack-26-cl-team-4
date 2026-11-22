@@ -11,8 +11,8 @@
   "por_robot": [
     { "id": "aes-maximo", "alcance_min_m": 2.28 },
     { "id": "leapting-mmr", "alcance_min_m": 2.53 },
-    { "id": "relu-bison", "alcance_min_m": 2.28 },
-    { "id": "trinatracker-buildex-e", "alcance_min_m": 2.28 },
+    { "id": "relu-bison", "alcance_min_m": 2.86 },
+    { "id": "trinatracker-buildex-e", "alcance_min_m": 2.95 },
     { "id": "viaz-instalador-ficticio", "alcance_min_m": 2.28 }
   ],
   "preferencias": [
