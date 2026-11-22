@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 
 from viaz import db
-from viaz.api import create_app
+from viaz.api import CANDADO_TOPE_CORRIDAS, create_app, tomar_candado_tope
 from viaz.config import Config
 
 
@@ -91,6 +93,38 @@ def test_valor_invalido_falla_al_leer_la_config(monkeypatch, valor):
     monkeypatch.setenv("VIAZ_MAX_CORRIDAS_ACTIVAS", valor)
     with pytest.raises(ValueError, match="VIAZ_MAX_CORRIDAS_ACTIVAS"):
         Config()
+
+
+class _ConexionDoble:
+    """Conexión mínima con dialecto a elección: registra lo que se ejecuta sin base de datos."""
+
+    def __init__(self, dialecto: str):
+        self.dialect = SimpleNamespace(name=dialecto)
+        self.ejecutado: list[tuple[str, dict | None]] = []
+
+    def execute(self, sentencia, parametros=None):
+        self.ejecutado.append((str(sentencia), parametros))
+
+
+def test_en_sqlite_no_se_emite_el_candado(tmp_path):
+    cli, pid = _cliente(tmp_path, 2)
+    sql: list[str] = []
+    event.listen(cli.app.state.eng, "before_cursor_execute", lambda *a: sql.append(a[2]))
+    assert cli.post(f"/proyectos/{pid}/corridas").status_code == 201
+    assert sql and not any("pg_advisory" in s for s in sql)
+
+
+def test_en_postgres_se_toma_el_candado_con_tope():
+    cx = _ConexionDoble("postgresql")
+    tomar_candado_tope(cx, 2)
+    assert cx.ejecutado == [("SELECT pg_advisory_xact_lock(:k)", {"k": CANDADO_TOPE_CORRIDAS})]
+
+
+@pytest.mark.parametrize(("dialecto", "tope"), [("postgresql", 0), ("sqlite", 2)])
+def test_sin_tope_o_sin_postgres_no_hay_candado(dialecto, tope):
+    cx = _ConexionDoble(dialecto)
+    tomar_candado_tope(cx, tope)
+    assert cx.ejecutado == []
 
 
 def test_tokens_siguen_igual(tmp_path):

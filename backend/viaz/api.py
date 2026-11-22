@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import func, insert, select, text, update
 
 from . import almacen as alm
 from . import db, hijas
@@ -50,6 +50,15 @@ def _limpiar(fila: dict[str, Any]) -> tuple[dict[str, Any], bool]:
 def _nombre_seguro(nombre: str) -> str:
     limpio = re.sub(r"[^A-Za-z0-9._-]+", "-", nombre).strip(".-")
     return limpio[:100] or "video.mp4"
+
+
+CANDADO_TOPE_CORRIDAS = 7_301_001
+
+
+def tomar_candado_tope(cx, tope: int) -> None:
+    """Serializa contar e insertar entre POST simultáneos. Postgres suelta el candado al cerrar la transacción."""
+    if tope > 0 and cx.dialect.name == "postgresql":
+        cx.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": CANDADO_TOPE_CORRIDAS})
 
 
 def create_app(cfg: Config | None = None) -> FastAPI:
@@ -88,6 +97,7 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         with eng.begin() as cx:
             if cx.execute(select(db.proyectos.c.id).where(db.proyectos.c.id == pid)).first() is None:
                 raise HTTPException(404, "no existe el proyecto")
+            tomar_candado_tope(cx, cfg.max_corridas_activas)
             if cfg.max_corridas_activas and cx.execute(
                     select(func.count()).select_from(db.corridas)
                     .where(db.corridas.c.padre_id.is_(None), db.corridas.c.estado.not_in(["listo", "error"]),
