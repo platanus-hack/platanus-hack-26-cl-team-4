@@ -36,7 +36,8 @@
       "enum": [
         "base_movil_brazo",
         "brazo_fijo",
-        "vehiculo_con_brazo"
+        "vehiculo_con_brazo",
+        "humanoide"
       ]
     },
     "ficticio": {
@@ -58,7 +59,8 @@
     "efector": {
       "enum": [
         "ventosa",
-        "pinza"
+        "pinza",
+        "mano"
       ]
     },
     "fuente": {
@@ -184,7 +186,8 @@
         "traccion": {
           "enum": [
             "orugas",
-            "ruedas"
+            "ruedas",
+            "piernas"
           ]
         },
         "pila_x_m": {

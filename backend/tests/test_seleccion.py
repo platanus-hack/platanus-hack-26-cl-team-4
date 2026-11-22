@@ -116,7 +116,7 @@ def test_por_reglas_en_el_catalogo_real(entorno, tarea, fichas):
     sel = validar("seleccion", r.seleccion)
     assert _ids(sel["finalistas"]) == ["leapting-mmr", "relu-bison"]
     assert [f["puesto"] for f in sel["finalistas"]] == [1, 2]
-    assert _ids(sel["descartados"]) == ["trinatracker-buildex-e"]
+    assert _ids(sel["descartados"]) == ["trinatracker-buildex-e", "unitree-h1"]   # el H1 no sirve para paneles
     assert "alcance" in sel["descartados"][0]["fallas"][0]
     assert _ids(sel["alternativas"]) == ["aes-maximo", "viaz-instalador-ficticio"]
     assert sel["busqueda"]["estado"] == "omitida" and sel["encontrados"] == []
@@ -256,7 +256,7 @@ def test_el_modelo_elige_entre_los_que_pasan(monkeypatch, entorno, tarea, fichas
     assert "nombre" not in esquema_fila(llamadas[0]["esquema"], "finalistas")
     assert "nombre" not in esquema_fila(llamadas[0]["esquema"], "alternativas")
     assert all("nombre" not in a for a in r.robots_por_puesto[0]["alternativas"])
-    assert _ids(sel["descartados"]) == ["trinatracker-buildex-e"]
+    assert _ids(sel["descartados"]) == ["trinatracker-buildex-e", "unitree-h1"]   # el H1 no sirve para paneles
     assert _ids(r.robots_por_puesto) == ["leapting-mmr", "relu-bison"]
     assert r.robots_por_puesto[0]["carga_util_kg"] == fichas["leapting-mmr"]["carga_util_kg"]
     esquema = llamadas[0]["esquema"]
