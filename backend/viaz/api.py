@@ -4,15 +4,17 @@
 """
 from __future__ import annotations
 
+import hmac
 import json
 import math
 import re
+from datetime import timedelta
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import insert, select, update
+from sqlalchemy import func, insert, select, update
 
 from . import almacen as alm
 from . import db, hijas
@@ -60,11 +62,11 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     app.state.cfg, app.state.eng, app.state.almacen = cfg, eng, store
 
     def es_worker(authorization: str = Header(default="")):
-        if authorization != f"Bearer {cfg.worker_token}":
+        if not hmac.compare_digest(authorization.encode(), f"Bearer {cfg.worker_token}".encode()):
             raise HTTPException(401, "token de worker inválido")
 
     def es_equipo(authorization: str = Header(default="")):
-        if authorization != f"Bearer {cfg.admin_token}":
+        if not hmac.compare_digest(authorization.encode(), f"Bearer {cfg.admin_token}".encode()):
             raise HTTPException(401, "token del equipo inválido")
 
     @app.get("/salud")
@@ -86,6 +88,13 @@ def create_app(cfg: Config | None = None) -> FastAPI:
         with eng.begin() as cx:
             if cx.execute(select(db.proyectos.c.id).where(db.proyectos.c.id == pid)).first() is None:
                 raise HTTPException(404, "no existe el proyecto")
+            if cfg.max_corridas_activas and cx.execute(
+                    select(func.count()).select_from(db.corridas)
+                    .where(db.corridas.c.padre_id.is_(None), db.corridas.c.estado.not_in(["listo", "error"]),
+                           db.corridas.c.actualizado > db.ahora() - timedelta(hours=cfg.ventana_corridas_h))
+            ).scalar_one() >= cfg.max_corridas_activas:
+                raise HTTPException(429, f"ya hay {cfg.max_corridas_activas} corridas en curso; "
+                                         "espera a que termine una y vuelve a intentarlo")
             cid = db.nuevo_id()
             etapas = [{"nombre": e, "estado": "pendiente", "artefactos": []} for e in db.ETAPAS]
             cx.execute(insert(db.corridas).values(id=cid, proyecto_id=pid, estado="en_cola", etapas=etapas))

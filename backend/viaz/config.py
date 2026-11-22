@@ -64,7 +64,8 @@ class Config:
     origenes: list[str] = field(default_factory=lambda: [o.strip() for o in os.getenv("VIAZ_ORIGENES", "http://localhost:3000").split(",") if o.strip()])
     corrida_demo: str = field(default_factory=lambda: os.getenv("VIAZ_CORRIDA_DEMO", ""))
     espera_trabajo_s: int = field(default_factory=lambda: int(os.getenv("VIAZ_ESPERA_TRABAJO_S", "1800")))
-    # Flujo del orquestador: rl (demo: entorno a mano, constructor, entrenamiento) o planificador (flujo anterior).
+    # Flujo del orquestador: rl (demo: el agente Mapeo de entorno lee los videos, constructor, entrenamiento) o
+    # planificador (flujo anterior).
     flujo: str = field(default_factory=lambda: os.getenv("VIAZ_FLUJO", "rl"))
     # Entorno y tarea escritos a mano (RF-MAP-11, RF-TAR-04). Vacío = fixtures de ejemplo.
     entorno_manual: str = field(default_factory=lambda: os.getenv("VIAZ_ENTORNO_MANUAL", ""))
@@ -98,6 +99,12 @@ class Config:
     # Flujo rl: 1 = el agente Tarea escribe tarea.json desde la descripción y los frames, en vez de leerla a mano
     # (pendientes, problema 1). 0 = se lee VIAZ_TAREA_MANUAL o el fixture.
     tarea_agente: bool = field(default_factory=lambda: interruptor("VIAZ_TAREA_AGENTE", os.getenv("VIAZ_TAREA_AGENTE", "0")))
+    # Corridas raíz activas a la vez en POST /proyectos/{pid}/corridas. 0 = sin tope.
+    max_corridas_activas: int = field(default_factory=lambda: entero_en_rango(
+        "VIAZ_MAX_CORRIDAS_ACTIVAS", os.getenv("VIAZ_MAX_CORRIDAS_ACTIVAS", "0"), 0, 1000))
+    # Una corrida sin `actualizado` en esta ventana se da por trabada (orquestador reiniciado) y no ocupa el tope.
+    ventana_corridas_h: int = field(default_factory=lambda: entero_en_rango(
+        "VIAZ_VENTANA_CORRIDAS_H", os.getenv("VIAZ_VENTANA_CORRIDAS_H", "6"), 1, 168))
     discord_webhook: str = field(default_factory=lambda: os.getenv("VIAZ_DISCORD_WEBHOOK", ""))
     # Token para acciones del equipo (detener un entrenamiento). Por defecto, el mismo del worker.
     admin_token: str = field(default_factory=lambda: os.getenv("VIAZ_ADMIN_TOKEN", "") or os.getenv("WORKER_TOKEN", "dev-token"))
