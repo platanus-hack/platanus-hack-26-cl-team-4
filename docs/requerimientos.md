@@ -189,8 +189,8 @@ flowchart LR
 | RF-CLO-07 | Si el agente no logra un robot válido en 3 intentos, el sistema usa el clon determinista de `urdf.py` | **S** |
 | RF-CLO-08 | El agente entrega `robot.urdf` con los mismos joints, para el visor web | **C** |
 | RF-CLO-09 | `validar_robot` graba la construcción de cada intento: la escena vacía, las piezas que aparecen (base, brazo, ventosa) y una prueba de alcance. El runner rotula cada intento, agrega una tarjeta por cada intento rechazado por reglas y los une en `construccion.mp4` | **M** |
-| RF-CLO-10 | `clon.json` declara `fidelidad`: `generico`, `medido` o `verificado` | **S** |
-| RF-CLO-11 | Si el robot tiene un modelo comprobado (pasó `validar_robot` y la rúbrica de calidad) con la misma ficha y el mismo catálogo de assets, el sistema lo reutiliza sin el agente constructor. Siempre corre un chequeo corto en la escena. La política entrenada no se reutiliza | **S** |
+| RF-CLO-10 | `clon.json` declara `fidelidad`: `generico`, `medido` o `verificado`. El código escribe `generico` o `medido`; `verificado` necesita la rúbrica humana | **S** |
+| RF-CLO-11 | Si el robot tiene un modelo comprobado (su ensamblaje pasó `validar_robot`) con la misma ficha y el mismo catálogo de assets, el sistema lo reutiliza sin el agente constructor. Siempre corre `validar_robot` en la escena de la corrida. La política entrenada no se reutiliza. Un modelo aprobado, además, pasó la rúbrica de calidad con una persona | **S** |
 
 ### 4.5 Entrenamiento RL de instalar el panel (`sim/`, pod GPU RTX)
 

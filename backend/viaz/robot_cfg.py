@@ -14,6 +14,7 @@ import pprint
 from pathlib import Path
 
 from . import urdf
+from .modelos import fidelidad
 
 ASSETS = Path(__file__).resolve().parent / "catalogo" / "assets_isaaclab.json"
 TOLERANCIA_ALCANCE = 0.05   # ±5 % respecto del robot real
@@ -139,5 +140,6 @@ def clon(ens: dict, robot: dict, assets: dict, intentos: int) -> dict:
         "diferencias_con_real": [*(["el robot de referencia es ficticio"] if robot.get("ficticio") else []),
                                  *ens["diferencias_con_real"], *DIFERENCIAS_FIJAS],
         "validado_en_escena": False,
+        "fidelidad": fidelidad(robot),
         "construccion": {"metodo": "agente", "intentos": intentos, "ensamblaje": "ensamblaje.json", "robot_cfg": "robot_cfg.py"},
     }

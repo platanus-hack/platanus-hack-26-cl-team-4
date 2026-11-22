@@ -107,9 +107,10 @@ flowchart TD
   M -->|no| CON["Agente constructor<br/>hasta 3 intentos"]
   CON --> VAL["validar_robot<br/>en la escena"]
   VAL --> REG["Registrar el modelo<br/>comprobado"]
-  M -->|sí| CHK["Chequeo corto<br/>en la escena"]
+  M -->|sí| CHK["validar_robot<br/>en esta escena"]
   REG --> ENT["Entrenar"]
-  CHK --> ENT
+  CHK -->|pasa| ENT
+  CHK -->|falla| CON
   ENT --> EV["Evaluar"]
   EV --> J[evaluacion.json]
   H2 -.->|"mismo recorrido"| J
@@ -117,9 +118,9 @@ flowchart TD
 ```
 
 - Una corrida hija es una corrida normal con el robot ya fijado. Reusa el flujo de hoy sin cambios.
-- Un modelo comprobado es el clon de un robot que ya pasó `validar_robot` y la rúbrica de calidad. Su clave es el `id`, la huella de su ficha y la versión de las piezas de Isaac Lab.
-- Con un modelo comprobado, la corrida se salta el agente constructor.
-- El chequeo en la escena corre siempre, porque el alcance y los choques dependen del lugar.
+- Un modelo comprobado es el ensamblaje de un robot que ya pasó `validar_robot` en alguna escena. Su clave es el `id`, la huella de su ficha y la del catálogo de piezas de Isaac Lab. Un modelo **aprobado**, además, pasó la rúbrica de calidad con una persona.
+- Con un modelo comprobado que pasa, la corrida se salta el agente constructor. Si falla en esta escena, sigue el agente.
+- `validar_robot` en la escena corre siempre, porque el alcance y los choques dependen del lugar.
 - La política entrenada no se reusa entre tareas ni entre lugares.
 - **Costo:** con un pod, 3 finalistas tardan 3 veces lo que tarda uno.
 - **Llega en:** PR 4 para el modelo comprobado y PR 5 para las corridas hijas.

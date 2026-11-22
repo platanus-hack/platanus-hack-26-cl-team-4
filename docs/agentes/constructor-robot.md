@@ -3,6 +3,7 @@
 > Etapa 4. Requerimientos: RF-CLO-01..08, RNF-03, RNF-13.
 > Estado: **por implementar.** Hoy existe solo el clon determinista de [`urdf.py`](../../backend/viaz/urdf.py), que queda como respaldo (RF-CLO-07).
 > Prompt: [`prompts/constructor.md`](../../backend/viaz/agentes/prompts/constructor.md) (todavía no lo carga el código).
+> Reuso de modelos comprobados (RF-CLO-11): ver §8.
 
 ```mermaid
 sequenceDiagram
@@ -100,6 +101,7 @@ sequenceDiagram
 |---|---|
 | Asset fuera del catálogo | El intento cuenta como fallido; el agente recibe el error |
 | `validar_clon` falla 3 veces | Clon determinista (RF-CLO-07); la corrida sigue |
+| El modelo comprobado falla `validar_robot` en esta escena | Sigue el agente. La falla le llega como problema del intento anterior |
 | Error de Isaac que no depende del agente (pod caído) | La corrida pasa a `error`; no consume intentos |
 
 ## 7. Pruebas
@@ -107,6 +109,15 @@ sequenceDiagram
 - **Plantilla:** un `ensamblaje.json` de ejemplo genera un `robot_cfg.py` que Isaac Lab importa sin error.
 - **Reglas:** un ensamblaje con carga distinta al real se rechaza antes de ir al pod.
 - **En el pod:** el robot generado carga en la escena y levanta un panel de 32 kg en una prueba sin RL.
+
+## 8. Modelo comprobado (RF-CLO-11)
+
+- **Qué es:** un `ensamblaje.json` del agente que pasó `validar_robot` en una corrida anterior. El código lo guarda en el almacén, en `modelos/<clave>/` ([`modelos.py`](../../backend/viaz/modelos.py)).
+- **Clave:** id del robot + hash de su ficha (sin `justificacion` ni `alternativas`) y del catálogo de assets.
+- **Orden de candidatos en `construir_robot`:** `comprobado` (si existe), después `agente` 1..N, después `determinista`. Todos pasan por `rc.problemas()` y por `validar_robot`.
+- **`clon.json`:** `construccion.metodo` vale `agente`, `determinista` o `comprobado`. Con `comprobado`, `construccion.intentos` es 0.
+- **Se registra:** solo un candidato `agente` que pasó. El respaldo determinista y un modelo reusado no se guardan.
+- **No es "aprobado":** aprobado necesita las 4 vistas y la rúbrica humana ([`sim/assets_aprobados/README.md`](../../sim/assets_aprobados/README.md)).
 
 ## Calidad visual
 

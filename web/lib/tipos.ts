@@ -41,7 +41,8 @@ export interface Clon {
   diferencias_con_real: string[];
   validado_en_escena: boolean;
   piezas: { base: string; brazo: string; efector: string };
-  construccion?: { metodo: "agente" | "determinista"; intentos: number };
+  fidelidad?: "generico" | "medido" | "verificado";
+  construccion?: { metodo: "agente" | "determinista" | "comprobado"; intentos: number };
 }
 
 export interface Tolerancia {

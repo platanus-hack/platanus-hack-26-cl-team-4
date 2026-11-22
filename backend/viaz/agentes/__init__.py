@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 from .. import geometria, urdf
+from ..modelos import fidelidad
 from ..config import TOPE_FINALISTAS, validar_max_finalistas
 from ..esquemas import esquema, sin_campos
 from . import perfiles, seleccion
@@ -407,6 +408,7 @@ def clon(robot_json: dict) -> tuple[dict, str]:
         "geometria": urdf.geometria(robot_json["alcance_m"], robot_json.get("fisica")),
         "diferencias_con_real": diferencias,
         "validado_en_escena": False,
+        "fidelidad": fidelidad(robot_json),
     }
     return validado("clon", datos), urdf.generar(robot_json["id"], robot_json["alcance_m"], robot_json.get("fisica"))
 
