@@ -1,31 +1,134 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "tarea.json",
+  "description": "Qué trabajo hace el robot y cómo se mide, en cualquier espacio. Núcleo genérico (objeto, origen, destino, objetivo, criterios de éxito, restricciones) y perfiles por tipo de tarea. Hoy el único perfil es instalar_panel (pila_paneles).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "tarea", "descripcion", "pila_paneles", "objetivo", "restricciones"],
+  "required": ["version", "tarea", "descripcion", "proposito", "pedido", "objeto", "origen", "destino", "objetivo", "criterios_exito", "restricciones"],
   "properties": {
     "version": { "const": 1 },
-    "tarea": { "enum": ["instalar_panel"] },
-    "descripcion": { "type": "string" },
-    "pila_paneles": {
+    "tarea": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Tipo de tarea en snake_case: instalar_panel, tomar_y_dejar, transportar, ordenar, inspeccionar, otro..." },
+    "descripcion": { "type": "string", "description": "Una oración: qué toma el robot, de dónde y dónde lo deja (o qué revisa)." },
+    "proposito": { "type": "string", "description": "Para qué sirve la tarea: el problema del cliente que resuelve (ej.: evitar que una persona levante cajas de 20 kg)." },
+    "pedido": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["en_robot", "cantidad"],
+      "required": ["origen", "preguntas"],
+      "description": "De dónde sale la tarea y qué falta confirmar con el cliente.",
       "properties": {
-        "en_robot": { "type": "boolean" },
-        "cantidad": { "type": "integer", "minimum": 1, "maximum": 30 }
+        "origen": { "enum": ["cliente", "inferido"], "description": "cliente: la descripción del cliente pide esta tarea. inferido: el agente la eligió porque el cliente no la pidió o no la dejó clara." },
+        "preguntas": { "type": "array", "maxItems": 5, "items": { "type": "string" }, "description": "Preguntas para el cliente. Obligatorias si origen es inferido." }
+      }
+    },
+    "objeto": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elemento", "descripcion", "masa_kg"],
+      "description": "Lo que el robot manipula o revisa.",
+      "properties": {
+        "elemento": { "type": ["string", "null"], "description": "nombre de un elemento de entorno.json; null si no está en elementos (ej.: el panel del perfil solar)." },
+        "descripcion": { "type": "string" },
+        "masa_kg": { "type": ["number", "null"], "minimum": 0, "maximum": 1000, "description": "null si no aplica o no se sabe." }
+      }
+    },
+    "origen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elemento", "descripcion", "altura_m"],
+      "properties": {
+        "elemento": { "type": ["string", "null"], "description": "nombre de un elemento de entorno.json; null si es el robot, una zona libre o una estructura del perfil." },
+        "descripcion": { "type": "string" },
+        "altura_m": { "type": ["number", "null"], "minimum": 0, "maximum": 50, "description": "Altura de la superficie de apoyo sobre el suelo (ej.: repisa a 0,9 m). null: la cara superior del elemento." }
+      }
+    },
+    "destino": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elemento", "descripcion", "altura_m"],
+      "properties": {
+        "elemento": { "type": ["string", "null"], "description": "nombre de un elemento de entorno.json; null si es el robot, una zona libre o una estructura del perfil." },
+        "descripcion": { "type": "string" },
+        "altura_m": { "type": ["number", "null"], "minimum": 0, "maximum": 50, "description": "Altura de la superficie de apoyo sobre el suelo (ej.: repisa a 0,9 m). null: la cara superior del elemento." }
       }
     },
     "objetivo": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["paneles", "ciclo_s"],
+      "required": ["cantidad", "ciclo_s"],
       "properties": {
-        "paneles": { "type": "integer", "minimum": 1, "maximum": 30 },
-        "ciclo_s": { "type": "number", "minimum": 1, "maximum": 600 }
+        "cantidad": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Veces que se repite la tarea (paneles, cajas, puntos de inspección)." },
+        "ciclo_s": { "type": "number", "minimum": 1, "maximum": 600, "description": "Tiempo objetivo por repetición." }
       }
     },
-    "restricciones": { "type": "array", "items": { "type": "string" } }
-  }
+    "criterios_exito": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tolerancia_pos_m", "tolerancia_ang_grados", "sin_choques", "tiempo_max_s"],
+      "description": "Cuándo una repetición cuenta como lograda. La simulación los usa para medir el éxito.",
+      "properties": {
+        "tolerancia_pos_m": { "type": "number", "minimum": 0.001, "maximum": 1 },
+        "tolerancia_ang_grados": { "type": "number", "minimum": 0.1, "maximum": 180 },
+        "sin_choques": { "type": "boolean" },
+        "tiempo_max_s": { "type": ["number", "null"], "minimum": 1, "maximum": 3600, "description": "Tope por repetición; null si no hay." }
+      }
+    },
+    "restricciones": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tipo", "valor", "detalle"],
+        "properties": {
+          "tipo": { "enum": ["no_chocar", "orientacion_fija", "velocidad_max_m_s", "distancia_personas_m", "fuerza_max_n", "zona_prohibida", "otra"] },
+          "valor": { "type": ["number", "null"], "description": "Número de la restricción en SI (ej.: 0,5 m/s). null si no tiene número." },
+          "detalle": { "type": "string" }
+        }
+      }
+    },
+    "pila_paneles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en_robot", "cantidad"],
+      "description": "Perfil instalar_panel.",
+      "properties": {
+        "en_robot": { "type": "boolean" },
+        "cantidad": { "type": "integer", "minimum": 1, "maximum": 30 }
+      }
+    },
+    "geometria": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origen_pose", "destino_pose", "distancia_m", "altura_max_m"],
+      "description": "Lo llena el código (viaz/geometria.py), no el agente. Poses meta del objeto en el marco de entorno.json. null donde no hay elemento con geometría.",
+      "properties": {
+        "origen_pose": { "$ref": "#/$defs/pose" },
+        "destino_pose": { "$ref": "#/$defs/pose" },
+        "distancia_m": { "type": ["number", "null"], "description": "Distancia horizontal entre las dos poses." },
+        "altura_max_m": { "type": ["number", "null"], "description": "Altura del tope del objeto en la pose más alta: el robot tiene que llegar ahí." }
+      }
+    },
+    "advertencias": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Lo llena el código: revisiones geométricas con medidas poco confiables y límites del modelo de entorno.json."
+    }
+  },
+  "$defs": {
+    "pose": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["x_m", "y_m", "z_m", "giro_grados"],
+      "description": "Centro de la cara inferior del objeto y su giro sobre Z.",
+      "properties": {
+        "x_m": { "type": "number" },
+        "y_m": { "type": "number" },
+        "z_m": { "type": "number" },
+        "giro_grados": { "type": "number" }
+      }
+    }
+  },
+  "if": { "properties": { "tarea": { "const": "instalar_panel" } } },
+  "then": { "required": ["pila_paneles"] },
+  "else": { "not": { "required": ["pila_paneles"] } }
 }

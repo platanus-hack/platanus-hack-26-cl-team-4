@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "tarea": "tomar_y_dejar",
+  "descripcion": "Tomar la caja de cartón de la mesa central y dejarla en el estante",
+  "proposito": "Despejar la mesa de reuniones guardando las cajas en el estante, sin que alguien interrumpa su trabajo",
+  "pedido": {
+    "origen": "inferido",
+    "preguntas": [
+      "¿Qué quiere que haga el robot en esta sala: ordenar cajas, llevar objetos o revisar algo?",
+      "¿Para qué lo necesita: ahorrar tiempo, evitar cargar peso o trabajar fuera de horario?",
+      "¿En qué repisa del estante van las cajas?"
+    ]
+  },
+  "objeto": { "elemento": "caja_carton_1", "descripcion": "caja de cartón de 40 × 30 × 25 cm", "masa_kg": 3 },
+  "origen": { "elemento": "mesa_central", "descripcion": "cubierta de la mesa central", "altura_m": null },
+  "destino": { "elemento": "estante", "descripcion": "repisa del medio del estante", "altura_m": 0.9 },
+  "objetivo": { "cantidad": 1, "ciclo_s": 45 },
+  "criterios_exito": { "tolerancia_pos_m": 0.05, "tolerancia_ang_grados": 10, "sin_choques": true, "tiempo_max_s": 120 },
+  "restricciones": [
+    { "tipo": "no_chocar", "valor": null, "detalle": "no chocar con la mesa, las sillas ni el estante" },
+    { "tipo": "velocidad_max_m_s", "valor": 0.5, "detalle": "moverse lento dentro de una sala con personas" }
+  ]
+}

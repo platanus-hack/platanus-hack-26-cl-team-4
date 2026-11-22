@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import plan  # noqa: E402
 
 ARTICULACIONES = ["shoulder_pan", "shoulder_lift", "elbow", "wrist_1", "wrist_2", "wrist_3"]
-TAREA_MINIMA = {"objetivo": {"paneles": 1}, "pila_paneles": {"cantidad": 1}}
+TAREA_MINIMA = {"objetivo": {"cantidad": 1}, "pila_paneles": {"cantidad": 1}}
 
 
 def main() -> None:

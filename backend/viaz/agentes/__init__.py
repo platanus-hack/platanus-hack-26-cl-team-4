@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import NamedTuple
 
-from .. import urdf
+from .. import geometria, urdf
 from ..config import TOPE_FINALISTAS, validar_max_finalistas
 from ..esquemas import esquema, sin_campos
 from . import perfiles, seleccion
@@ -174,82 +174,191 @@ def entorno(modo: str, modelo: str, proyecto: dict, frames: list[dict] | None,
 # ---------- 2. Tarea ----------
 
 SISTEMA_TAREA = _prompt("tarea")
-INTENTOS_TAREA = 3   # como en CLAUDE.md: al tercer intento sin pasar, se detiene
-OBLIGATORIAS_TAREA = ("no chocar con las estructuras", "panel horizontal durante el traslado")
-DURACION_MAX_S = 600   # la tarea cabe en 10 min simulados
+
+# Perfiles de tarea: bloques extra que solo existen para un tipo. Las etapas Robot → Inteligencia
+# todavía solo saben simular instalar_panel (sim/plan.py, sim/rl/).
+PERFILES_TAREA = {"instalar_panel": ("pila_paneles",)}
+TAREAS_CON_PIPELINE = {"instalar_panel"}
+ENTORNO_DE_TAREA = {"instalar_panel": "parque_solar"}   # tareas que solo tienen sentido en un tipo de espacio
+TAREAS_MANIPULACION = {"instalar_panel", "tomar_y_dejar", "transportar", "ordenar"}
+RESTRICCIONES_CON_VALOR = {"velocidad_max_m_s", "distancia_personas_m", "fuerza_max_n"}
+INTENTOS_TAREA = 2   # si la respuesta no calza con entorno.json, el agente recibe los problemas y reintenta una vez
+CAMPOS_DEL_CODIGO = ("geometria", "advertencias")   # los llena completar_tarea(), nunca el modelo
+
+
+def esquema_agente_tarea() -> dict:
+    """Lo que devuelve el modelo: tarea.json sin `version`. Los perfiles van siempre, pero aceptan null.
+    Sin if/then/else: la API no los acepta; la regla de perfiles se valida en local."""
+    esq = sin_campos(esquema("tarea"), ["version", *CAMPOS_DEL_CODIGO])
+    for k in ("if", "then", "else", "$defs"):
+        esq.pop(k, None)
+    for campos in PERFILES_TAREA.values():
+        for c in campos:
+            esq["properties"][c] = {"anyOf": [esq["properties"][c], {"type": "null"}]}
+            esq["required"].append(c)
+    return esq
+
+
+def normalizar_tarea(datos: dict) -> dict:
+    """Respuesta del modelo → forma del contrato: sin perfiles que no aplican."""
+    datos = copy.deepcopy(datos)
+    propios = PERFILES_TAREA.get(datos.get("tarea"), ())
+    for campos in PERFILES_TAREA.values():
+        for c in campos:
+            if c not in propios or datos.get(c) is None:
+                datos.pop(c, None)
+    return datos
+
+
+def problemas_pedido(t: dict, descripcion_cliente: str | None) -> list[str]:
+    """La tarea dice de dónde sale. Si el agente la infirió, deja preguntas para confirmarla con el cliente.
+    descripcion_cliente None: no se revisa (tarea.json escrito a mano por el equipo)."""
+    problemas = []
+    p = t["pedido"]
+    if p["origen"] == "inferido" and not p["preguntas"]:
+        problemas.append("pedido.origen es inferido pero pedido.preguntas está vacío: escribe 1 a 3 preguntas para el cliente")
+    if descripcion_cliente is not None and not descripcion_cliente.strip() and p["origen"] == "cliente":
+        problemas.append("pedido.origen es cliente, pero el cliente no escribió una descripción: la tarea es inferida")
+    if not t["proposito"].strip():
+        problemas.append("proposito está vacío: di para qué le sirve la tarea al cliente")
+    return problemas
+
+
+def completar_tarea(t: dict, entorno_json: dict, descripcion_cliente: str | None = None) -> tuple[dict, list[str]]:
+    """Revisa la tarea contra entorno.json y agrega lo que calcula el código (geometria, advertencias).
+    Devuelve (tarea completa, problemas). Sin problemas, la tarea pasó la fase 1 del embudo de factibilidad."""
+    t = {k: v for k, v in copy.deepcopy(t).items() if k not in CAMPOS_DEL_CODIGO}
+    problemas = problemas_tarea(t, entorno_json) + problemas_pedido(t, descripcion_cliente)
+    advertencias: list[str] = []
+    if not any("no existe en entorno.json" in p for p in problemas):
+        prob_geo, advertencias, t["geometria"] = geometria.revisar(t, entorno_json)
+        problemas += prob_geo
+    if t["pedido"]["origen"] == "inferido":
+        advertencias.insert(0, "la tarea es inferida: confirmar con el cliente (pedido.preguntas)")
+    t["advertencias"] = advertencias
+    if "geometria" not in t:
+        t["geometria"] = {"origen_pose": None, "destino_pose": None, "distancia_m": None, "altura_max_m": None}
+    return t, problemas
+
+
+def problemas_tarea(t: dict, entorno_json: dict) -> list[str]:
+    """Reglas que el esquema no puede expresar: la tarea tiene que calzar con entorno.json (referencias y lógica).
+    La geometría (soporte, encaje, despeje, techo) la revisa viaz/geometria.py desde completar_tarea()."""
+    problemas = []
+    tipo = t["tarea"]
+    if tipo in ENTORNO_DE_TAREA and entorno_json["tipo"] != ENTORNO_DE_TAREA[tipo]:
+        problemas.append(f"la tarea {tipo} necesita un entorno {ENTORNO_DE_TAREA[tipo]}, y el entorno es {entorno_json['tipo']}")
+    elementos = {e["nombre"]: e for e in entorno_json.get("elementos", [])}
+    for parte in ("objeto", "origen", "destino"):
+        nombre = t[parte]["elemento"]
+        if nombre is not None and nombre not in elementos:
+            disponibles = ", ".join(sorted(elementos)) or "(entorno.json no tiene elementos)"
+            problemas.append(f"{parte}.elemento '{nombre}' no existe en entorno.json; elementos: {disponibles}")
+    if tipo in TAREAS_MANIPULACION:
+        obj = elementos.get(t["objeto"]["elemento"])
+        if obj is not None and obj["fijo"]:
+            problemas.append(f"objeto '{obj['nombre']}' está marcado fijo en entorno.json: el robot no puede moverlo")
+        o, d = t["origen"]["elemento"], t["destino"]["elemento"]
+        if o is not None and o == d:
+            problemas.append(f"origen y destino son el mismo elemento ('{o}')")
+    if "pila_paneles" in t and t["objetivo"]["cantidad"] > t["pila_paneles"]["cantidad"]:
+        problemas.append(f"objetivo.cantidad ({t['objetivo']['cantidad']}) es mayor que la pila "
+                         f"({t['pila_paneles']['cantidad']})")
+    tmax = t["criterios_exito"]["tiempo_max_s"]
+    if tmax is not None and tmax < t["objetivo"]["ciclo_s"]:
+        problemas.append(f"criterios_exito.tiempo_max_s ({tmax}) es menor que objetivo.ciclo_s ({t['objetivo']['ciclo_s']})")
+    for r in t["restricciones"]:
+        if r["tipo"] in RESTRICCIONES_CON_VALOR and r["valor"] is None:
+            problemas.append(f"la restricción {r['tipo']} necesita un valor")
+    return problemas + problemas_calidad(t, entorno_json)
+
+
+# Calidad (docs/agentes/tarea.md §9): reglas del prompt que el esquema no expresa.
+DURACION_MAX_S = 600     # la tarea cabe en una demo corta: cantidad × ciclo_s
 # Misma geometría que sim/plan.py (INICIO_X, HOLGURA_SLOT). Una prueba revisa que no se separen.
 INICIO_FILA_M = 2.0      # el primer panel va a 2 m del inicio de la fila
 HOLGURA_PANEL_M = 0.02   # separación entre paneles instalados
 
 
 def paneles_que_caben(entorno_json: dict) -> int:
-    """Paneles que caben en una fila. Igual que sim/plan.py → caben()."""
+    """Paneles que caben en una fila del perfil parque_solar. Igual que sim/plan.py → caben()."""
     p = entorno_json["panel"]
     return int((entorno_json["filas"]["largo_m"] - INICIO_FILA_M) // (p["ancho_m"] + HOLGURA_PANEL_M))
 
 
-def _frase(s: str) -> str:
-    """Para comparar restricciones sin contar mayúsculas, espacios de más ni el punto final."""
-    return " ".join(s.lower().split()).rstrip(".")
-
-
-def problemas_tarea(tarea_json: dict, entorno_json: dict) -> list[str]:
-    """Reglas 2 a 6 de docs/agentes/tarea.md §8.1. Lista vacía: cumple.
-    Las reglas 7 a 10 (evidencia, fidelidad, descripción, datos y no órdenes) piden criterio: las revisa una persona."""
-    p = []
-    n, ciclo = tarea_json["objetivo"]["paneles"], tarea_json["objetivo"]["ciclo_s"]
-    pila = tarea_json["pila_paneles"]["cantidad"]
-    if not 30 <= ciclo <= 120:
-        p.append(f"regla 2: objetivo.ciclo_s es {ciclo:g} s y debe estar entre 30 y 120")
-    if not 3 <= pila <= 10:
-        p.append(f"regla 3: pila_paneles.cantidad es {pila} y debe estar entre 3 y 10")
-    if n > pila:
-        p.append(f"regla 3: objetivo.paneles ({n}) supera pila_paneles.cantidad ({pila})")
-    caben = paneles_que_caben(entorno_json)
-    if n > caben:
-        p.append(f"regla 4: objetivo.paneles es {n}, pero en una fila caben {caben}")
+def problemas_calidad(t: dict, entorno_json: dict) -> list[str]:
+    """Duración, restricciones y perfil instalar_panel. El prompt las pide en "Antes de responder"; el código las repite."""
+    problemas = []
+    n, ciclo = t["objetivo"]["cantidad"], t["objetivo"]["ciclo_s"]
     if n * ciclo > DURACION_MAX_S:
-        p.append(f"regla 5: {n} paneles × {ciclo:g} s = {n * ciclo:g} s, más que el máximo de {DURACION_MAX_S} s")
-    frases = [_frase(r) for r in tarea_json["restricciones"]]
-    faltan = [o for o in OBLIGATORIAS_TAREA if o not in frases]
-    if faltan:
-        p.append("regla 6: faltan las restricciones obligatorias " + ", ".join(f'"{o}"' for o in faltan))
-    if not 2 <= len(frases) <= 5:
-        p.append(f"regla 6: hay {len(frases)} restricciones y deben ser de 2 a 5")
-    if len(set(frases)) < len(frases):
-        p.append("regla 6: hay restricciones repetidas")
-    return p
+        problemas.append(f"objetivo.cantidad × objetivo.ciclo_s = {n} × {ciclo:g} s = {n * ciclo:g} s, "
+                         f"más que {DURACION_MAX_S} s: la tarea no cabe en una demo corta")
+    rs = t["restricciones"]
+    tipos = [r["tipo"] for r in rs]
+    if "no_chocar" not in tipos:
+        problemas.append("falta la restricción no_chocar: va siempre")
+    if not 1 <= len(rs) <= 5:
+        problemas.append(f"hay {len(rs)} restricciones; deben ser de 1 a 5")
+    claves = [(r["tipo"], r["valor"], " ".join(r["detalle"].lower().split()).rstrip(".")) for r in rs]
+    if len(set(claves)) < len(claves):
+        problemas.append("hay restricciones repetidas")
+    if "pila_paneles" in t:   # perfil instalar_panel
+        pila = t["pila_paneles"]["cantidad"]
+        if not 3 <= pila <= 10:
+            problemas.append(f"pila_paneles.cantidad es {pila}; en instalar_panel debe estar entre 3 y 10")
+        if not 30 <= ciclo <= 120:
+            problemas.append(f"objetivo.ciclo_s es {ciclo:g} s; en instalar_panel debe estar entre 30 y 120")
+        if "orientacion_fija" not in tipos:
+            problemas.append("falta la restricción orientacion_fija (panel horizontal durante el traslado)")
+        if "filas" in entorno_json and "panel" in entorno_json and n > (caben := paneles_que_caben(entorno_json)):
+            problemas.append(f"objetivo.cantidad es {n}, pero en una fila caben {caben} paneles")
+    return problemas
 
 
-def revisar_tarea(tarea_json: dict, entorno_json: dict) -> dict:
-    """Esquema + reglas 2 a 6. También para el tarea.json escrito a mano (RF-TAR-04): falla antes de gastar horas de pod."""
-    datos = validado("tarea", tarea_json)
-    if p := problemas_tarea(datos, entorno_json):
-        raise ErrorAgente("tarea.json no cumple docs/agentes/tarea.md §8.1: " + "; ".join(p))
-    return datos
+def validar_tarea(t: dict, entorno_json: dict, descripcion_cliente: str | None = None) -> dict:
+    """tarea.json completo: esquema + reglas + geometría contra entorno.json. Sirve también para la tarea a mano."""
+    t, problemas = completar_tarea(validado("tarea", t), entorno_json, descripcion_cliente)
+    if problemas:
+        raise ErrorAgente("tarea.json no calza con entorno.json: " + "; ".join(problemas))
+    return validado("tarea", t)
+
+
+def texto_tarea(proyecto: dict, entorno_json: dict, problemas: list[str] | None = None) -> str:
+    lineas = []
+    for e in entorno_json.get("elementos", []):
+        masa = f", {e['masa_kg']} kg" if e["masa_kg"] else ""
+        d = e["dimensiones_m"]
+        tam = f"{d['largo_m']:g} × {d['ancho_m']:g} × {d['alto_m']:g} m"
+        lineas.append(f"- {e['nombre']} ({e['categoria']}, {'fijo' if e['fijo'] else 'movible'}{masa}, {tam}, "
+                      f"base a {e['posicion_m']['z_m']:g} m, tope a {geometria.tope(e):g} m)")
+    elementos = "\n".join(lineas) or "(ninguno)"
+    texto = (f"Descripción del cliente: {proyecto['descripcion'] or '(sin descripción)'}\n"
+             f"Tipo de espacio: {entorno_json['tipo']}\n"
+             f"Elementos de entorno.json (usa estos nombres en objeto/origen/destino):\n{elementos}\n\n"
+             f"entorno.json:\n{json.dumps(entorno_json, ensure_ascii=False)}")
+    if problemas:
+        texto += ("\n\nTu respuesta anterior no calzó con entorno.json. Corrige estos problemas:\n"
+                  + "\n".join(f"- {p}" for p in problemas))
+    return texto
 
 
 def tarea(modo: str, modelo: str, proyecto: dict, entorno_json: dict, frames: list[dict] | None) -> dict:
-    """tarea.json revisado. En modo claude, hasta 3 intentos: cada uno recibe la respuesta anterior y sus problemas."""
+    """tarea.json para el espacio de entorno.json. El código revisa que calce con el entorno; si no calza,
+    el agente recibe los problemas y reintenta (hasta INTENTOS_TAREA)."""
     if modo == "fijo":
-        return revisar_tarea({**_fixture("tarea"), "version": 1}, entorno_json)
-    esq = sin_campos(esquema("tarea"), ["version"])
-    texto = (f"Descripción del cliente: {proyecto['descripcion'] or '(sin descripción)'}\n"
-             f"entorno.json:\n{json.dumps(entorno_json, ensure_ascii=False)}")
-    previo, problemas = None, []
-    for intento in range(1, INTENTOS_TAREA + 1):
-        pedido = f"{texto}\n\nIntento {intento} de {INTENTOS_TAREA}."
-        if previo is not None:
-            pedido += (f"\n\nTu respuesta anterior:\n{json.dumps(previo, ensure_ascii=False)}\n"
-                       "No cumple estos puntos de \"Antes de responder\". Corrígelos:\n- " + "\n- ".join(problemas))
-        datos = pedir_json(modelo=modelo, sistema=SISTEMA_TAREA, esquema=esq,
-                           contenido=[*(frames or []), {"type": "text", "text": pedido}])
-        datos = validado("tarea", {**datos, "version": 1})
-        problemas = problemas_tarea(datos, entorno_json)
+        datos = _fixture("tarea" if entorno_json["tipo"] == "parque_solar" else "tarea_sala")
+        return validar_tarea(datos, entorno_json)
+    problemas: list[str] = []
+    descripcion = proyecto["descripcion"] or ""
+    for _ in range(INTENTOS_TAREA):
+        datos = normalizar_tarea(pedir_json(
+            modelo=modelo, sistema=SISTEMA_TAREA, esquema=esquema_agente_tarea(),
+            contenido=[*(frames or []), {"type": "text", "text": texto_tarea(proyecto, entorno_json, problemas)}]))
+        datos["version"] = 1
+        datos, problemas = completar_tarea(validado("tarea", datos), entorno_json, descripcion)
         if not problemas:
-            return datos
-        previo = datos
-    raise ErrorAgente(f"el agente Tarea no cumplió el contrato en {INTENTOS_TAREA} intentos: " + "; ".join(problemas))
+            return validado("tarea", datos)
+    raise ErrorAgente("tarea.json no calza con entorno.json: " + "; ".join(problemas))
 
 
 # ---------- 3. Selección de robot (contrato v3: docs/agentes/seleccion-robot.md) ----------
@@ -377,4 +486,4 @@ def constructor(modo: str, modelo: str, robot_json: dict, entorno_json: dict, ta
 
 
 __all__ = ["ErrorAgente", "Seleccion", "alcance_necesario", "clon", "constructor", "entorno", "frames_de_videos",
-           "problemas_tarea", "revisar_tarea", "seleccionar", "tarea"]
+           "seleccionar", "tarea"]
