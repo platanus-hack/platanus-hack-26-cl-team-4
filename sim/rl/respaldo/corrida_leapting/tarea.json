@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "tarea": "instalar_panel",
+  "descripcion": "Tomar un panel de la pila que lleva el robot y dejarlo sobre el tubo de torsión de la fila 1",
+  "proposito": "Montar paneles de 32 kg sin que dos personas los levanten a mano en cada punto de montaje",
+  "pedido": {
+    "origen": "cliente",
+    "preguntas": []
+  },
+  "objeto": {
+    "elemento": null,
+    "descripcion": "panel solar del perfil de entorno.json",
+    "masa_kg": 32
+  },
+  "origen": {
+    "elemento": null,
+    "descripcion": "pila de paneles sobre el robot",
+    "altura_m": null
+  },
+  "destino": {
+    "elemento": null,
+    "descripcion": "tubo de torsión de la fila vecina al pasillo",
+    "altura_m": null
+  },
+  "objetivo": {
+    "cantidad": 5,
+    "ciclo_s": 60
+  },
+  "criterios_exito": {
+    "tolerancia_pos_m": 0.05,
+    "tolerancia_ang_grados": 5,
+    "sin_choques": true,
+    "tiempo_max_s": null
+  },
+  "restricciones": [
+    {
+      "tipo": "no_chocar",
+      "valor": null,
+      "detalle": "no chocar con las estructuras"
+    },
+    {
+      "tipo": "orientacion_fija",
+      "valor": null,
+      "detalle": "panel horizontal durante el traslado"
+    }
+  ],
+  "pila_paneles": {
+    "en_robot": true,
+    "cantidad": 5
+  }
+}

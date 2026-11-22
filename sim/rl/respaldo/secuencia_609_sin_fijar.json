@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "checkpoint": "model_609.pt",
+  "secuencias": 100,
+  "paneles_por_secuencia": 4,
+  "fijar_instalados": false,
+  "tolerancia": {
+    "pos_m": 0.05,
+    "ang_grados": 5.0
+  },
+  "tolerancia_fina": {
+    "pos_m": 0.02,
+    "ang_grados": 2.0
+  },
+  "secuencias_completas": 79,
+  "tasa_exito_secuencia": 0.79,
+  "paneles_intentados": 375,
+  "paneles_instalados": 354,
+  "tasa_exito_panel": 0.944,
+  "choques": 21,
+  "caidas": 0,
+  "tiempo_agotado": 0,
+  "duracion_secuencia_s": 17.13,
+  "ciclo_por_panel_s": 4.28,
+  "por_panel": [
+    {
+      "panel": 0,
+      "intentos": 100,
+      "exitos": 100,
+      "tasa_exito": 1.0,
+      "exitos_fino": 98,
+      "choques": 0,
+      "caidas": 0,
+      "tiempo_agotado": 0,
+      "ciclo_politica_s": 2.12,
+      "viaje_s": null,
+      "error_pos_medio_m": 0.0093
+    },
+    {
+      "panel": 1,
+      "intentos": 100,
+      "exitos": 89,
+      "tasa_exito": 0.89,
+      "exitos_fino": 88,
+      "choques": 11,
+      "caidas": 0,
+      "tiempo_agotado": 0,
+      "ciclo_politica_s": 2.13,
+      "viaje_s": 2.89,
+      "error_pos_medio_m": 0.0083
+    },
+    {
+      "panel": 2,
+      "intentos": 89,
+      "exitos": 86,
+      "tasa_exito": 0.9663,
+      "exitos_fino": 85,
+      "choques": 3,
+      "caidas": 0,
+      "tiempo_agotado": 0,
+      "ciclo_politica_s": 2.13,
+      "viaje_s": 2.83,
+      "error_pos_medio_m": 0.008
+    },
+    {
+      "panel": 3,
+      "intentos": 86,
+      "exitos": 79,
+      "tasa_exito": 0.9186,
+      "exitos_fino": 79,
+      "choques": 7,
+      "caidas": 0,
+      "tiempo_agotado": 0,
+      "ciclo_politica_s": 2.15,
+      "viaje_s": 2.87,
+      "error_pos_medio_m": 0.0075
+    }
+  ],
+  "fuente": "isaac"
+}

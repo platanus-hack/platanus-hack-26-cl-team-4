@@ -8,6 +8,8 @@ Los mide sim/prueba_fisica.py (parque del demo) y sim/prueba_entrenamiento.py (e
 """
 from __future__ import annotations
 
+import os
+
 # ---- Simulación ----
 DT_S = 1 / 120              # paso de física. Con paneles de 4 cm, pasos más grandes dejan que atraviesen el tubo.
 RENDER_CADA = 4             # 1 frame cada 4 pasos de física = 30 fps. También es la decimación del control del RL.
@@ -54,6 +56,33 @@ VARIACIONES = {
 }
 # Viento sobre el panel agarrado: F = 1/2 · rho · v² · C · A. Opcional (RF-INT-25).
 VIENTO = {"velocidad_max_m_s": 10.0, "densidad_aire_kg_m3": 0.97, "coef_fuerza": 0.5}
+# Viento en el entrenamiento: ráfaga al azar por episodio sobre el panel que se maneja (sim/rl/entorno.py).
+# 0 lo apaga. El parque deja de instalar con viento sobre ~10 m/s; se entrena hasta ahí.
+VIENTO_ENTRENAMIENTO_M_S = float(os.getenv("VIAZ_VIENTO_M_S", "0") or 0)
+
+# ---- Estructura del tracker ----
+# Rieles de módulo: dos por panel, cruzan el tubo de torsión bajo los bordes del panel. Sin ellos el panel queda
+# balanceado sobre un tubo de 10 cm. VIAZ_RIELES=0 vuelve a la escena anterior (para comparar).
+RIELES = {
+    "activos": os.getenv("VIAZ_RIELES", "1") != "0",
+    "alto_m": 0.04,          # perfil de 4 × 4 cm
+    "ancho_m": 0.04,
+    # Del largo del panel. Con 0,85 la punta del riel quedaba 5 cm bajo el panel de la pila del robot y lo
+    # trababa al levantarlo (medido en el pod: 0 de 64). Con 0,6 quedan 1,4 m de apoyo y 40 cm libres al pasillo.
+    "largo_rel": 0.6,
+    "borde_m": 0.12,         # del borde del panel hacia adentro, como los agujeros de montaje del marco
+    # Cara de los rieles bajo la del tubo (viaz_escena.poner_rieles). 0: rieles a ras, tubo más abajo (geometría real).
+    # 3 mm: el panel toca primero el tubo, como aprendió la política, y los rieles lo sostienen si se inclina.
+    "bajo_tubo_m": float(os.getenv("VIAZ_RIELES_BAJO_TUBO_M", "0.003")),
+}
+# Grapas: en la secuencia de paneles, el panel instalado queda unido al tubo con una unión fija, en la pose donde
+# quedó (sim/rl/entorno.py). Reemplaza el "teletransporte" al slot. VIAZ_GRAPAS=0 vuelve al teletransporte.
+GRAPAS = os.getenv("VIAZ_GRAPAS", "1") != "0"
+
+
+def fuerza_viento_n(velocidad_m_s: float, area_m2: float) -> float:
+    """Fuerza del viento sobre una placa: F = 1/2 · rho · v² · C · A."""
+    return 0.5 * VIENTO["densidad_aire_kg_m3"] * velocidad_m_s ** 2 * VIENTO["coef_fuerza"] * area_m2
 
 # Las masas del robot viven en backend/viaz/urdf.py: el URDF se genera en Render, que no ve sim/.
 

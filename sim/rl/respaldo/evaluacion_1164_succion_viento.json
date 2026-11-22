@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "checkpoint": "model_1164.pt",
+  "episodios": 100,
+  "tolerancias": [
+    {
+      "pos_m": 0.05,
+      "ang_grados": 5.0,
+      "exitos": 99,
+      "tasa_exito": 0.99
+    },
+    {
+      "pos_m": 0.02,
+      "ang_grados": 2.0,
+      "exitos": 83,
+      "tasa_exito": 0.83
+    }
+  ],
+  "ciclo_promedio_s": 2.0,
+  "colisiones": 0,
+  "fuente": "isaac"
+}
