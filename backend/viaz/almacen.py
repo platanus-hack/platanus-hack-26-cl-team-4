@@ -1,6 +1,7 @@
 """Almacén de archivos: disco local (desarrollo) o Cloudflare R2 (producción).
 
-Claves: proyectos/<id>/videos/<archivo> y corridas/<id>/<archivo>.
+Claves: proyectos/<id>/videos/<archivo>, corridas/<id>/<archivo> y catalogo/encontrados/<id>.json
+(fichas que trajo la búsqueda web, compartidas entre corridas).
 Los archivos grandes no pasan por la API en producción: se suben y bajan con URLs firmadas.
 """
 from __future__ import annotations
@@ -17,6 +18,7 @@ class Almacen:
     def leer(self, clave: str) -> bytes: ...
     def escribir(self, clave: str, datos: bytes, tipo: str = "application/octet-stream") -> None: ...
     def existe(self, clave: str) -> bool: ...
+    def listar(self, prefijo: str) -> list[str]: ...
     def url_get(self, clave: str) -> str: ...
     def url_put(self, clave: str) -> str: ...
 
@@ -44,6 +46,15 @@ class AlmacenLocal(Almacen):
 
     def existe(self, clave):
         return self.ruta(clave).is_file()
+
+    def listar(self, prefijo):
+        """Claves de los archivos cuya clave empieza con `prefijo` (un prefijo que termina en / es una carpeta)."""
+        carpeta = prefijo.rpartition("/")[0]
+        base = self.ruta(carpeta) if carpeta else self.raiz
+        if not base.is_dir():
+            return []
+        claves = (p.relative_to(self.raiz).as_posix() for p in base.rglob("*") if p.is_file())
+        return sorted(c for c in claves if c.startswith(prefijo))
 
     def url_get(self, clave):
         return f"{self.url}/archivos/{quote(clave)}"
@@ -77,6 +88,10 @@ class AlmacenR2(Almacen):
             return True
         except ClientError:
             return False
+
+    def listar(self, prefijo):
+        paginas = self.s3.get_paginator("list_objects_v2").paginate(Bucket=self.bucket, Prefix=prefijo)
+        return sorted(o["Key"] for p in paginas for o in p.get("Contents", []))
 
     def url_get(self, clave):
         return self.s3.generate_presigned_url("get_object", Params={"Bucket": self.bucket, "Key": clave}, ExpiresIn=VENCE_S)
