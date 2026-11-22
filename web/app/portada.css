@@ -559,6 +559,7 @@ body:has(.apertura-viaz) .cabecera { top: 100svh; }
 
 /* Recorrido breve para la presentación */
 .pitch-breve { min-height: 0; }
+.pitch-nav-desafio { display: none; }
 
 .pitch-comparacion {
   --alto-mapa: clamp(185px, 34svh, 274px);
@@ -581,7 +582,6 @@ body:has(.apertura-viaz) .cabecera { top: 100svh; }
 }
 
 .pitch-panel .rotulo-viaz { margin-bottom: 10px; }
-.pitch-panel:focus { outline: none; }
 
 .pitch-panel .pitch-titulo {
   max-width: none;
@@ -626,42 +626,52 @@ body:has(.apertura-viaz) .cabecera { top: 100svh; }
 .pitch-conexion-trazo { stroke-dasharray: 1; stroke-dashoffset: 1; }
 .pitch-conexion-punta { opacity: 0; }
 
-.pitch-comparacion[data-conexion-visible="true"] .pitch-conexion-trazo {
+.pitch-secuencia[data-solucion-visible="true"] .pitch-conexion-trazo {
   stroke-dashoffset: 0;
   transition: stroke-dashoffset .85s cubic-bezier(.23, 1, .32, 1);
 }
 
-.pitch-comparacion[data-conexion-visible="true"] .pitch-conexion-punta {
+.pitch-secuencia[data-solucion-visible="true"] .pitch-conexion-punta {
   opacity: 1;
   transition: opacity .18s .55s ease-out;
 }
 
-@media (max-width: 600px) {
-  .pitch-comparacion {
-    --alto-mapa: 192px;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+@media (width < 900px), (height < 600px) {
+  .pitch-secuencia {
+    display: flex;
+    flex-direction: column;
+    padding: 32px var(--margen) 0;
+    border-top: 1px solid var(--viaz-linea);
   }
 
+  .pitch-breve, .pitch-breve .pitch-comparacion { display: contents; }
+  .pitch-breve .pitch-comparacion { --alto-mapa: 192px; }
+  .pitch-parada { height: 0; scroll-margin-top: 16px; }
+  #problema { order: 0; }
+  .pitch-panel-desafio { order: 1; }
+  #solucion { order: 2; }
+  .pitch-panel-solucion { order: 4; }
+  .pitch-nav-solucion { order: 5; padding-inline: 0; padding-top: 16px; }
   .pitch-panel .pitch-titulo { text-wrap: wrap; }
 
   .pitch-conexion {
     position: static;
+    order: 3;
+    align-self: center;
+    margin-block: 8px;
     width: 46px;
     height: 46px;
-    justify-self: center;
     transform: rotate(90deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pitch-comparacion[data-conexion-visible] .pitch-conexion-trazo { stroke-dashoffset: 0; transition: none; }
-  .pitch-comparacion[data-conexion-visible] .pitch-conexion-punta { opacity: 1; transition: none; }
+  .pitch-secuencia[data-solucion-visible] :is(.pitch-conexion-trazo, .pitch-conexion-punta, .pitch-panel-solucion) { transition: none; }
 }
 
 .inicio-viaz .pitch-demo { padding-bottom: 18px; }
 .pitch-demo-cabecera { padding-bottom: clamp(20px, 4svh, 36px); }
-#demo-armado { padding-top: clamp(32px, 5vw, 64px); }
+#demo-seleccion { padding-top: clamp(32px, 5vw, 64px); }
 
 .pitch-demo-cabecera .rotulo-viaz { margin-bottom: 10px; }
 .pitch-demo-cabecera .titulo-seccion {
@@ -803,11 +813,45 @@ body:has(.apertura-viaz) .cabecera { top: 100svh; }
 
   .inicio-viaz [data-diapositiva]:focus { outline: none; }
 
+  .pitch-secuencia {
+    display: grid;
+    grid-template: repeat(2, 100svh) / minmax(0, 1fr);
+  }
+
+  .pitch-parada { grid-column: 1; }
+  #problema { grid-row: 1; }
+  #solucion { grid-row: 2; }
+
+  .pitch-breve {
+    grid-area: 1 / 1 / 3 / 2;
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    align-self: start;
+    min-block-size: 100svh;
+  }
+
   .pitch-breve .pitch-comparacion { align-self: center; }
+
+  .pitch-panel-solucion {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity .42s ease-out, transform .42s ease-out;
+  }
+
+  .pitch-secuencia[data-solucion-visible="true"] .pitch-panel-solucion {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+  }
+
+  .pitch-secuencia[data-solucion-visible="false"] .pitch-nav-desafio { display: flex; }
+  .pitch-secuencia[data-solucion-visible="false"] .pitch-nav-solucion { display: none; }
 
   .inicio-viaz .pitch-demo { padding: 0; border-block: 0; }
 
-  .pitch-demo-etapa, #demo-armado {
+  .pitch-demo-etapa, #demo-seleccion {
     display: flex;
     flex-direction: column;
     justify-content: center;

@@ -31,6 +31,13 @@ export default function Inicio() {
     const pagina = presentacion.current;
     if (!pagina) return;
     const pantallas = Array.from(pagina.querySelectorAll<HTMLElement>("[data-diapositiva]"));
+    const mapas = pantallas.filter((pantalla) => pantalla.classList.contains("pitch-parada"));
+
+    function pantallaSiguiente(haciaAbajo: boolean) {
+      return haciaAbajo
+        ? pantallas.find((pantalla) => pantalla.getBoundingClientRect().top > 8)
+        : pantallas.findLast((pantalla) => pantalla.getBoundingClientRect().top < -8);
+    }
 
     function avanzar(evento: KeyboardEvent) {
       if (evento.defaultPrevented || evento.altKey || evento.ctrlKey || evento.metaKey || evento.shiftKey) return;
@@ -39,17 +46,53 @@ export default function Inicio() {
       if (getComputedStyle(document.documentElement).scrollSnapType === "none") return;
       if (evento.target instanceof HTMLElement && evento.target.closest("input, textarea, select, [contenteditable]")) return;
 
-      const destino = haciaAbajo
-        ? pantallas.find((pantalla) => pantalla.getBoundingClientRect().top > 8)
-        : pantallas.findLast((pantalla) => pantalla.getBoundingClientRect().top < -8);
-
+      const destino = pantallaSiguiente(haciaAbajo);
       evento.preventDefault();
       destino?.focus({ preventScroll: true });
       destino?.scrollIntoView({ behavior: "instant", block: "start" });
     }
 
+    let ultimoGiro = 0;
+    let sentidoGiro = 0;
+    let distanciaGiro = 0;
+    let avanzoConGiro = false;
+
+    function avanzarMapasConRueda(evento: WheelEvent) {
+      if (evento.defaultPrevented || !evento.cancelable || evento.ctrlKey || evento.metaKey || evento.shiftKey) return;
+      const { deltaMode, deltaX, deltaY } = evento;
+      if (!deltaY || Math.abs(deltaX) > Math.abs(deltaY)) return;
+
+      const tiempo = performance.now();
+      const sentido = Math.sign(deltaY);
+      if (sentido !== sentidoGiro || tiempo - ultimoGiro > 200) {
+        distanciaGiro = 0;
+        avanzoConGiro = false;
+      }
+
+      if (!avanzoConGiro && !mapas.some((mapa) => Math.abs(mapa.getBoundingClientRect().top) <= 8)) return;
+      if (getComputedStyle(document.documentElement).scrollSnapType === "none") return;
+
+      evento.preventDefault();
+      ultimoGiro = tiempo;
+      sentidoGiro = sentido;
+      if (avanzoConGiro) return;
+
+      const escala = deltaMode === WheelEvent.DOM_DELTA_LINE ? 16
+        : deltaMode === WheelEvent.DOM_DELTA_PAGE ? window.innerHeight : 1;
+      distanciaGiro += Math.abs(deltaY) * escala;
+      if (distanciaGiro < 112) return;
+
+      // El resto del gesto pertenece al mismo avance, incluida la inercia del trackpad.
+      avanzoConGiro = true;
+      pantallaSiguiente(sentido > 0)?.scrollIntoView({ behavior: "instant", block: "start" });
+    }
+
     window.addEventListener("keydown", avanzar);
-    return () => window.removeEventListener("keydown", avanzar);
+    window.addEventListener("wheel", avanzarMapasConRueda, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", avanzar);
+      window.removeEventListener("wheel", avanzarMapasConRueda);
+    };
   }, []);
 
   return (
@@ -138,50 +181,56 @@ function PortadaIndustrial() {
 }
 
 function DesafioYSolucion() {
-  const { seccion: mapaChile, visible: conexionVisible } = useSeccionVisible(0.6);
+  const { seccion: paradaSolucion, visible: solucionVisible } = useSeccionVisible(0.55);
 
   return (
-    <section className="pitch-capitulo pitch-breve" data-diapositiva tabIndex={-1} aria-label="El desafío y la solución">
-      <div className="bloque pitch-comparacion" data-conexion-visible={conexionVisible}>
-        <section id="problema" className="pitch-panel" tabIndex={-1} aria-labelledby="t-problema">
-          <p className="rotulo-viaz">El desafío</p>
-          <h2 id="t-problema" className="pitch-titulo">Un robot probado en otro entorno</h2>
-          <figure className="pitch-pais pitch-pais-china">
-            <figcaption>China</figcaption>
-            <Image src="/viaz/china-puntos.svg" width={430} height={272} alt="Silueta punteada de China" unoptimized />
-          </figure>
-        </section>
-        <svg className="pitch-conexion" viewBox="0 0 160 42" fill="none" aria-hidden="true" focusable="false">
-          <path className="pitch-conexion-trazo" d="M3 32C57 32 70 10 131 10h23" pathLength="1" />
-          <path className="pitch-conexion-punta" d="m146 3 8 7-8 7" />
-        </svg>
-        <section id="solucion" className="pitch-panel" tabIndex={-1} aria-labelledby="t-solucion">
-          <p className="rotulo-viaz">La solución</p>
-          <h2 id="t-solucion" className="pitch-titulo">Pon el robot a prueba en una réplica virtual de alta fidelidad</h2>
-          <figure ref={mapaChile} className="pitch-pais pitch-pais-chile">
-            <figcaption>Chile</figcaption>
-            <Image
-              src="/viaz/chile-atacama.svg"
-              width={322}
-              height={292}
-              alt="Silueta punteada de Chile con el desierto de Atacama destacado"
-              unoptimized
-            />
-          </figure>
-        </section>
+    <section className="pitch-secuencia" data-solucion-visible={solucionVisible} aria-label="El desafío y la solución">
+      <section id="problema" className="pitch-parada" data-diapositiva tabIndex={-1} aria-label="El desafío" />
+      <section ref={paradaSolucion} id="solucion" className="pitch-parada" data-diapositiva tabIndex={-1} aria-label="La solución" />
+      <div className="pitch-capitulo pitch-breve">
+        <div className="bloque pitch-comparacion">
+          <section className="pitch-panel pitch-panel-desafio" aria-labelledby="t-problema">
+            <p className="rotulo-viaz">El desafío</p>
+            <h2 id="t-problema" className="pitch-titulo">Un robot probado en otro entorno</h2>
+            <figure className="pitch-pais pitch-pais-china">
+              <figcaption>China</figcaption>
+              <Image src="/viaz/china-puntos.svg" width={430} height={272} alt="Silueta punteada de China" unoptimized />
+            </figure>
+          </section>
+          <svg className="pitch-conexion" viewBox="0 0 160 42" fill="none" aria-hidden="true" focusable="false">
+            <path className="pitch-conexion-trazo" d="M3 32C57 32 70 10 131 10h23" pathLength="1" />
+            <path className="pitch-conexion-punta" d="m146 3 8 7-8 7" />
+          </svg>
+          <section className="pitch-panel pitch-panel-solucion" aria-labelledby="t-solucion">
+            <p className="rotulo-viaz">La solución</p>
+            <h2 id="t-solucion" className="pitch-titulo">Pon el robot a prueba en una réplica virtual de alta fidelidad</h2>
+            <figure className="pitch-pais pitch-pais-chile">
+              <figcaption>Chile</figcaption>
+              <Image
+                src="/viaz/chile-atacama.svg"
+                width={322}
+                height={292}
+                alt="Silueta punteada de Chile con el desierto de Atacama destacado"
+                unoptimized
+              />
+            </figure>
+          </section>
+        </div>
+        <NavegacionPitch clase="pitch-nav-desafio" anterior="#inicio" siguiente="#solucion" titulo="Ver solución" />
+        <NavegacionPitch clase="pitch-nav-solucion" anterior="#problema" siguiente="#demo" titulo="Ver caso solar" />
       </div>
-      <NavegacionPitch anterior="#inicio" siguiente="#demo" titulo="Ver caso solar" />
     </section>
   );
 }
 
-function NavegacionPitch({ anterior, siguiente, titulo }: {
+function NavegacionPitch({ anterior, siguiente, titulo, clase = "" }: {
   anterior: string;
   siguiente: string;
   titulo: string;
+  clase?: string;
 }) {
   return (
-    <nav className="bloque pitch-navegacion" aria-label="Navegación de la presentación">
+    <nav className={`bloque pitch-navegacion ${clase}`} aria-label="Navegación de la presentación">
       <a href={anterior}><span aria-hidden="true">↑</span> Anterior</a>
       <a href={siguiente}>{titulo} <span aria-hidden="true">↓</span></a>
     </nav>
@@ -190,12 +239,21 @@ function NavegacionPitch({ anterior, siguiente, titulo }: {
 
 const etapasDemo: { id: string; titulo: string; video: FuenteVideoDemoSolar }[] = [
   {
+    id: "demo-seleccion",
+    titulo: "Selección del robot",
+    video: {
+      src: "/demo/agentes-seleccion-robot-3.5s.mp4",
+      poster: "/demo/agentes-seleccion-robot-poster.webp",
+      etiqueta: "los agentes comparando robots y eligiendo el Leapting MMR",
+    },
+  },
+  {
     id: "demo-armado",
     titulo: "Armado",
     video: {
-      src: "/demo/armado_robot_bucle_720p.mp4",
-      poster: "/demo/armado_robot_poster.webp",
-      etiqueta: "armado del robot en Isaac Lab",
+      src: "/demo/armado-robot-orden-original-720p.mp4",
+      poster: "/demo/armado-robot-con-entorno-poster.webp",
+      etiqueta: "armado del entorno desértico y del robot",
     },
   },
   {
@@ -226,12 +284,12 @@ function CasoSolar() {
     <section className="caso-solar demo pitch-demo" id="demo" tabIndex={-1} aria-labelledby="t-demo">
       {etapasDemo.map(({ id, titulo, video }) => (
         <section key={id} id={id} className="pitch-demo-etapa" data-diapositiva tabIndex={-1} aria-labelledby={`t-${id}`}>
-          {id === "demo-armado" && (
+          {id === "demo-seleccion" && (
             <header className="pitch-demo-cabecera">
               <p className="rotulo-viaz">Infraestructura en acción</p>
               <h2 id="t-demo" className="titulo-seccion">Instalación de paneles solares</h2>
               <p className="intro-seccion pitch-demo-resumen">
-                Del armado del robot a la instalación en un megaparque solar simulado.
+                De la selección del robot a la instalación en un megaparque solar simulado.
               </p>
             </header>
           )}

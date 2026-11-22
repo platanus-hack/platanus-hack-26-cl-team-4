@@ -2,7 +2,7 @@
 
 // Realidad aumentada: la sala modelada de forma simple + un robot de servicio ANIMADO A MANO (no entrenado).
 // model-viewer abre la cámara del celular: AR Quick Look en iPhone (USDZ) y Scene Viewer / WebXR en Android (GLB).
-// Se carga desde el CDN oficial porque trae su propia versión de three.js (la del visor 3D del proyecto es otra).
+// El paquete autónomo de model-viewer se publica junto con los modelos de la sala.
 import Script from "next/script";
 import "./sala.css";
 import { createElement, useEffect, useRef, useState } from "react";
@@ -51,7 +51,7 @@ export default function PaginaSala() {
   }, [modo]);
   return (
     <section className="ar">
-      <Script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" />
+      <Script type="module" src="/ar/vendor/model-viewer-4.0.0.min.js" />
       <header>
         <h2>Experimenten el cambio</h2>
         <p className="tenue">Abran la cámara y miren este mismo lugar con robots trabajando en él.</p>
