@@ -43,7 +43,7 @@ def sistema(tmp_path, monkeypatch):
     url = f"http://127.0.0.1:{puerto}"
     cfg = Config(db_url=f"sqlite:///{tmp_path / 'viaz.db'}", dir_local=tmp_path / "archivos", url_publica=url,
                  agentes="fijo", worker_token="t", admin_token="adm", espera_trabajo_s=120, flujo="rl",
-                 horas_entrenamiento=1, monitor_s=0.6, episodios_evaluacion=100)
+                 horas_entrenamiento=1, monitor_s=0.6, episodios_evaluacion=100, max_finalistas=1)
     servidor = uvicorn.Server(uvicorn.Config(create_app(cfg), host="127.0.0.1", port=puerto, log_level="warning"))
     threading.Thread(target=servidor.run, daemon=True).start()
     for _ in range(100):
