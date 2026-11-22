@@ -1,7 +1,7 @@
 # Estado de VIAZ
 
 > **Única fuente de verdad del estado.** Otros docs enlazan aquí y no repiten cifras.
-> Fecha: 2026-11-22. Commit base: `8fdc540` (`origin/main`).
+> Fecha: 2026-11-22. Commit base: `08094bd` (`origin/main`).
 > Categorías (las de [`CLAUDE.md`](../CLAUDE.md)): **Real y probado**, **Sin probar**, **Falso o de relleno**, **No existe**.
 
 ## 1. Cómo verificar en 5 minutos
@@ -13,13 +13,13 @@ python -m pytest -q -rs
 ```
 
 - Es el mismo comando de la CI ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml), job `backend`).
-- Resultado medido: **359 passed, 7 skipped, 1 xfailed** (Mac, Python 3.13, 2026-11-22, ~5 min).
-- Los 7 que se saltan necesitan librerías que no están en `.[dev]`:
-  - 6 necesitan `pxr` (`test_escena.py:47,66,84`, `test_escena_texturas.py:37,74`). Con `usd-core` instalado, corren.
-  - 1 necesita `torch` (`test_entorno_rl.py:421`). Tampoco corre en la CI.
+- Resultado medido con este comando: **365 passed, 1 skipped, 1 xfailed en 5 min 14 s** (Mac, Python 3.12, 2026-11-22, commit `08094bd`).
+- El único skip necesita `torch` (`test_entorno_rl.py:421`). Tampoco corre en la CI. Sin `usd-core` se saltan 6 más.
+- El tiempo se va en 11 tests de punta a punta. Levantan la API y el runner simulado como procesos.
+- Los más lentos: `test_rl.py::test_segunda_corrida_reusa_el_modelo_comprobado` (50 s) y `test_flujo.py::test_flujo_completo` (33 s). Lista completa con `pytest --durations=15`.
 - El xfail es a propósito y estricto: `trinatracker-buildex-e` en `test_fisica_robot.py:172`.
 - Todos los tests corren en modo `fijo` o con Claude reemplazado por `monkeypatch`. Prueban el cableado, no la calidad de los agentes.
-- Corridas de la CI: <https://github.com/platanus-hack/platanus-hack-26-cl-team-4/actions/workflows/ci.yml>. La de `8fdc540` está verde. Las 4 anteriores en `main` se cancelaron por el tope de 10 min que tenía el job `backend`. El tope ahora es de 20 min (`timeout-minutes` en `ci.yml`).
+- Corridas de la CI: <https://github.com/platanus-hack/platanus-hack-26-cl-team-4/actions/workflows/ci.yml>. La CI de `main` está verde con el tope de 20 min del job `backend` (`timeout-minutes` en `ci.yml`). Las corridas canceladas viejas son del tope anterior de 10 min.
 
 ## 2. Estado por componente
 
@@ -54,25 +54,26 @@ python -m pytest -q -rs
 ### 3.1 Cifras con archivo
 
 Robot: clon de LEAPTING MMR. Tarea: `instalar_panel`. Todas las evaluaciones traen `"fuente": "isaac"`.
-Base de los enlaces: `https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/`.
+Base de los enlaces: `https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/` (commit `7e9ba0c`, punta de `feat/fisica-real`).
+Los enlaces usan el commit fijo para no romperse si la rama se borra al mergear el PR #36.
 
 | Modelo | Qué mide | Cifra exacta del JSON | Tolerancia | Archivo |
 |---|---|---|---|---|
-| `model_609` | 100 episodios de 1 panel | 100/100 éxitos; 97/100 a tolerancia fina; 0 colisiones | 5 cm y 5°; fina 2 cm y 2° | [`evaluacion_609.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/evaluacion_609.json) |
-| `model_609` | 100 secuencias de 4 paneles, panel instalado fijado | 100/100 secuencias; 400/400 paneles; 0 choques | 5 cm y 5° | [`secuencia_609_fijando.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/secuencia_609_fijando.json) |
-| `model_609` | Lo mismo, sin fijar el panel | 79/100 secuencias; 354/375 paneles; 21 choques | 5 cm y 5° | [`secuencia_609_sin_fijar.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/secuencia_609_sin_fijar.json) |
-| `model_609` | Criterio de parada del entrenamiento | iteración 485; éxito medio 0,9889 en 20 iteraciones | No viene en el JSON | [`criterio_multi.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/criterio_multi.json) |
-| `model_990` (rieles y grapas) | 100 episodios de 1 panel | 99/100; 84/100 a tolerancia fina; 0 colisiones | 5 cm y 5°; fina 2 cm y 2° | [`evaluacion_990_rieles.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/evaluacion_990_rieles.json) |
-| `model_990` | 100 secuencias de 4 paneles con grapas | 93/100 secuencias; 379/386 paneles; 7 por tiempo agotado | 5 cm y 5° | [`secuencia_990_rieles_grapas.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/secuencia_990_rieles_grapas.json) |
-| `model_990` | Ráfagas de 10 a 40 m/s sobre 93 paneles instalados | Con grapas: 0 paneles corridos. Sin grapas, desde 20 m/s: 93 corridos | Corrido = más de 1 cm | [`viento_990_grapas.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/viento_990_grapas.json), [`viento_990_sin_grapas.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/viento_990_sin_grapas.json) |
-| `model_1164` (ventosa con fuerza limitada, viento 8 m/s) | 100 episodios de 1 panel | 99/100; 83/100 a tolerancia fina; 0 colisiones | 5 cm y 5°; fina 2 cm y 2° | [`evaluacion_1164_succion_viento.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/evaluacion_1164_succion_viento.json) |
-| `model_1164` | 100 secuencias de 4 paneles | 98/100 secuencias; 393/395 paneles; 0 choques; 2 por tiempo agotado | 5 cm y 5° | [`secuencia_1164_succion_viento.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/secuencia_1164_succion_viento.json) |
+| `model_609` | 100 episodios de 1 panel | 100/100 éxitos; 97/100 a tolerancia fina; 0 colisiones | 5 cm y 5°; fina 2 cm y 2° | [`evaluacion_609.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/evaluacion_609.json) |
+| `model_609` | 100 secuencias de 4 paneles, panel instalado fijado | 100/100 secuencias; 400/400 paneles; 0 choques | 5 cm y 5° | [`secuencia_609_fijando.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/secuencia_609_fijando.json) |
+| `model_609` | Lo mismo, sin fijar el panel | 79/100 secuencias; 354/375 paneles; 21 choques | 5 cm y 5° | [`secuencia_609_sin_fijar.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/secuencia_609_sin_fijar.json) |
+| `model_609` | Criterio de parada del entrenamiento | iteración 485; éxito medio 0,9889 en 20 iteraciones | No viene en el JSON | [`criterio_multi.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/criterio_multi.json) |
+| `model_990` (rieles y grapas) | 100 episodios de 1 panel | 99/100; 84/100 a tolerancia fina; 0 colisiones | 5 cm y 5°; fina 2 cm y 2° | [`evaluacion_990_rieles.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/evaluacion_990_rieles.json) |
+| `model_990` | 100 secuencias de 4 paneles con grapas | 93/100 secuencias; 379/386 paneles; 7 por tiempo agotado | 5 cm y 5° | [`secuencia_990_rieles_grapas.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/secuencia_990_rieles_grapas.json) |
+| `model_990` | Ráfagas de 10 a 40 m/s sobre 93 paneles instalados | Con grapas: 0 paneles corridos. Sin grapas, desde 20 m/s: 93 corridos | Corrido = más de 1 cm | [`viento_990_grapas.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/viento_990_grapas.json), [`viento_990_sin_grapas.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/viento_990_sin_grapas.json) |
+| `model_1164` (ventosa con fuerza limitada, viento 8 m/s) | 100 episodios de 1 panel | 99/100; 83/100 a tolerancia fina; 0 colisiones | 5 cm y 5°; fina 2 cm y 2° | [`evaluacion_1164_succion_viento.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/evaluacion_1164_succion_viento.json) |
+| `model_1164` | 100 secuencias de 4 paneles | 98/100 secuencias; 393/395 paneles; 0 choques; 2 por tiempo agotado | 5 cm y 5° | [`secuencia_1164_succion_viento.json`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/secuencia_1164_succion_viento.json) |
 
 Los checkpoints (`model_*.pt`) están en la misma carpeta. Los clips y las métricas por iteración están solo en un archivo del pod (`sim/rl/respaldo/README.md`, sección "Respaldo completo"). No están en el repo.
 
 ### 3.2 Límites declarados
 
-Fuentes: [`sim/rl/respaldo/README.md`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/sim/rl/respaldo/README.md) y [`docs/fisica-real.md`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/feat/fisica-real/docs/fisica-real.md) de esa rama.
+Fuentes: [`sim/rl/respaldo/README.md`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/sim/rl/respaldo/README.md) y [`docs/fisica-real.md`](https://github.com/platanus-hack/platanus-hack-26-cl-team-4/blob/7e9ba0c1f0f92e7b54eb4af14adaa94444e44cc1/docs/fisica-real.md) de esa rama.
 
 - `model_609`: el panel instalado se teletransporta a su slot (`fijar_instalados=True`). Sin eso, 79 de 100 secuencias salen bien.
 - `model_609`: la ventosa es una unión fija y el panel se apoya en una caja de 10 × 10 cm, sin rieles.
