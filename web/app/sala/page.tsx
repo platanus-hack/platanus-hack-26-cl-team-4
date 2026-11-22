@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 // Realidad aumentada: la sala modelada de forma simple + un robot de servicio ANIMADO A MANO (no entrenado),
 // y un humanoide que repite la grabación del movimiento de su política entrenada en Isaac Lab.
@@ -9,13 +9,13 @@ import "./sala.css";
 import { createElement, useEffect, useRef, useState } from "react";
 
 // Sube este número al regenerar los modelos: obliga al celular a bajar los archivos nuevos y no usar los guardados.
-const VERSION = 9;
+const VERSION = 10;
 
 // Primero va el modo principal: los robots a tamaño real en el lugar donde está la persona.
 const MODELOS = {
   robot: {
     titulo: "En tu espacio",
-    detalle: "Apunta al piso: aparecen 5 robots de verdad en este lugar, VIAZ escanea el espacio, elige uno y te trae el café.",
+    detalle: "Apunta al piso: aparecen 5 robots de verdad en este lugar, VIAZ escanea el espacio, elige al humanoide Unitree H1 y te trae el café.",
     glb: `/ar/robot.glb?v=${VERSION}`,
     usdz: `/ar/robot.usdz?v=${VERSION}`,
     orbita: "10deg 72deg auto",
