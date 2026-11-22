@@ -166,8 +166,9 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 1. Cada ficha (catálogo o encontrada) cumple `robot.schema.json`. Las encontradas tienen `fuente.url` y `fuente.consultado` (RF-ROB-02, RF-ROB-03).
 2. Cada `finalistas[].id` y `alternativas[].id` es un candidato que pasó el descarte. Si no, `ErrorAgente`.
 3. Hay 1 a `VIAZ_MAX_FINALISTAS` finalistas, nunca más de 3. Los puestos son 1..N sin repetir.
-4. **Núcleo de `fisica`:** para ser finalista, la ficha tiene `largo_m`, `ancho_m`, `masa_kg`, `altura_cubierta_m` y `traccion`. Sin él, el robot queda como alternativa con el motivo.
+4. **Núcleo de `fisica`:** para ser finalista, la ficha tiene `largo_m`, `ancho_m`, `masa_kg`, `altura_cubierta_m` y `traccion`. Sin él, el robot queda como alternativa con el motivo. Excepción en la regla 5b.
 5. **Ninguno pasa las reglas:** exactamente un finalista, el que falla menos. Su justificación lo dice en la primera oración (igual que hoy).
+   - **5b. Pasan, pero ninguno tiene el núcleo:** exactamente un finalista, el primero por `preferencias`. Su justificación dice en la primera oración que ningún candidato válido tiene las medidas del vehículo y que el clon usa la base genérica. Los demás que pasan quedan como alternativas, con un `por_que_no` del código. Con el modelo, el código elige y el modelo solo escribe la justificación. Motivo: un dominio nuevo, sin robots medidos, igual debe poder correr.
 6. Las specs de cada `robot.json` salen de la ficha (RNF-02).
 7. El ganador sale de la regla, no del LLM.
 8. Cada salida cumple su esquema.
@@ -198,6 +199,8 @@ Ejemplo de ranking con dos finalistas de fidelidad distinta (hipotético):
 | Caso | Resultado |
 |---|---|
 | Id de finalista o alternativa fuera de los candidatos | `ErrorAgente`. La corrida pasa a `error` |
+| El modelo devuelve un finalista sin el núcleo de `fisica`, habiendo candidatos con núcleo | `ErrorAgente`. La corrida pasa a `error` |
+| Ningún candidato que pasa tiene el núcleo de `fisica` | No es un error: un solo finalista con la base genérica (regla 5b) |
 | Catálogo vacío o inválido | `ValueError` al cargar. La corrida pasa a `error` |
 | Búsqueda falla o se pasa del tiempo | `busqueda.estado` queda en `fallida` o `cortada`. La selección sigue con el catálogo |
 | Ficha encontrada inválida | Va a `busqueda.invalidas` y al log. No entra a los candidatos |

@@ -143,6 +143,19 @@ def justificacion_sin_candidatos(ficha: dict, requisitos: dict) -> str:
     return primera + _justificacion(ficha, requisitos, 1)
 
 
+def justificacion_sin_nucleo(ficha: dict, requisitos: dict) -> str:
+    primera = (f"Ningún candidato válido tiene las medidas del vehículo ({', '.join(NUCLEO_FISICA)}), así que "
+               f"el clon de {ficha['nombre']} usa la base genérica. ")
+    return primera + _justificacion(ficha, requisitos, 1)
+
+
+def alternativas_sin_nucleo(orden: list[dict], elegido: dict) -> list[dict]:
+    """Cuando ningún candidato válido tiene el núcleo: todos menos el elegido, con un por_que_no del código."""
+    return [{"id": f["id"], "por_que_no": f"tampoco tiene el núcleo de fisica y queda después de "
+                                          f"{elegido['nombre']} por las preferencias"}
+            for f in orden if f["id"] != elegido["id"]]
+
+
 def _por_que_no(ficha: dict, tope: int) -> str:
     if tiene_nucleo(ficha):
         return f"tiene el núcleo de fisica, pero queda fuera del tope de {tope} finalistas por las preferencias"
@@ -177,7 +190,9 @@ def por_reglas(requisitos: dict, fichas: list[dict], tope: int) -> dict:
     orden = ordenadas(pasan, requisitos)
     elegidos = [f for f in orden if tiene_nucleo(f)][:tope]
     if not elegidos:
-        raise ErrorAgente(f"ningún candidato que pasa las reglas tiene el núcleo de fisica ({', '.join(NUCLEO_FISICA)})")
+        elegido = orden[0]
+        return armar([{"id": elegido["id"], "puesto": 1, "justificacion": justificacion_sin_nucleo(elegido, requisitos)}],
+                     alternativas_sin_nucleo(orden, elegido), descartados)
     finalistas = [{"id": f["id"], "puesto": n, "justificacion": _justificacion(f, requisitos, n)}
                   for n, f in enumerate(elegidos, 1)]
     alternativas = [{"id": f["id"], "por_que_no": _por_que_no(f, tope)} for f in orden if f not in elegidos]

@@ -25,6 +25,10 @@ Tú eliges, entre candidatos reales que ya cumplen los requisitos obligatorios, 
 - A veces recibes un solo candidato que **no** cumple los requisitos, con sus fallas. Lo eligió el código porque falla menos.
 - Devuelve solo `justificacion`. Su **primera oración** dice que ningún candidato cumple los requisitos obligatorios y nombra cada requisito que este falla.
 
+## Caso sin núcleo de fisica
+- A veces recibes un solo candidato que cumple los requisitos, pero con `tiene_nucleo_fisica: false`. Ningún candidato válido tiene ese núcleo. Lo eligió el código porque es el primero por las preferencias.
+- Devuelve solo `justificacion`. Su **primera oración** dice que ningún candidato válido tiene las medidas del vehículo y que el clon usa la base genérica.
+
 ## Cómo ordenar
 - Sigue `requisitos.preferencias`, en su orden. Un criterio que va antes pesa más que todos los que siguen.
 - El orden en que llegan los candidatos ya aplica esas preferencias. Cambia el orden solo con una razón que puedas citar con números, y dila en la justificación.

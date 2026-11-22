@@ -171,12 +171,30 @@ def test_si_nadie_pasa_hay_un_finalista_que_lo_dice(entorno, tarea, fichas):
     assert len(r.robots_por_puesto) == 1
 
 
-def test_un_candidato_sin_nucleo_nunca_es_finalista(entorno, tarea, fichas):
-    solo_sin_nucleo = {i: fichas[i] for i in ("aes-maximo", "viaz-instalador-ficticio")}
-    with pytest.raises(agentes.ErrorAgente, match="núcleo"):
-        agentes.seleccionar("fijo", "x", entorno, tarea, solo_sin_nucleo)
+def test_si_alguno_tiene_nucleo_solo_esos_son_finalistas(entorno, tarea, fichas):
     sel = agentes.seleccionar("fijo", "x", entorno, tarea, fichas).seleccion
     assert all(seleccion.tiene_nucleo(fichas[f["id"]]) for f in sel["finalistas"])
+
+
+SIN_NUCLEO = ("aes-maximo", "viaz-instalador-ficticio")
+PRIMERA_SIN_NUCLEO = "Ningún candidato válido tiene las medidas del vehículo"
+
+
+def _solo_sin_nucleo(fichas: dict) -> dict:
+    return {i: fichas[i] for i in SIN_NUCLEO}
+
+
+def test_si_ningun_valido_tiene_nucleo_hay_un_finalista_con_la_base_generica(entorno, tarea, fichas):
+    r = agentes.seleccionar("fijo", "x", entorno, tarea, _solo_sin_nucleo(fichas))
+    sel = validar("seleccion", r.seleccion)
+    assert _ids(sel["finalistas"]) == ["aes-maximo"] and sel["finalistas"][0]["puesto"] == 1
+    primera = sel["finalistas"][0]["justificacion"].split(". ")[0]
+    assert primera.startswith(PRIMERA_SIN_NUCLEO) and "base genérica" in primera
+    assert _ids(sel["alternativas"]) == ["viaz-instalador-ficticio"]
+    assert "núcleo" in sel["alternativas"][0]["por_que_no"]
+    assert sel["descartados"] == []
+    assert _ids(r.robots_por_puesto) == ["aes-maximo"]
+    validar("robot", r.robots_por_puesto[0])
 
 
 def test_la_seleccion_no_cambia_sus_entradas(entorno, tarea, fichas):
@@ -267,3 +285,18 @@ def test_si_nadie_pasa_el_codigo_decide_y_el_modelo_explica(monkeypatch, entorno
     sel = agentes.seleccionar("claude", "modelo-x", pesado, tarea, fichas).seleccion
     assert sel["finalistas"] == [{"id": esperado, "puesto": 1, "justificacion": "Ningún candidato cumple. Explicación."}]
     assert list(llamadas[0]["esquema"]["properties"]) == ["justificacion"]
+
+
+def test_si_ningun_valido_tiene_nucleo_el_codigo_decide_y_el_modelo_explica(monkeypatch, entorno, tarea, fichas):
+    justificacion = f"{PRIMERA_SIN_NUCLEO}: el clon usa la base genérica. Explicación."
+    llamadas = _con_modelo(monkeypatch, {"justificacion": justificacion})
+    r = agentes.seleccionar("claude", "modelo-x", entorno, tarea, _solo_sin_nucleo(fichas))
+    sel = validar("seleccion", r.seleccion)
+    assert sel["finalistas"] == [{"id": "aes-maximo", "puesto": 1, "justificacion": justificacion}]
+    assert _ids(sel["alternativas"]) == ["viaz-instalador-ficticio"]
+    assert "núcleo" in sel["alternativas"][0]["por_que_no"]
+    assert len(llamadas) == 1 and list(llamadas[0]["esquema"]["properties"]) == ["justificacion"]
+    texto = llamadas[0]["contenido"][-1]["text"]
+    assert "Ningún candidato que pasó el descarte tiene el núcleo de fisica" in texto
+    assert _ids(r.robots_por_puesto) == ["aes-maximo"]
+    validar("robot", r.robots_por_puesto[0])

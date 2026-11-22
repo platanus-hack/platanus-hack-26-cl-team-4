@@ -174,7 +174,7 @@ flowchart LR
 | RF-ROB-09 | Un paso de búsqueda web, acotado en robots y tiempo, trae fichas de robots reales que no están en el catálogo, con `origen: "busqueda"` y lo no publicado en `estimados`. El código rechaza y registra las fichas inválidas. Si la búsqueda falla, la selección sigue con el catálogo | **S** |
 | RF-ROB-10 | El código descarta cada candidato que no cumple un requisito obligatorio y lista sus fallas en `seleccion.json → descartados` | **S** |
 | RF-ROB-11 | El agente devuelve de 1 a 3 finalistas (`VIAZ_MAX_FINALISTAS`, por defecto 3) y las demás fichas válidas como alternativas con `por_que_no`. Si ninguna pasa las reglas, devuelve un solo finalista y lo dice en la primera oración | **S** |
-| RF-ROB-12 | Para ser finalista, la ficha tiene el núcleo de `fisica`: `largo_m`, `ancho_m`, `masa_kg`, `altura_cubierta_m` y `traccion`. Sin él, el robot queda como alternativa y la web muestra el motivo | **S** |
+| RF-ROB-12 | Para ser finalista, la ficha tiene el núcleo de `fisica`: `largo_m`, `ancho_m`, `masa_kg`, `altura_cubierta_m` y `traccion`. Sin él, el robot queda como alternativa y la web muestra el motivo. Si ningún candidato que cumple tiene el núcleo, hay un solo finalista, el primero por las preferencias: su clon usa la base genérica y la justificación lo dice en la primera oración | **S** |
 
 ### 4.4 Agente constructor del robot en Isaac Lab (`agentes/`, `sim/`)
 

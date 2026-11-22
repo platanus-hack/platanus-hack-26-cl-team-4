@@ -193,6 +193,15 @@ def _seleccion_con_modelo(modelo: str, requisitos: dict, fichas: list[dict], top
         return seleccion.armar([{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
                                [], descartados)
     orden = seleccion.ordenadas(pasan, requisitos)
+    if not any(seleccion.tiene_nucleo(f) for f in orden):
+        elegido = orden[0]
+        texto = _texto_seleccion(requisitos, tope, [elegido],
+                                 "Ningún candidato que pasó el descarte tiene el núcleo de fisica. Candidato "
+                                 "elegido por el código, el primero por las preferencias; el clon usa la base genérica")
+        datos = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.ESQUEMA_JUSTIFICACION,
+                           contenido=[{"type": "text", "text": texto}])
+        return seleccion.armar([{"id": elegido["id"], "puesto": 1, "justificacion": datos["justificacion"]}],
+                               seleccion.alternativas_sin_nucleo(orden, elegido), descartados)
     texto = _texto_seleccion(requisitos, tope, orden, "Candidatos que pasaron el descarte por reglas, "
                                                       "ordenados por las preferencias")
     eleccion = pedir_json(modelo=modelo, sistema=SISTEMA_ROBOT, esquema=seleccion.esquema_eleccion([f["id"] for f in orden]),
