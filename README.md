@@ -61,13 +61,14 @@ El mismo flujo corre en rubros distintos. Solo cambia el perfil de dominio ([`do
 | Caso | Lugar | Tarea | Robot que busca VIAZ |
 |---|---|---|---|
 | 1 | Megaparque solar: filas de estructuras y pilas de paneles | Tomar un panel y dejarlo sobre la estructura | Robot de instalación de paneles |
-| 2 **[Por definir]** | Sala u oficina: mesa, sillas y estante | Tomar una caja de la mesa y dejarla en el estante | Robot móvil con brazo |
+| 2 | Sala de eventos (la del pitch): tarima, pantalla, filas de sillas | Recorrer la sala y bailar frente al público sin chocar | El que elija el agente; con reglas, el humanoide Unitree H1 |
+| 3 | Sala u oficina: mesa, sillas y estante | Tomar una caja de la mesa y dejarla en el estante | Robot móvil con brazo |
 | Otros | Bodega, taller, línea de producción | Transportar, ordenar, tomar y dejar | El que pidan los requisitos |
 
 - **Entrada:** videos y una descripción del lugar de trabajo.
 - **Salida:** un demo de cómo trabajaría ese robot en ese lugar, antes de comprar o importar nada.
 
-**Hoy:** solo el caso 1 tiene perfil de selección y entorno RL en el código. El caso 2 tiene entorno y tarea de ejemplo (`backend/viaz/fixtures/*_sala.json`).
+**Hoy:** los casos 1 y 2 tienen perfil y entorno RL (`sim/rl/` y `sim/animar/`). El caso 3 tiene solo entorno y tarea de ejemplo. Cómo agregar uno: [`docs/agregar-dominio.md`](docs/agregar-dominio.md).
 
 ## Por qué importa
 

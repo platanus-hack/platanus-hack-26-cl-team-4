@@ -35,8 +35,9 @@
 | Caso | Lugar (`tipo`) | Tarea | Estado |
 |---|---|---|---|
 | 1 | Megaparque solar (`parque_solar`) | `instalar_panel`: tomar un panel y dejarlo apoyado sobre la estructura | Perfil y simulación en el código |
-| 2 | Sala u oficina (`sala`) | `tomar_y_dejar`: tomar una caja de la mesa y dejarla en el estante | Fixtures (`entorno_sala.json`, `tarea_sala.json`). Sin perfil de selección ni entorno RL |
-| 3+ | Otros (bodega, taller, línea de producción…) | `tomar_y_dejar`, `transportar`, `ordenar`, `inspeccionar` | **[Por definir]** |
+| 2 | Sala de eventos del pitch (`sala_eventos`) | `animar_evento`: recorrer la sala y bailar una coreografía frente al público, sin chocar | Perfil, selección (elige el agente; con reglas gana el Unitree H1), escena desde el video y entorno RL en `sim/animar/` |
+| 3 | Sala u oficina (`sala`) | `tomar_y_dejar`: tomar una caja de la mesa y dejarla en el estante | Fixtures (`entorno_sala.json`, `tarea_sala.json`). Sin perfil de selección ni entorno RL |
+| 4+ | Otros (bodega, taller, línea de producción…) | `tomar_y_dejar`, `transportar`, `ordenar`, `inspeccionar` | **[Por definir]** |
 
 ### 1.1 Plan del demo
 
@@ -125,7 +126,7 @@ flowchart LR
 
 | Tipo | Must | Should | Could | Won't |
 |---|---|---|---|---|
-| Funcionales | 65 | 34 | 18 | — |
+| Funcionales | 66 | 35 | 18 | — |
 | No funcionales | 15 | 6 | 0 | — |
 | Fuera del alcance | — | — | — | 10 |
 
@@ -166,8 +167,10 @@ flowchart LR
 | RF-GEN-04 | Los prompts de los agentes no nombran un rubro fijo. Los ejemplos de un rubro van marcados como ejemplos | **M** |
 | RF-GEN-05 | La tolerancia de éxito, la cantidad y el tiempo de ciclo salen de `tarea.json → criterios_exito` y `objetivo`. Ningún componente los fija en el código ni en un prompt | **M** |
 | RF-GEN-06 | Si un dominio no tiene perfil, la corrida se detiene con un error claro que nombra el perfil que falta (`exigir_pipeline`) | **M** |
-| RF-GEN-07 | Al menos 2 casos de referencia de rubros distintos corren de punta a punta: el parque solar (caso 1) y un segundo caso **[Por definir: sala u otro]** | **M** |
-| RF-GEN-08 | Existe una guía corta para agregar un dominio: qué archivos crear, qué pruebas pasar y cómo se registra | **S** |
+| RF-GEN-07 | Al menos 2 casos de referencia de rubros distintos corren de punta a punta: el parque solar (caso 1) y la sala de eventos del pitch con `animar_evento` (caso 2) | **M** |
+| RF-GEN-08 | Existe una guía corta para agregar un dominio: qué archivos crear, qué pruebas pasar y cómo se registra ([`agregar-dominio.md`](agregar-dominio.md)) | **S** |
+| RF-GEN-09 | Los requisitos de un perfil son físicos (carga, alcance, ancho libre, movilidad) y no fijan el tipo de robot. Lo que la tarea agradece va como preferencia (`capacidades_deseadas`). El agente de selección elige | **M** |
+| RF-GEN-10 | Si la ficha del robot trae un modelo publicado para Isaac Lab (`modelo_sim`), el clon es ese modelo, sin ensamblaje. Pasa igual por `validar_robot` | **S** |
 
 ### 4.1 Entorno (`entorno.json`, `sim/`)
 
@@ -507,7 +510,7 @@ timeline
 - ¿RunPod o Vast.ai? ¿Quién crea la cuenta y carga el saldo?
 - ¿De dónde salen los créditos de la Claude API?
 - ¿Qué parque real usamos para el `entorno.json` a mano del caso 1?
-- **¿Cuál es el caso de referencia 2?** ¿La sala de `fixtures/entorno_sala.json` o otro rubro (bodega, taller)?
+- ~~¿Cuál es el caso de referencia 2?~~ **Resuelto (2026-11-22):** la sala de eventos del pitch, con un robot que anima la fiesta (`animar_evento`).
 - ¿Qué robot es la referencia de cada caso?
 - ¿Con cuántos casos de referencia se presenta el pitch: 2 o más?
 - ¿Quién es responsable de cada área?
