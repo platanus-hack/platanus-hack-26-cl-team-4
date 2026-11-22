@@ -15,6 +15,10 @@ Los cinco modelos usan carcasas biseladas, articulaciones separadas y materiales
 propios. El robot de servicio conserva el pivote del brazo que lleva la bandeja.
 Las cajas de análisis se ajustan a la silueta de cada robot.
 
+El humanoide es la malla del modelo publicado del **Unitree H1**, de pie y quieto (la pose del cuadro 0 de
+`baile.npz`). Va en `h1_pose.npz`; la animación de la escena sigue hecha a mano. Para regenerarlo:
+`python generar_h1_pose.py <ruta>/baile.npz` (`baile.npz` no va en el repo).
+
 | Variante | Qué es | Escala |
 |---|---|---|
 | `maqueta` | La sala en miniatura (piso, muros bajos, mural, gradas, ~100 sillas) con el robot recorriendo el pasillo central | 1:20 (≈ 0,5 m sobre una mesa) |
