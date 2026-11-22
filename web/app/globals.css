@@ -85,3 +85,20 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .figura figcaption { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; }
 .etiqueta-tenue { background: var(--borde); color: var(--texto); }
 .tarjeta details { margin-top: 8px; }
+
+.tarjeta h4 { margin: 14px 0 6px; font-size: 0.95rem; }
+.tarjeta h5 { margin: 0 0 4px; font-size: 0.9rem; }
+.finalistas { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.finalistas p { margin: 4px 0 0; }
+.ficha { border-top: 1px solid var(--borde); padding-top: 8px; margin-top: 8px; }
+.ficha p { margin: 0 0 4px; }
+.specs { display: grid; gap: 4px; font-size: 0.9rem; }
+.cita { font-style: italic; }
+ul.aviso { padding-left: 28px; }
+.tabla-envoltura { overflow-x: auto; }
+.tabla { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.tabla caption { text-align: left; padding-bottom: 6px; }
+.tabla th, .tabla td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+.tabla thead th { color: var(--tenue); font-weight: 600; }
+.tabla .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.compara { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
