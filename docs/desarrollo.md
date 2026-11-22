@@ -91,7 +91,7 @@ python -m viaz.orquestador
 | `VIAZ_DISCORD_WEBHOOK` | orquestador | — | Avisos del monitor. Sin valor, los avisos van al log |
 | `VIAZ_ADMIN_TOKEN` | API | `WORKER_TOKEN` | Token para `POST /corridas/{id}/detener` |
 | `VIAZ_DIR_POD` | pod | `.datos/pod` | Carpeta persistente con checkpoints y métricas |
-| `VIAZ_CMD_ENTRENAR`, `VIAZ_CMD_EVALUAR`, `VIAZ_CMD_CLIP`, `VIAZ_CMD_VALIDAR_ROBOT` | pod | — | Comandos del entorno RL ([`contrato-entorno-rl.md`](contrato-entorno-rl.md) §1) |
+| `VIAZ_CMD_ENTRENAR`, `VIAZ_CMD_EVALUAR`, `VIAZ_CMD_GRABAR_CLIP`, `VIAZ_CMD_VALIDAR_ROBOT` | pod | — | Comandos del entorno RL ([`contrato-entorno-rl.md`](contrato-entorno-rl.md) §1) |
 | `VIAZ_FUENTE` | pod | DejaVu / Arial | Fuente TTF de los rótulos del video (con tildes) |
 | `NEXT_PUBLIC_API_URL` | web | `http://localhost:8000` | URL de la API |
 | `VIAZ_API`, `VIAZ_MODO_SIM`, `ISAAC_PYTHON` | pod | — | Ver más abajo |
@@ -129,7 +129,7 @@ python -m viaz.orquestador
 pip install -r worker-gpu/requirements.txt
 VIAZ_API=https://viaz-api.onrender.com WORKER_TOKEN=<de Render> \
 ISAAC_PYTHON=/isaac-sim/python.sh \
-VIAZ_CMD_ENTRENAR=... VIAZ_CMD_EVALUAR=... VIAZ_CMD_CLIP=... VIAZ_CMD_VALIDAR_ROBOT=... \
+VIAZ_CMD_ENTRENAR=... VIAZ_CMD_EVALUAR=... VIAZ_CMD_GRABAR_CLIP=... VIAZ_CMD_VALIDAR_ROBOT=... \
 VIAZ_DIR_POD=/workspace/viaz python worker-gpu/runner.py --modo isaac
 ```
 

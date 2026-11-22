@@ -29,10 +29,10 @@ El runner lanza cada comando con el Python de Isaac Lab. El comando base sale de
 
 | Comando | Variable | Ejemplo |
 |---|---|---|
-| `entrenar` | `VIAZ_CMD_ENTRENAR` | `/workspace/IsaacLab/isaaclab.sh -p sim/rl/entrenar.py` |
-| `evaluar` | `VIAZ_CMD_EVALUAR` | `/workspace/IsaacLab/isaaclab.sh -p sim/rl/evaluar.py` |
-| `grabar_clip` | `VIAZ_CMD_CLIP` | `/workspace/IsaacLab/isaaclab.sh -p sim/rl/grabar_clip.py` |
-| `validar_robot` | `VIAZ_CMD_VALIDAR_ROBOT` | `/workspace/IsaacLab/isaaclab.sh -p sim/rl/validar_robot.py` |
+| `entrenar` | `VIAZ_CMD_ENTRENAR` | `/workspace/IsaacLab/isaaclab.sh -p sim/tareas.py entrenar` |
+| `evaluar` | `VIAZ_CMD_EVALUAR` | `/workspace/IsaacLab/isaaclab.sh -p sim/tareas.py evaluar` |
+| `grabar_clip` | `VIAZ_CMD_GRABAR_CLIP` | `/workspace/IsaacLab/isaaclab.sh -p sim/tareas.py grabar_clip` |
+| `validar_robot` | `VIAZ_CMD_VALIDAR_ROBOT` | `/workspace/IsaacLab/isaaclab.sh -p sim/tareas.py validar_robot` |
 
 - **Headless siempre.** Ninguno abre ventana.
 - **Código de salida:** `0` si terminó bien. Otro valor = error; el runner manda las últimas líneas de `stderr` a la corrida.
@@ -96,7 +96,7 @@ $VIAZ_CMD_EVALUAR --entorno E --tarea T --robot R --escena S --checkpoint C --ep
 ## 5. `grabar_clip`
 
 ```text
-$VIAZ_CMD_CLIP --entorno E --tarea T --robot R --escena S --checkpoint C --segundos 7 --salida DIR/clip.mp4 [--grilla]
+$VIAZ_CMD_GRABAR_CLIP --entorno E --tarea T --robot R --escena S --checkpoint C --segundos 7 --salida DIR/clip.mp4 [--grilla]
 ```
 
 - **Graba ~7 s** de la política de ese checkpoint con la cámara lateral 3/4 fija.
