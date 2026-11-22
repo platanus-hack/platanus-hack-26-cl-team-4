@@ -122,7 +122,8 @@ function Videos({ datos }: { datos: Datos }) {
       {datos.construccion && (
         <figure className="figura">
           <figcaption>
-            <strong>1 · El agente construye el robot</strong> <span className="etiqueta">simulación</span>
+            <strong>{datos.clon.modelo ? "1 · El robot real en el simulador" : "1 · El agente construye el robot"}</strong>{" "}
+            <span className="etiqueta">simulación</span>
             <span className="tenue">
               {" "}{datos.clon.modelo
                 ? "modelo publicado del robot para Isaac Lab, validado en la escena de esta corrida"

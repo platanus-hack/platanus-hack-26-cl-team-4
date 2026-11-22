@@ -25,6 +25,7 @@ if [ "${1:-}" = "parar" ]; then
 fi
 export DATABASE_URL="sqlite:///$DATOS/viaz.db" VIAZ_ALMACEN=local VIAZ_DIR_LOCAL="$DATOS/archivos"
 export VIAZ_URL_PUBLICA="http://localhost:$PUERTO" WORKER_TOKEN="${WORKER_TOKEN:-dev-token}"
+export VIAZ_ORIGENES="${VIAZ_ORIGENES:-http://localhost:3000,http://localhost:3001}"
 export VIAZ_FLUJO="${VIAZ_FLUJO:-rl}" VIAZ_MAX_FINALISTAS="${VIAZ_MAX_FINALISTAS:-1}"
 cd "$RAIZ/backend"
 setsid nohup "$PY_BACKEND" -m uvicorn viaz.api:app --host 127.0.0.1 --port "$PUERTO" > "$DATOS/api.log" 2>&1 < /dev/null &

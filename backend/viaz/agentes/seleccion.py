@@ -25,7 +25,9 @@ def specs_estimadas(ficha: dict) -> list[str]:
 
 
 def tiene_nucleo(ficha: dict) -> bool:
-    return set(NUCLEO_FISICA) <= set(ficha.get("fisica") or {})
+    """El clon puede ser fiel al robot: tiene el núcleo de `fisica`, o un modelo publicado para Isaac Lab
+    (`modelo_sim`, que ya trae medidas y masas del fabricante: el clon no usa la base genérica)."""
+    return bool(ficha.get("modelo_sim")) or set(NUCLEO_FISICA) <= set(ficha.get("fisica") or {})
 
 
 def alcance_min(ficha: dict, requisitos: dict) -> float | None:

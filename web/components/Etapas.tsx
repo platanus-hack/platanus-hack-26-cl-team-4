@@ -1,7 +1,7 @@
 import type { Etapa } from "@/lib/tipos";
 
 const NOMBRES: Record<Etapa["nombre"], string> = {
-  entorno: "Entorno de la planta",
+  entorno: "Entorno del lugar",
   tarea: "Definir la tarea",
   robot: "Elegir el robot real",
   clon: "Construir el robot (Isaac Lab)",

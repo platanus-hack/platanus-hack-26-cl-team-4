@@ -46,9 +46,16 @@ def _numero(valor: float) -> str:
     return f"{valor:g}".replace(".", ",")
 
 
+MAX_AVISOS_SUELTOS = 3   # con más datos estimados, un solo aviso que los agrupa (no tapa la justificación)
+
+
 def advertencias_de_confianza(confianza: dict[str, float]) -> list[str]:
-    return [f"{campo} tiene confianza {_numero(valor)}: es un valor supuesto, no medido"
-            for campo, valor in confianza.items() if valor < 1]
+    bajos = {c: v for c, v in confianza.items() if v < 1}
+    if len(bajos) <= MAX_AVISOS_SUELTOS:
+        return [f"{campo} tiene confianza {_numero(valor)}: es un valor supuesto, no medido"
+                for campo, valor in bajos.items()]
+    rango = f"{_numero(min(bajos.values()))} a {_numero(max(bajos.values()))}"
+    return [f"{len(bajos)} datos del entorno son estimados, no medidos (confianza {rango}): {', '.join(bajos)}"]
 
 
 def perfil_solar(entorno_json: dict, tarea_json: dict, fichas: list[dict]) -> dict:
