@@ -1,105 +1,355 @@
+/* Tokens: web/DISENO.md (mediodía en el desierto). Solo tema claro: es como se ve una planta en Atacama. */
 :root {
-  --fondo: #f6f7f9;
-  --superficie: #ffffff;
-  --texto: #14181f;
-  --tenue: #5b6472;
-  --borde: #dde1e7;
-  --acento: #e0a106;
-  --acento-texto: #1a1300;
-  --error: #b42318;
-  --ok: #1f7a4d;
-}
+  color-scheme: light;
+  --cielo: #e4eef3;
+  --cielo-hondo: #d3e2ea;
+  --tinta: #14253a;
+  --modulo: #22477e;
+  --acero: #6e7a86;
+  --regla: #b9c6cf;
+  --tierra: #b98552;
+  --senal: #f4b400;
+  --error: #a4262c;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fondo: #0f1217;
-    --superficie: #171b22;
-    --texto: #e8ebf0;
-    --tenue: #9aa3b2;
-    --borde: #2a303a;
-    --error: #ff8a80;
-    --ok: #6fd3a0;
-  }
+  --fuente: var(--fuente-inter, system-ui);
+  --ancho-max: 1200px;
+  --margen: clamp(16px, 4vw, 40px);
+
+  /* escala tipográfica: 14 · 16 · 20 · 28 · 44 · 72 */
+  --t-chica: 0.875rem;
+  --t-base: 1rem;
+  --t-media: 1.25rem;
+  --t-grande: 1.75rem;
+  --t-titulo: clamp(1.9rem, 4vw, 2.75rem);
+  --t-hero: clamp(2.1rem, 5.6vw, 4.5rem);
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--fondo); color: var(--texto); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
-a { color: inherit; }
-main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--cielo);
+  color: var(--tinta);
+  font-family: var(--fuente), system-ui, sans-serif;
+  font-size: var(--t-base);
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+a { color: var(--modulo); text-underline-offset: 3px; }
+code { font-size: 0.92em; background: var(--cielo-hondo); padding: 0.05em 0.35em; border-radius: 3px; }
+:focus-visible { outline: 3px solid var(--modulo); outline-offset: 2px; }
+h1, h2, h3 { margin: 0; }
 
-.cabecera { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--borde); background: var(--superficie); }
-.marca { font-weight: 800; letter-spacing: 0.12em; text-decoration: none; font-size: 1.2rem; }
-
-.inicio { max-width: 640px; margin: 32px auto; }
-.inicio h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); line-height: 1.15; margin-bottom: 8px; }
-.bajada { color: var(--tenue); font-size: 1.05rem; }
-.formulario { display: grid; gap: 16px; margin-top: 24px; background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 20px; }
-.formulario label { display: grid; gap: 6px; font-weight: 600; font-size: 0.95rem; }
-input, textarea, select { font: inherit; padding: 10px; border-radius: 8px; border: 1px solid var(--borde); background: var(--fondo); color: var(--texto); }
-button { font: inherit; font-weight: 700; padding: 10px 16px; border-radius: 8px; border: 0; background: var(--acento); color: var(--acento-texto); cursor: pointer; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.saltar { position: absolute; left: var(--margen); top: -48px; background: var(--tinta); color: var(--cielo); padding: 8px 12px; z-index: 10; }
+.saltar:focus { top: 8px; }
+.tenue { color: var(--acero); font-size: var(--t-chica); margin: 0; }
 .error { color: var(--error); }
-.tenue { color: var(--tenue); font-size: 0.9rem; }
 
-.corrida { display: grid; grid-template-columns: 340px 1fr; gap: 16px; }
+/* Títulos expandidos: la rotulación de la maquinaria de obra */
+.marca, .hero h1, .titulo-seccion, .probar h1, .corrida-cabecera h1, .ficha-nombre, .pasos h3 {
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Cabecera y pie ---------- */
+.cabecera {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px var(--margen);
+  max-width: calc(var(--ancho-max) + 2 * var(--margen)); margin: 0 auto;
+}
+.marca { font-weight: 800; font-size: var(--t-media); text-decoration: none; color: var(--tinta); }
+.nav-accion {
+  font-weight: 600; color: var(--tinta); text-decoration: none;
+  border: 1.5px solid var(--tinta); border-radius: 999px; padding: 7px 16px; font-size: var(--t-chica);
+}
+.nav-accion:hover { background: var(--tinta); color: var(--cielo); }
+.pie {
+  max-width: calc(var(--ancho-max) + 2 * var(--margen)); margin: 0 auto;
+  padding: 32px var(--margen) 48px; color: var(--acero); font-size: var(--t-chica);
+}
+
+/* ---------- Hero: la idea + la cadena de agentes (lo único audaz de la página) ---------- */
+.hero {
+  max-width: calc(var(--ancho-max) + 2 * var(--margen)); margin: 0 auto;
+  padding: clamp(28px, 6vw, 80px) var(--margen) clamp(40px, 6vw, 72px);
+}
+.hero h1 {
+  font-size: clamp(2rem, 4.6vw, 3.75rem); font-weight: 800; line-height: 1.02;
+  max-width: 24ch; text-wrap: balance;
+}
+.hero-bajada { margin: 22px 0 0; max-width: 58ch; font-size: var(--t-media); line-height: 1.45; }
+.hero-acciones { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.hero-acciones a { text-decoration: none; }
+.hero-cadena { margin-top: clamp(36px, 5vw, 64px); }
+@media (max-width: 760px) { .hero-bajada { font-size: var(--t-base); } }
+
+/* Cadena: una línea gruesa con nodos. Amarillo = paso que hace un agente de IA. */
+.cadena { margin: 0; }
+.cadena-pasos {
+  list-style: none; margin: 0; padding: 0; position: relative;
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 0 12px;
+}
+.cadena-pasos::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 11px; height: 4px; background: var(--tinta);
+  transform-origin: left; animation: dibujar 1.4s cubic-bezier(.6,0,.2,1) both;
+}
+.nodo { position: relative; display: grid; gap: 4px; padding-top: 34px; }
+.nodo-punto {
+  position: absolute; top: 0; left: 0; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--cielo); border: 4px solid var(--tinta);
+  animation: encender 0.35s ease-out both; animation-delay: calc(0.15s + var(--i) * 0.2s);
+}
+.nodo-agente .nodo-punto { background: var(--senal); }
+.nodo-nombre {
+  font-weight: 800; font-size: var(--t-media); line-height: 1.1;
+  letter-spacing: -0.01em; text-wrap: balance;
+}
+.nodo-quien { color: var(--acero); font-size: var(--t-chica); }
+.nodo-agente .nodo-quien { color: var(--tinta); }
+.cadena-leyenda { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-top: 24px; color: var(--acero); font-size: var(--t-chica); }
+.leyenda-item { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.leyenda-punto { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--tinta); background: var(--cielo); display: inline-block; }
+.leyenda-agente { background: var(--senal); }
+
+@keyframes dibujar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes encender { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* En pantallas angostas la cadena se vuelve vertical: la línea baja por la izquierda. */
+@media (max-width: 900px) {
+  .cadena-pasos { grid-template-columns: 1fr; gap: 18px; padding-left: 44px; }
+  .cadena-pasos::before { left: 11px; right: auto; top: 0; bottom: 0; width: 4px; height: auto; transform-origin: top; animation-name: dibujar-v; }
+  .nodo { padding-top: 0; }
+  .nodo-punto { left: -44px; top: 0; }
+}
+@keyframes dibujar-v { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cadena-pasos::before, .nodo-punto { animation: none; }
+}
+
+/* ---------- El problema: hechos con su fuente ---------- */
+.hechos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px clamp(24px, 5vw, 64px); }
+@media (max-width: 760px) { .hechos { grid-template-columns: 1fr; } }
+.hechos li { border-top: 1px solid var(--regla); padding-top: 14px; }
+.hecho-texto { margin: 0 0 8px; font-size: var(--t-media); line-height: 1.4; max-width: 44ch; }
+.hecho-fuente { margin: 0; color: var(--acero); font-size: var(--t-chica); }
+.hecho-fuente a { color: var(--acero); }
+.remate { margin: 36px 0 0; max-width: 62ch; font-size: var(--t-media); line-height: 1.45; font-weight: 600; }
+
+/* ---------- Cómo funciona: los 6 pasos (sí es una secuencia) ---------- */
+.intro-seccion { margin: -6px 0 28px; max-width: 62ch; font-size: var(--t-media); line-height: 1.45; }
+.flujo { list-style: none; counter-reset: paso; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px clamp(24px, 4vw, 48px); }
+@media (max-width: 900px) { .flujo { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .flujo { grid-template-columns: 1fr; } }
+.flujo-paso { counter-increment: paso; border-top: 4px solid var(--tinta); padding-top: 14px; }
+.flujo-paso::before {
+  content: counter(paso); display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  border: 3px solid var(--tinta); font-weight: 800; font-size: var(--t-chica); margin-bottom: 12px;
+}
+.flujo-agente::before { background: var(--senal); }
+.flujo-paso h3 { font-size: var(--t-media); font-weight: 800; line-height: 1.15; }
+.flujo-paso p { margin: 6px 0 0; max-width: 40ch; }
+.flujo-quien { color: var(--acero); font-size: var(--t-chica); }
+.flujo-produce { color: var(--modulo); font-weight: 600; font-size: var(--t-chica); }
+.nota-flujo { margin: 28px 0 0; color: var(--acero); font-size: var(--t-chica); max-width: 62ch; }
+
+/* ---------- Por qué confiar ---------- */
+.principios { margin: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px clamp(24px, 5vw, 64px); }
+@media (max-width: 760px) { .principios { grid-template-columns: 1fr; } }
+.principios dt { font-weight: 800; font-size: var(--t-media); margin-bottom: 6px; }
+.principios dd { margin: 0; max-width: 52ch; }
+
+/* ---------- Demo (al final) ---------- */
+.demo { margin-top: clamp(56px, 8vw, 104px); padding-bottom: 8px; border-top: 4px solid var(--tinta); }
+.demo-visor {
+  height: min(72vh, 720px); min-height: 400px; margin-top: 8px; padding: 0 var(--margen);
+  max-width: calc(var(--ancho-max) + 2 * var(--margen)); margin-left: auto; margin-right: auto;
+}
+.demo-visor .visor { border-radius: 6px; }
+.demo-visor .visor { height: 100%; }
+@media (max-width: 760px) { .demo-visor { height: 62vh; min-height: 360px; } }
+
+/* ---------- Cierre ---------- */
+.cierre p { max-width: 62ch; margin: 0 0 10px; }
+
+/* ---------- Visor ---------- */
+.visor { display: flex; flex-direction: column; background: #cfe0ea; overflow: hidden; }
+.visor-lienzo { flex: 1; min-height: 0; }
+.visor-controles {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px var(--margen); background: var(--tinta); color: var(--cielo);
+}
+.visor-controles input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--senal); }
+.visor-tiempo { font-size: var(--t-chica); color: var(--cielo-hondo); min-width: 9ch; }
+.visor-velocidad select {
+  font: inherit; font-size: var(--t-chica); color: var(--cielo); background: transparent;
+  border: 1px solid var(--acero); border-radius: 6px; padding: 4px 6px;
+}
+.visor-velocidad option { color: var(--tinta); }
+.boton-visor {
+  font: inherit; font-weight: 700; font-size: var(--t-chica); cursor: pointer;
+  background: var(--senal); color: var(--tinta); border: 0; border-radius: 999px; padding: 7px 16px;
+}
+.boton-visor:focus-visible { outline-color: var(--senal); }
+.visor-cargando {
+  display: grid; place-items: center; height: 100%; min-height: 380px; padding: var(--margen);
+  background: #cfe0ea; color: var(--acero); text-align: center;
+}
+.corrida-visor { height: min(72vh, 680px); min-height: 380px; }
+.corrida-visor .visor { height: 100%; }
+
+/* ---------- Bloques de contenido ---------- */
+.bloque {
+  max-width: calc(var(--ancho-max) + 2 * var(--margen)); margin: 0 auto;
+  padding: clamp(40px, 6vw, 72px) var(--margen) 0;
+}
+.titulo-seccion { font-size: var(--t-grande); font-weight: 800; line-height: 1.1; margin-bottom: 20px; max-width: 30ch; }
+.bloque-doble { display: grid; grid-template-columns: 7fr 5fr; gap: clamp(28px, 5vw, 72px); align-items: start; }
+@media (max-width: 900px) { .bloque-doble { grid-template-columns: 1fr; } }
+
+.frase-metrica { font-size: var(--t-titulo); font-weight: 700; line-height: 1.15; margin: 0 0 14px; max-width: 24ch; text-wrap: balance; }
+.nota-estado { margin: 0 0 24px; max-width: 60ch; color: var(--tinta); }
+.video { display: block; width: 100%; border-radius: 6px; background: var(--tinta); }
+
+.pendiente {
+  margin: 0; padding: 16px 18px; max-width: 64ch;
+  border-left: 3px solid var(--acero); background: var(--cielo-hondo); color: var(--tinta);
+}
+.pendiente-grande { font-size: var(--t-media); line-height: 1.45; }
+
+/* Ficha técnica: filas con regla fina, como la ficha de un fabricante */
+.ficha-nombre { font-size: var(--t-media); font-weight: 800; margin: 0 0 2px; line-height: 1.2; }
+.marca-ficticio {
+  display: table; margin: 6px 0 4px;
+  letter-spacing: 0;
+  font-size: var(--t-chica); font-weight: 700; padding: 2px 8px; border-radius: 4px;
+  background: var(--senal); color: var(--tinta);
+}
+.ficha-datos { display: grid; grid-template-columns: auto 1fr; margin: 18px 0; border-top: 1px solid var(--regla); }
+.ficha-datos dt, .ficha-datos dd { margin: 0; padding: 9px 0; border-bottom: 1px solid var(--regla); }
+.ficha-datos dt { color: var(--acero); padding-right: 24px; }
+.ficha-datos dd { font-weight: 600; text-align: right; }
+.justificacion { margin: 0 0 12px; max-width: 60ch; }
+.enlace { font-weight: 600; }
+
+/* Entrenamiento */
+.entrenamiento { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 4vw, 56px); align-items: start; }
+@media (max-width: 900px) { .entrenamiento { grid-template-columns: 1fr; } }
+.escala-video { margin: 12px 0 0; max-width: 56ch; }
+.curva { margin: 0; }
+.curva svg { width: 100%; height: auto; display: block; }
+.curva-grilla { stroke: var(--regla); stroke-width: 1; }
+.curva-meta { stroke: var(--senal); stroke-width: 2; stroke-dasharray: 6 5; }
+.curva-hito { stroke: var(--acero); stroke-width: 1; stroke-dasharray: 2 4; }
+.curva-linea { fill: none; stroke: var(--modulo); stroke-width: 2.5; stroke-linejoin: round; }
+.curva-eje { fill: var(--acero); font-size: 12px; font-family: var(--fuente), sans-serif; }
+.hitos { list-style: none; padding: 0; margin: 16px 0 0; }
+.hitos li { display: grid; grid-template-columns: 12ch 1fr; gap: 12px; padding: 8px 0; border-top: 1px solid var(--regla); }
+.hito-paso { color: var(--acero); font-size: var(--t-chica); padding-top: 2px; }
+
+.diferencias { margin: 0; padding-left: 1.2em; max-width: 64ch; }
+.diferencias li { margin-bottom: 6px; }
+.diferencias li::first-letter { text-transform: uppercase; }
+
+/* Pasos: sí es una secuencia, por eso van numerados */
+.pasos {
+  list-style: none; counter-reset: paso; padding: 0; margin: 0;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px;
+}
+.pasos li { counter-increment: paso; border-top: 3px solid var(--tinta); padding-top: 14px; }
+.pasos li::before {
+  content: counter(paso); display: block; font-size: var(--t-grande); font-weight: 800;
+  color: var(--modulo); line-height: 1; margin-bottom: 10px;
+}
+.pasos h3 { font-size: var(--t-base); font-weight: 800; margin-bottom: 6px; }
+.pasos p { margin: 0; color: var(--tinta); font-size: var(--t-chica); line-height: 1.5; }
+@media (max-width: 1000px) { .pasos { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .pasos { grid-template-columns: 1fr; } }
+
+/* ---------- Probar con tu planta ---------- */
+.probar { max-width: 640px; margin: 0 auto; padding: clamp(32px, 6vw, 64px) var(--margen) 0; }
+.probar h1 { font-size: var(--t-titulo); font-weight: 800; line-height: 1.08; }
+.bajada { font-size: var(--t-media); line-height: 1.45; margin: 12px 0 28px; }
+.formulario { display: grid; gap: 20px; }
+.formulario label, .campo-titulo { display: grid; gap: 6px; font-weight: 600; }
+.formulario input:not([type="file"]), .formulario textarea {
+  font: inherit; font-weight: 400; color: var(--tinta);
+  padding: 11px 12px; border-radius: 6px; border: 1.5px solid var(--regla); background: #f4f8fa;
+}
+.formulario input:focus, .formulario textarea:focus { border-color: var(--modulo); }
+.campo-archivos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.campo-archivos .campo-titulo { width: 100%; }
+.boton-principal, .boton-secundario {
+  font: inherit; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 11px 22px; justify-self: start;
+}
+.boton-principal { background: var(--tinta); color: var(--cielo); border: 0; display: inline-block; }
+.boton-principal:hover { background: var(--modulo); }
+.boton-secundario:hover { background: var(--cielo-hondo); }
+.boton-principal:disabled { opacity: 0.45; cursor: not-allowed; }
+.boton-secundario { background: transparent; color: var(--tinta); border: 1.5px solid var(--tinta); display: inline-block; }
+.campo-archivos input:focus-visible + .boton-secundario { outline: 3px solid var(--modulo); outline-offset: 2px; }
+
+/* ---------- Corrida ---------- */
+.corrida-cabecera { padding-bottom: 32px; }
+.corrida-cabecera h1 { font-size: var(--t-titulo); font-weight: 800; margin-bottom: 20px; }
+.etapas { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+@media (max-width: 760px) { .etapas { grid-template-columns: 1fr; } }
+.etapa { display: grid; gap: 2px; padding-top: 10px; border-top: 3px solid var(--regla); }
+.etapa-listo { border-top-color: var(--modulo); }
+.etapa-en_curso { border-top-color: var(--senal); }
+.etapa-error { border-top-color: var(--error); }
+.etapa .icono { display: none; }
+.etapa .estado { color: var(--acero); font-size: var(--t-chica); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+}
+
+/* Corridas de la API y vista de desarrollo de selección. */
+.corrida {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 16px;
+  max-width: calc(var(--ancho-max) + 2 * var(--margen));
+  margin-inline: auto;
+  padding-inline: var(--margen);
+}
 @media (max-width: 900px) { .corrida { grid-template-columns: 1fr; } }
-.lateral { display: grid; gap: 12px; align-content: start; }
-.lateral h2 { margin: 0; font-size: 1.1rem; }
-.etapas { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
-.etapa { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; padding: 8px 10px; background: var(--superficie); border: 1px solid var(--borde); border-radius: 8px; }
-.etapa .estado { color: var(--tenue); font-size: 0.85rem; }
-.etapa-listo .icono { color: var(--ok); }
-.etapa-en_curso .icono { color: var(--acento); }
-.etapa-error .icono { color: var(--error); }
-.tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 12px 14px; }
-.tarjeta h3 { margin: 0 0 6px; font-size: 1rem; }
-.tarjeta ul { margin: 0; padding-left: 18px; }
-.etiqueta { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: var(--acento); color: var(--acento-texto); margin-left: 6px; vertical-align: middle; }
-.metricas { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; }
-.metricas dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
-
-.principal { display: grid; gap: 12px; align-content: start; min-width: 0; }
-.visor { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; }
-.lienzo { height: min(70vh, 640px); }
-.controles { display: flex; gap: 10px; align-items: center; padding: 10px; border-top: 1px solid var(--borde); flex-wrap: wrap; }
-.controles input[type="range"] { flex: 1; min-width: 120px; padding: 0; }
-.tiempo { font-variant-numeric: tabular-nums; color: var(--tenue); }
-.video { width: 100%; border-radius: 12px; background: #000; }
-.espera { display: grid; place-items: center; height: 50vh; background: var(--superficie); border: 1px dashed var(--borde); border-radius: 12px; color: var(--tenue); }
-
-/* Inicio: flujo y demo (RF-WEB-19, RNF-20) */
-.casos { display: flex; gap: 12px; flex-wrap: wrap; }
-.boton { display: inline-block; margin-top: 12px; font-weight: 700; padding: 10px 16px; border-radius: 8px; background: var(--acento); color: var(--acento-texto); text-decoration: none; }
-.subtitulo { margin-top: 32px; font-size: 1.3rem; }
-.pasos { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-.paso { display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 12px 14px; }
-.paso p { margin: 4px 0 0; color: var(--tenue); }
-.paso-n { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--acento); color: var(--acento-texto); font-weight: 800; }
-.paso-produccion { border-style: dashed; }
-.paso-produccion .paso-n { background: var(--borde); color: var(--texto); }
-.aviso { background: var(--superficie); border: 1px solid var(--borde); border-left: 4px solid var(--acento); border-radius: 8px; padding: 10px 12px; }
-.formulario-plegado { margin-top: 24px; }
-.formulario-plegado summary { cursor: pointer; color: var(--tenue); font-weight: 600; }
-
-/* Corrida: videos rotulados (RF-WEB-13, RF-WEB-15, RNF-18) */
-.figura { margin: 0; display: grid; gap: 8px; }
-.figura figcaption { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; }
-.etiqueta-tenue { background: var(--borde); color: var(--texto); }
-.tarjeta details { margin-top: 8px; }
-
-.tarjeta h4 { margin: 14px 0 6px; font-size: 0.95rem; }
-.tarjeta h5 { margin: 0 0 4px; font-size: 0.9rem; }
-.finalistas { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
-.finalistas p { margin: 4px 0 0; }
-.ficha { border-top: 1px solid var(--borde); padding-top: 8px; margin-top: 8px; }
-.ficha p { margin: 0 0 4px; }
-.specs { display: grid; gap: 4px; font-size: 0.9rem; }
-.cita { font-style: italic; }
-ul.aviso { padding-left: 28px; }
-.tabla-envoltura { overflow-x: auto; }
-.tabla { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.tabla caption { text-align: left; padding-bottom: 6px; }
-.tabla th, .tabla td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--borde); vertical-align: top; }
-.tabla thead th { color: var(--tenue); font-weight: 600; }
-.tabla .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.compara { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.corrida .lateral { display: grid; gap: 12px; align-content: start; }
+.corrida .lateral h2 { margin: 0; font-size: 1.1rem; }
+.corrida .etapas { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.corrida .etapa { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; padding: 8px 10px; background: var(--cielo-hondo); border: 1px solid var(--regla); border-radius: 8px; }
+.corrida .etapa .estado { color: var(--acero); font-size: 0.85rem; }
+.corrida .etapa-listo .icono { color: #207d57; }
+.corrida .etapa-en_curso .icono { color: var(--modulo); }
+.corrida .etapa-error .icono { color: var(--error); }
+.corrida .tarjeta { background: var(--cielo-hondo); border: 1px solid var(--regla); border-radius: 10px; padding: 12px 14px; }
+.corrida .tarjeta h3 { margin: 0 0 6px; font-size: 1rem; }
+.corrida .tarjeta ul { margin: 0; padding-left: 18px; }
+.corrida .etiqueta { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: var(--modulo); color: var(--cielo); margin-left: 6px; vertical-align: middle; }
+.corrida .metricas { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; }
+.corrida .metricas dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.corrida .principal { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.corrida .visor { height: min(70vh, 640px); }
+.corrida .espera { display: grid; place-items: center; height: 50vh; background: var(--cielo-hondo); border: 1px dashed var(--regla); border-radius: 12px; color: var(--acero); }
+.corrida .aviso { background: var(--cielo-hondo); border: 1px solid var(--regla); border-left: 4px solid var(--modulo); border-radius: 8px; padding: 10px 12px; }
+.corrida .figura { margin: 0; display: grid; gap: 8px; }
+.corrida .figura figcaption { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; }
+.corrida .etiqueta-tenue { background: var(--regla); color: var(--tinta); }
+.corrida .tarjeta details { margin-top: 8px; }
+.corrida .tarjeta h4 { margin: 14px 0 6px; font-size: 0.95rem; }
+.corrida .tarjeta h5 { margin: 0 0 4px; font-size: 0.9rem; }
+.corrida .finalistas { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.corrida .finalistas p { margin: 4px 0 0; }
+.corrida .ficha { border-top: 1px solid var(--regla); padding-top: 8px; margin-top: 8px; }
+.corrida .ficha p { margin: 0 0 4px; }
+.corrida .specs { display: grid; gap: 4px; font-size: 0.9rem; }
+.corrida .cita { font-style: italic; }
+.corrida ul.aviso { padding-left: 28px; }
+.corrida .tabla-envoltura { overflow-x: auto; }
+.corrida .tabla { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.corrida .tabla caption { text-align: left; padding-bottom: 6px; }
+.corrida .tabla th, .tabla td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--regla); vertical-align: top; }
+.corrida .tabla thead th { color: var(--acero); font-weight: 600; }
+.corrida .tabla .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.corrida .compara { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }

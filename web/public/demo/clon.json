@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "robot_id": "viaz-instalador-ficticio",
+  "usd": null,
+  "urdf": "robot.urdf",
+  "piezas": {
+    "base": "caja_4_ruedas",
+    "brazo": "brazo_6_ejes",
+    "efector": "ventosa"
+  },
+  "escala": {
+    "alcance_m": 2.4,
+    "carga_util_kg": 40
+  },
+  "geometria": {
+    "l1_m": 1.092,
+    "l2_m": 1.008,
+    "muneca_m": 0.3,
+    "montaje_x_m": 0.45,
+    "hombro_z_m": 1.1,
+    "cubierta_z_m": 0.8,
+    "pila_x_m": -0.35
+  },
+  "diferencias_con_real": [
+    "el robot de referencia es ficticio",
+    "geometría primitiva (cajas y cilindros), sin mallas del fabricante",
+    "base con 4 ruedas fijas; se mueve sin simular tracción",
+    "brazo genérico de 6 ejes escalado al alcance del robot real"
+  ],
+  "validado_en_escena": true
+}
