@@ -4,7 +4,9 @@ import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import ComparacionDeCorrida from "@/components/Comparacion";
 import Etapas from "@/components/Etapas";
+import SeleccionDeCorrida from "@/components/Seleccion";
 import { bajarJson, bajarTexto, verCorrida } from "@/lib/api";
 import type { Clon, Corrida, Entorno, Resultado, Robot, Trayectoria, VideoInfo } from "@/lib/tipos";
 
@@ -80,8 +82,10 @@ export default function PaginaCorrida() {
         <Etapas etapas={corrida.etapas} />
         {corrida.error && <p className="error" role="alert">{corrida.error}</p>}
         {datos && <Panel datos={datos} />}
+        <SeleccionDeCorrida corrida={corrida} />
       </aside>
       <div className="principal">
+        <ComparacionDeCorrida corrida={corrida} />
         {datos ? <Videos datos={datos} /> : (
           <div className="espera">{corrida.estado === "error" ? "La corrida falló." : "Los agentes están trabajando…"}</div>
         )}

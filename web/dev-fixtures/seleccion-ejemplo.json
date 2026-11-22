@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "requisitos": "requisitos.json",
+  "busqueda": {
+    "estado": "cortada",
+    "detalle": "La búsqueda se cortó a los 120 s. Trajo 2 borradores: 1 ficha válida y 1 rechazada.",
+    "invalidas": [
+      { "nombre": "Robot sin datos (ejemplo)", "motivo": "velocidad_base_m_s sin evidencia ni estimado" }
+    ]
+  },
+  "encontrados": ["ejemplo-instalador-web"],
+  "descartados": [
+    { "id": "trinatracker-buildex-e", "nombre": "BUILDEX E (compatible con trackers)", "fallas": ["alcance de 2.5 m menor que el necesario (2.95 m)", "efector pinza no aceptado"] }
+  ],
+  "finalistas": [
+    { "id": "leapting-mmr", "nombre": "LEAPTING MMR (robot de montaje con navegación automática)", "puesto": 1, "justificacion": "Ejemplo de prueba. LEAPTING MMR carga 100 kg y la tarea pide al menos 32 kg." },
+    { "id": "ejemplo-instalador-web", "nombre": "Instalador de ejemplo (ficha de prueba)", "puesto": 2, "justificacion": "Ejemplo de prueba. Carga 60 kg. Su alcance es estimado." }
+  ],
+  "alternativas": [
+    { "id": "relu-bison", "nombre": "Bison (robot de instalación fotovoltaica)", "por_que_no": "queda tercero por las preferencias y el tope es 2 en este ejemplo" }
+  ]
+}
