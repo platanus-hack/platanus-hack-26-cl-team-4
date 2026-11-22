@@ -9,7 +9,7 @@ import "./sala.css";
 import { createElement, useEffect, useRef, useState } from "react";
 
 // Sube este número al regenerar los modelos: obliga al celular a bajar los archivos nuevos y no usar los guardados.
-const VERSION = 8;
+const VERSION = 9;
 
 // Primero va el modo principal: los robots a tamaño real en el lugar donde está la persona.
 const MODELOS = {
