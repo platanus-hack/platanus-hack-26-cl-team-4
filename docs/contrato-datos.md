@@ -98,15 +98,23 @@ Tarea genérica (ejemplo completo en [`fixtures/tarea_sala.json`](../backend/via
   "version": 1,
   "tarea": "tomar_y_dejar",
   "descripcion": "Tomar la caja de cartón de la mesa central y dejarla en el estante",
+  "proposito": "Despejar la mesa de reuniones sin que alguien interrumpa su trabajo",
+  "pedido": { "origen": "inferido", "preguntas": ["¿Qué quiere que haga el robot en esta sala?", "¿En qué repisa van las cajas?"] },
   "objeto": { "elemento": "caja_carton_1", "descripcion": "caja de cartón", "masa_kg": 3 },
-  "origen": { "elemento": "mesa_central", "descripcion": "cubierta de la mesa central" },
-  "destino": { "elemento": "estante", "descripcion": "repisa del medio" },
+  "origen": { "elemento": "mesa_central", "descripcion": "cubierta de la mesa central", "altura_m": null },
+  "destino": { "elemento": "estante", "descripcion": "repisa del medio", "altura_m": 0.9 },
   "objetivo": { "cantidad": 1, "ciclo_s": 45 },
   "criterios_exito": { "tolerancia_pos_m": 0.05, "tolerancia_ang_grados": 10, "sin_choques": true, "tiempo_max_s": 120 },
   "restricciones": [
     { "tipo": "no_chocar", "valor": null, "detalle": "no chocar con la mesa ni el estante" },
     { "tipo": "velocidad_max_m_s", "valor": 0.5, "detalle": "moverse lento en una sala con personas" }
-  ]
+  ],
+  "geometria": {
+    "origen_pose": { "x_m": 2.2, "y_m": 2.0, "z_m": 0.75, "giro_grados": 15 },
+    "destino_pose": { "x_m": 4.3, "y_m": 3.8, "z_m": 0.9, "giro_grados": 0 },
+    "distancia_m": 2.766, "altura_max_m": 1.15
+  },
+  "advertencias": ["la tarea es inferida: confirmar con el cliente (pedido.preguntas)"]
 }
 ```
 
@@ -121,6 +129,9 @@ Perfil `instalar_panel` (el del demo): el mismo núcleo, con `elemento: null` en
 }
 ```
 
+- **`proposito` y `pedido`:** para qué es la tarea y si la pidió el cliente o la infirió el agente. Con `inferido`, `pedido.preguntas` trae lo que hay que confirmar con el cliente.
+- **`altura_m`:** superficie de apoyo en origen o destino (ej.: una repisa). `null` = cara superior del elemento.
+- **`geometria` y `advertencias`:** las calcula el código ([`geometria.py`](../backend/viaz/geometria.py)), no el agente. Son la fase 1 del embudo de factibilidad: descartan tareas imposibles, no prueban que sean posibles.
 - **`tarea`:** snake_case libre (`tomar_y_dejar`, `transportar`, `ordenar`, `inspeccionar`, `instalar_panel`, `otro`...).
 - **Perfiles:** `pila_paneles` es obligatorio si `tarea` es `instalar_panel` y prohibido en las demás.
 - **`elemento`:** nombre exacto de un elemento de `entorno.json`, o `null` (el robot, una zona libre o una estructura del perfil).

@@ -11,7 +11,7 @@ import json
 import math
 from pathlib import Path
 
-from .. import urdf
+from .. import geometria, urdf
 from ..esquemas import esquema, sin_campos
 from .base import ErrorAgente, frames_de_videos, pedir_json, validado
 
@@ -180,13 +180,14 @@ ENTORNO_DE_TAREA = {"instalar_panel": "parque_solar"}   # tareas que solo tienen
 TAREAS_MANIPULACION = {"instalar_panel", "tomar_y_dejar", "transportar", "ordenar"}
 RESTRICCIONES_CON_VALOR = {"velocidad_max_m_s", "distancia_personas_m", "fuerza_max_n"}
 INTENTOS_TAREA = 2   # si la respuesta no calza con entorno.json, el agente recibe los problemas y reintenta una vez
+CAMPOS_DEL_CODIGO = ("geometria", "advertencias")   # los llena completar_tarea(), nunca el modelo
 
 
 def esquema_agente_tarea() -> dict:
     """Lo que devuelve el modelo: tarea.json sin `version`. Los perfiles van siempre, pero aceptan null.
     Sin if/then/else: la API no los acepta; la regla de perfiles se valida en local."""
-    esq = sin_campos(esquema("tarea"), ["version"])
-    for k in ("if", "then", "else"):
+    esq = sin_campos(esquema("tarea"), ["version", *CAMPOS_DEL_CODIGO])
+    for k in ("if", "then", "else", "$defs"):
         esq.pop(k, None)
     for campos in PERFILES_TAREA.values():
         for c in campos:
@@ -206,8 +207,40 @@ def normalizar_tarea(datos: dict) -> dict:
     return datos
 
 
+def problemas_pedido(t: dict, descripcion_cliente: str | None) -> list[str]:
+    """La tarea dice de dónde sale. Si el agente la infirió, deja preguntas para confirmarla con el cliente.
+    descripcion_cliente None: no se revisa (tarea.json escrito a mano por el equipo)."""
+    problemas = []
+    p = t["pedido"]
+    if p["origen"] == "inferido" and not p["preguntas"]:
+        problemas.append("pedido.origen es inferido pero pedido.preguntas está vacío: escribe 1 a 3 preguntas para el cliente")
+    if descripcion_cliente is not None and not descripcion_cliente.strip() and p["origen"] == "cliente":
+        problemas.append("pedido.origen es cliente, pero el cliente no escribió una descripción: la tarea es inferida")
+    if not t["proposito"].strip():
+        problemas.append("proposito está vacío: di para qué le sirve la tarea al cliente")
+    return problemas
+
+
+def completar_tarea(t: dict, entorno_json: dict, descripcion_cliente: str | None = None) -> tuple[dict, list[str]]:
+    """Revisa la tarea contra entorno.json y agrega lo que calcula el código (geometria, advertencias).
+    Devuelve (tarea completa, problemas). Sin problemas, la tarea pasó la fase 1 del embudo de factibilidad."""
+    t = {k: v for k, v in copy.deepcopy(t).items() if k not in CAMPOS_DEL_CODIGO}
+    problemas = problemas_tarea(t, entorno_json) + problemas_pedido(t, descripcion_cliente)
+    advertencias: list[str] = []
+    if not any("no existe en entorno.json" in p for p in problemas):
+        prob_geo, advertencias, t["geometria"] = geometria.revisar(t, entorno_json)
+        problemas += prob_geo
+    if t["pedido"]["origen"] == "inferido":
+        advertencias.insert(0, "la tarea es inferida: confirmar con el cliente (pedido.preguntas)")
+    t["advertencias"] = advertencias
+    if "geometria" not in t:
+        t["geometria"] = {"origen_pose": None, "destino_pose": None, "distancia_m": None, "altura_max_m": None}
+    return t, problemas
+
+
 def problemas_tarea(t: dict, entorno_json: dict) -> list[str]:
-    """Reglas que el esquema no puede expresar: la tarea tiene que calzar con entorno.json."""
+    """Reglas que el esquema no puede expresar: la tarea tiene que calzar con entorno.json (referencias y lógica).
+    La geometría (soporte, encaje, despeje, techo) la revisa viaz/geometria.py desde completar_tarea()."""
     problemas = []
     tipo = t["tarea"]
     if tipo in ENTORNO_DE_TAREA and entorno_json["tipo"] != ENTORNO_DE_TAREA[tipo]:
@@ -237,20 +270,22 @@ def problemas_tarea(t: dict, entorno_json: dict) -> list[str]:
     return problemas
 
 
-def validar_tarea(t: dict, entorno_json: dict) -> dict:
-    """tarea.json completo: esquema + reglas contra entorno.json. Sirve también para la tarea escrita a mano."""
-    t = validado("tarea", t)
-    problemas = problemas_tarea(t, entorno_json)
+def validar_tarea(t: dict, entorno_json: dict, descripcion_cliente: str | None = None) -> dict:
+    """tarea.json completo: esquema + reglas + geometría contra entorno.json. Sirve también para la tarea a mano."""
+    t, problemas = completar_tarea(validado("tarea", t), entorno_json, descripcion_cliente)
     if problemas:
         raise ErrorAgente("tarea.json no calza con entorno.json: " + "; ".join(problemas))
-    return t
+    return validado("tarea", t)
 
 
 def texto_tarea(proyecto: dict, entorno_json: dict, problemas: list[str] | None = None) -> str:
     lineas = []
     for e in entorno_json.get("elementos", []):
         masa = f", {e['masa_kg']} kg" if e["masa_kg"] else ""
-        lineas.append(f"- {e['nombre']} ({e['categoria']}, {'fijo' if e['fijo'] else 'movible'}{masa})")
+        d = e["dimensiones_m"]
+        tam = f"{d['largo_m']:g} × {d['ancho_m']:g} × {d['alto_m']:g} m"
+        lineas.append(f"- {e['nombre']} ({e['categoria']}, {'fijo' if e['fijo'] else 'movible'}{masa}, {tam}, "
+                      f"base a {e['posicion_m']['z_m']:g} m, tope a {geometria.tope(e):g} m)")
     elementos = "\n".join(lineas) or "(ninguno)"
     texto = (f"Descripción del cliente: {proyecto['descripcion'] or '(sin descripción)'}\n"
              f"Tipo de espacio: {entorno_json['tipo']}\n"
@@ -269,15 +304,15 @@ def tarea(modo: str, modelo: str, proyecto: dict, entorno_json: dict, frames: li
         datos = _fixture("tarea" if entorno_json["tipo"] == "parque_solar" else "tarea_sala")
         return validar_tarea(datos, entorno_json)
     problemas: list[str] = []
+    descripcion = proyecto["descripcion"] or ""
     for _ in range(INTENTOS_TAREA):
         datos = normalizar_tarea(pedir_json(
             modelo=modelo, sistema=SISTEMA_TAREA, esquema=esquema_agente_tarea(),
             contenido=[*(frames or []), {"type": "text", "text": texto_tarea(proyecto, entorno_json, problemas)}]))
         datos["version"] = 1
-        validado("tarea", datos)
-        problemas = problemas_tarea(datos, entorno_json)
+        datos, problemas = completar_tarea(validado("tarea", datos), entorno_json, descripcion)
         if not problemas:
-            return datos
+            return validado("tarea", datos)
     raise ErrorAgente("tarea.json no calza con entorno.json: " + "; ".join(problemas))
 
 

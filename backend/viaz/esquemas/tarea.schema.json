@@ -4,11 +4,22 @@
   "description": "Qué trabajo hace el robot y cómo se mide, en cualquier espacio. Núcleo genérico (objeto, origen, destino, objetivo, criterios de éxito, restricciones) y perfiles por tipo de tarea. Hoy el único perfil es instalar_panel (pila_paneles).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "tarea", "descripcion", "objeto", "origen", "destino", "objetivo", "criterios_exito", "restricciones"],
+  "required": ["version", "tarea", "descripcion", "proposito", "pedido", "objeto", "origen", "destino", "objetivo", "criterios_exito", "restricciones"],
   "properties": {
     "version": { "const": 1 },
     "tarea": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "description": "Tipo de tarea en snake_case: instalar_panel, tomar_y_dejar, transportar, ordenar, inspeccionar, otro..." },
     "descripcion": { "type": "string", "description": "Una oración: qué toma el robot, de dónde y dónde lo deja (o qué revisa)." },
+    "proposito": { "type": "string", "description": "Para qué sirve la tarea: el problema del cliente que resuelve (ej.: evitar que una persona levante cajas de 20 kg)." },
+    "pedido": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origen", "preguntas"],
+      "description": "De dónde sale la tarea y qué falta confirmar con el cliente.",
+      "properties": {
+        "origen": { "enum": ["cliente", "inferido"], "description": "cliente: la descripción del cliente pide esta tarea. inferido: el agente la eligió porque el cliente no la pidió o no la dejó clara." },
+        "preguntas": { "type": "array", "maxItems": 5, "items": { "type": "string" }, "description": "Preguntas para el cliente. Obligatorias si origen es inferido." }
+      }
+    },
     "objeto": {
       "type": "object",
       "additionalProperties": false,
@@ -23,19 +34,21 @@
     "origen": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["elemento", "descripcion"],
+      "required": ["elemento", "descripcion", "altura_m"],
       "properties": {
         "elemento": { "type": ["string", "null"], "description": "nombre de un elemento de entorno.json; null si es el robot, una zona libre o una estructura del perfil." },
-        "descripcion": { "type": "string" }
+        "descripcion": { "type": "string" },
+        "altura_m": { "type": ["number", "null"], "minimum": 0, "maximum": 50, "description": "Altura de la superficie de apoyo sobre el suelo (ej.: repisa a 0,9 m). null: la cara superior del elemento." }
       }
     },
     "destino": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["elemento", "descripcion"],
+      "required": ["elemento", "descripcion", "altura_m"],
       "properties": {
         "elemento": { "type": ["string", "null"], "description": "nombre de un elemento de entorno.json; null si es el robot, una zona libre o una estructura del perfil." },
-        "descripcion": { "type": "string" }
+        "descripcion": { "type": "string" },
+        "altura_m": { "type": ["number", "null"], "minimum": 0, "maximum": 50, "description": "Altura de la superficie de apoyo sobre el suelo (ej.: repisa a 0,9 m). null: la cara superior del elemento." }
       }
     },
     "objetivo": {
@@ -81,6 +94,37 @@
       "properties": {
         "en_robot": { "type": "boolean" },
         "cantidad": { "type": "integer", "minimum": 1, "maximum": 30 }
+      }
+    },
+    "geometria": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origen_pose", "destino_pose", "distancia_m", "altura_max_m"],
+      "description": "Lo llena el código (viaz/geometria.py), no el agente. Poses meta del objeto en el marco de entorno.json. null donde no hay elemento con geometría.",
+      "properties": {
+        "origen_pose": { "$ref": "#/$defs/pose" },
+        "destino_pose": { "$ref": "#/$defs/pose" },
+        "distancia_m": { "type": ["number", "null"], "description": "Distancia horizontal entre las dos poses." },
+        "altura_max_m": { "type": ["number", "null"], "description": "Altura del tope del objeto en la pose más alta: el robot tiene que llegar ahí." }
+      }
+    },
+    "advertencias": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Lo llena el código: revisiones geométricas con medidas poco confiables y límites del modelo de entorno.json."
+    }
+  },
+  "$defs": {
+    "pose": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["x_m", "y_m", "z_m", "giro_grados"],
+      "description": "Centro de la cara inferior del objeto y su giro sobre Z.",
+      "properties": {
+        "x_m": { "type": "number" },
+        "y_m": { "type": "number" },
+        "z_m": { "type": "number" },
+        "giro_grados": { "type": "number" }
       }
     }
   },

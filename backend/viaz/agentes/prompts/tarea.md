@@ -18,10 +18,18 @@ El espacio puede ser cualquiera: una sala, una bodega, un taller, una línea de 
   - `instalar_panel`: dejar un panel sobre el tubo de un tracker. **Solo** si `entorno.json` es `parque_solar`.
   Si ninguno calza, inventa uno corto o usa `otro`.
 - `descripcion`: una oración en español: qué toma el robot, de dónde y dónde lo deja (o qué revisa).
+- `proposito`: para qué le sirve la tarea al cliente. Es el problema que resuelve, no la acción.
+  Ejemplo: "Evitar que una persona levante cajas de 20 kg veinte veces por turno". No repitas `descripcion`.
+- `pedido`: de dónde sale la tarea.
+  - `origen` = `cliente` si la descripción del cliente pide esta tarea (o una muy cercana).
+  - `origen` = `inferido` si el cliente no pidió nada, pidió algo vago ("que ayude en la sala") o la descripción está vacía.
+  - `preguntas`: con `inferido`, de 1 a 3 preguntas cortas para confirmar con el cliente. Con `cliente`, solo lo que de verdad falte; si no falta nada, `[]`.
 - `objeto`: lo que el robot manipula o revisa.
   - `elemento`: el `nombre` exacto de un elemento de `entorno.json`, o `null` si no está en `elementos` (ej.: el panel del perfil solar).
   - `descripcion` y `masa_kg` (usa la masa del elemento si la trae; `null` si no aplica).
-- `origen` y `destino`: `elemento` (nombre exacto o `null`) y `descripcion`. `null` sirve para el robot mismo, una zona libre o una estructura del perfil (ej.: el tubo de la fila 1).
+- `origen` y `destino`: `elemento` (nombre exacto o `null`), `descripcion` y `altura_m`. `null` en `elemento` sirve para el robot mismo, una zona libre o una estructura del perfil (ej.: el tubo de la fila 1).
+  - `altura_m`: altura de la superficie de apoyo sobre el suelo, si no es la cara superior del elemento (ej.: la repisa del medio de un estante, a 0,9 m). Si es la cara superior, `null`.
+- No devuelvas `geometria` ni `advertencias`: los calcula el código.
 - `objetivo.cantidad`: cuántas veces se repite la tarea (paneles, cajas, puntos). `objetivo.ciclo_s`: tiempo objetivo por repetición.
 - `criterios_exito`: cuándo una repetición cuenta como lograda.
   - `tolerancia_pos_m` y `tolerancia_ang_grados`: error máximo de la pose final del objeto.
@@ -33,10 +41,17 @@ El espacio puede ser cualquiera: una sala, una bodega, un taller, una línea de 
 - `pila_paneles`: perfil de `instalar_panel` (`en_robot` y `cantidad`). En cualquier otra tarea devuélvelo como `null`.
 
 ## Cómo decidir
-1. Lee el pedido del cliente. Si pide algo concreto ("ordenar las cajas", "instalar 8 paneles"), esa es la tarea.
-2. Si no pide nada, elige la tarea más útil y simple que permita el espacio: un objeto movible (`fijo` = false) con masa razonable, desde una superficie a otra.
-3. Usa solo elementos que existen en `entorno.json`, con su nombre exacto. El objeto de una tarea de manipulación no puede estar marcado `fijo`. Origen y destino no pueden ser el mismo elemento.
-4. Verifica que el objeto quepa en el destino y que el destino esté dentro del espacio.
+1. Lee el pedido del cliente. Busca dos cosas: **qué** quiere que haga el robot y **para qué**.
+   - Si dice las dos, úsalas: `pedido.origen` = `cliente`.
+   - Si dice qué pero no para qué, deduce el propósito más probable y pregúntalo en `preguntas`.
+   - Si no dice qué, elige la tarea más útil y simple que permita el espacio: un objeto movible (`fijo` = false) con masa razonable, desde una superficie a otra. `pedido.origen` = `inferido`, con preguntas.
+2. Usa solo elementos que existen en `entorno.json`, con su nombre exacto. El objeto de una tarea de manipulación no puede estar marcado `fijo`. Origen y destino no pueden ser el mismo elemento.
+3. Revisa la geometría con las medidas de la lista de elementos (el código la revisa igual y rechaza lo que no calce):
+   - **Soporte:** el objeto está apoyado sobre el origen: su base está a la altura del tope del origen (o de su `altura_m`).
+   - **Encaje:** la planta del objeto cabe en la planta del destino (puede girarse).
+   - **Despeje:** ningún otro elemento ocupa el espacio sobre el destino, hasta la altura del objeto.
+   - **Techo:** el objeto sobre el destino queda bajo `espacio.alto_m`.
+4. Si el destino es un estante modelado como un bloque, usa `altura_m` para la repisa. El código avisará que la repisa todavía no existe en la escena.
 5. Valores por defecto:
    | Tarea | cantidad | ciclo_s | tolerancia_pos_m | tolerancia_ang_grados |
    |---|---|---|---|---|
