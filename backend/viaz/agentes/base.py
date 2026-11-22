@@ -18,11 +18,15 @@ class ErrorAgente(RuntimeError):
     pass
 
 
-def pedir_json(*, modelo: str, sistema: str, contenido: list[dict], esquema: dict, effort: str = "high") -> dict:
+def pedir_json(*, modelo: str, sistema: str, contenido: list[dict], esquema: dict, effort: str = "high",
+               tiempo_s: float | None = None) -> dict:
     import anthropic
 
-    cliente = anthropic.Anthropic()  # lee ANTHROPIC_API_KEY
+    # Con un tiempo tope, sin reintentos: cada reintento volvería a esperar el tope completo.
+    cliente = anthropic.Anthropic(**({"max_retries": 0} if tiempo_s is not None else {}))  # lee ANTHROPIC_API_KEY
+    extra = {"timeout": tiempo_s} if tiempo_s is not None else {}
     resp = cliente.beta.messages.create(
+        **extra,
         model=modelo,
         max_tokens=16000,
         betas=["server-side-fallback-2026-07-01"],

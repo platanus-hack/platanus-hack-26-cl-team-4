@@ -162,15 +162,17 @@ Perfil `instalar_panel` (el del demo): el mismo núcleo, con `elemento: null` en
 
 - **Del agente:** el agente devuelve solo `id`, `justificacion` y `alternativas`. El `id` es un `enum` con los ids del catálogo.
 - **Specs:** todas las specs salen de [`backend/viaz/catalogo/robots/`](../backend/viaz/catalogo/robots/), nunca del modelo.
-- **Campos opcionales nuevos (contrato v3):** `origen` vale `catalogo` o `busqueda`, y sin el campo vale `catalogo`. `capacidades` lista las tareas que el robot hace según su fuente. Ningún código los lee todavía.
+- **Campos opcionales nuevos (contrato v3):** `origen` vale `catalogo` o `busqueda`, y sin el campo vale `catalogo`. `capacidades` lista las tareas que el robot hace según su fuente. `evidencia` guarda, por spec (`carga_util_kg`, `alcance_m`, `velocidad_base_m_s`, `efector`, `tipo`, `fisica.<campo>`), un objeto `{url, cita}`: la URL http(s) y la oración exacta de la fuente. La búsqueda web llena los tres. Una ficha `busqueda` tiene, por cada spec de selección, una entrada en `evidencia` o en `estimados`.
+- **Catálogo compartido:** las fichas `busqueda` válidas quedan en el almacén en `catalogo/encontrados/<id>.json`, una por archivo y sin índice. Las corridas siguientes las cargan como fichas conocidas. En un choque de id gana `catalogo/robots/` del repo.
 
 ## Selección v3: `requisitos.json`, `seleccion.json`, `comparacion.json`
 
-> **Estado:** la etapa robot de los dos flujos escribe `requisitos.json` y `seleccion.json` ([`agentes.seleccionar()`](../backend/viaz/agentes/__init__.py)). Nadie escribe `comparacion.json` todavía. Detalle en [`agentes/seleccion-robot.md`](agentes/seleccion-robot.md).
+> **Estado:** la etapa robot de los dos flujos escribe `requisitos.json`, `encontrados.json` y `seleccion.json` ([`agentes.seleccionar()`](../backend/viaz/agentes/__init__.py)). Nadie escribe `comparacion.json` todavía. Detalle en [`agentes/seleccion-robot.md`](agentes/seleccion-robot.md).
 
 | Archivo | Lo escribe | Contenido | Esquema | Ejemplo |
 |---|---|---|---|---|
 | `requisitos.json` | Perfil de dominio (código) | Objeto, carga mínima, efectores y tipos aceptados, movilidad, pendiente, alcance mínimo por robot, preferencias, advertencias | [`requisitos.schema.json`](../backend/viaz/esquemas/requisitos.schema.json) | [`fixtures/requisitos.json`](../backend/viaz/fixtures/requisitos.json) |
+| `encontrados.json` | Código (paso 2) | Lista de las fichas válidas que trajo la búsqueda web en esta corrida (formato de `robot.schema.json` sin `justificacion` ni `alternativas`). Vacía si no corrió | [`robot.schema.json`](../backend/viaz/esquemas/robot.schema.json) | — |
 | `seleccion.json` | Código + agente de selección | Estado de la búsqueda, encontrados, descartados con fallas, 1 a 3 finalistas, alternativas | [`seleccion.schema.json`](../backend/viaz/esquemas/seleccion.schema.json) | [`fixtures/seleccion.json`](../backend/viaz/fixtures/seleccion.json) |
 | `comparacion.json` | Código (regla) + agente (explicación) | Ganador, regla, condiciones comunes, ranking con fidelidad, qué compara y qué no | [`comparacion.schema.json`](../backend/viaz/esquemas/comparacion.schema.json) | [`fixtures/comparacion.json`](../backend/viaz/fixtures/comparacion.json) (métricas ilustrativas) |
 

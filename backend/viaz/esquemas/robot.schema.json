@@ -106,7 +106,7 @@
       }
     },
     "origen": {
-      "description": "De dónde viene la ficha. Sin el campo, `catalogo`. Una ficha `busqueda` vive en el almacén de la corrida hasta que un PR la pasa a catalogo/robots/.",
+      "description": "De dónde viene la ficha. Sin el campo, `catalogo`. Una ficha `busqueda` vive en el catálogo compartido del almacén (catalogo/encontrados/<id>.json) hasta que un PR la pasa a catalogo/robots/.",
       "enum": [
         "catalogo",
         "busqueda"
@@ -117,6 +117,28 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
+    },
+    "evidencia": {
+      "description": "Fuente de cada dato publicado. Clave: nombre de la spec (carga_util_kg, alcance_m, velocidad_base_m_s, efector, tipo, fisica.<campo>). Valor: la URL y la oración exacta de la fuente. Una ficha `busqueda` tiene, para cada spec de selección, una entrada aquí o en `estimados`.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url",
+          "cita"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "pattern": "^https?://"
+          },
+          "cita": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       }
     },
     "estimados": {

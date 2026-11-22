@@ -30,6 +30,22 @@ def validar_max_finalistas(valor: int | str) -> int:
     return n
 
 
+def entero_en_rango(variable: str, valor: int | str, minimo: int, maximo: int) -> int:
+    try:
+        n = int(valor)
+    except (TypeError, ValueError):
+        raise ValueError(f"{variable} debe ser un entero de {minimo} a {maximo}; vale {valor!r}") from None
+    if not minimo <= n <= maximo:
+        raise ValueError(f"{variable} debe estar entre {minimo} y {maximo}; vale {n}")
+    return n
+
+
+def interruptor(variable: str, valor: str) -> bool:
+    if valor.strip() not in ("0", "1"):
+        raise ValueError(f"{variable} debe ser 1 (encendido) o 0 (apagado); vale {valor!r}")
+    return valor.strip() == "1"
+
+
 @dataclass(frozen=True)
 class Config:
     db_url: str = field(default_factory=lambda: _url_db(os.getenv("DATABASE_URL", "sqlite:///./.datos/viaz.db")))
@@ -66,6 +82,14 @@ class Config:
     intentos_constructor: int = field(default_factory=lambda: int(os.getenv("VIAZ_INTENTOS_CONSTRUCTOR", "3")))
     max_finalistas: int = field(default_factory=lambda: validar_max_finalistas(
         os.getenv("VIAZ_MAX_FINALISTAS", str(TOPE_FINALISTAS))))
+    # Búsqueda web de robots fuera del catálogo (selección v3, paso 2). Solo corre con VIAZ_AGENTES=claude.
+    busqueda: bool = field(default_factory=lambda: interruptor("VIAZ_BUSQUEDA", os.getenv("VIAZ_BUSQUEDA", "1")))
+    busqueda_max_robots: int = field(default_factory=lambda: entero_en_rango(
+        "VIAZ_BUSQUEDA_MAX_ROBOTS", os.getenv("VIAZ_BUSQUEDA_MAX_ROBOTS", "3"), 1, 5))
+    busqueda_max_consultas: int = field(default_factory=lambda: entero_en_rango(
+        "VIAZ_BUSQUEDA_MAX_CONSULTAS", os.getenv("VIAZ_BUSQUEDA_MAX_CONSULTAS", "6"), 1, 15))
+    busqueda_tiempo_s: int = field(default_factory=lambda: entero_en_rango(
+        "VIAZ_BUSQUEDA_TIEMPO_S", os.getenv("VIAZ_BUSQUEDA_TIEMPO_S", "180"), 10, 1800))
     # Monitor del entrenamiento (RF-MON): cada cuánto chequea y a dónde avisa.
     monitor_s: float = field(default_factory=lambda: float(os.getenv("VIAZ_MONITOR_S", "600")))
     discord_webhook: str = field(default_factory=lambda: os.getenv("VIAZ_DISCORD_WEBHOOK", ""))

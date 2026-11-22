@@ -1,7 +1,7 @@
 # Cómo decide la etapa de robot
 
 > Explicación del contrato [`seleccion-robot.md`](seleccion-robot.md) (v3). El contrato dice qué entra y qué sale. Esta página dice por qué el flujo tiene esa forma.
-> **Estado:** solo el diagrama 1 existe en el código. Los diagramas 2 a 7 describen el diseño acordado. Cada uno nombra el PR que lo implementa.
+> **Estado:** los diagramas 2, 3 y 4 existen en el código (la búsqueda del diagrama 3 solo se probó contra modelos falsos). El diagrama 1 es el flujo anterior. Los diagramas 5 y 6 describen el diseño acordado. Cada uno nombra el PR que lo implementa.
 
 Cada diagrama repite el anterior y agrega una parte. Lo nuevo va en verde.
 
@@ -47,24 +47,28 @@ flowchart LR
 ```mermaid
 flowchart LR
   Q[requisitos.json] --> B["Agente de búsqueda<br/>con búsqueda web"]
-  B --> F["Fichas encontradas<br/>origen: busqueda"]
-  F --> V{"¿Cumple el<br/>esquema?"}
-  V -->|no| X["Se descarta la ficha<br/>y queda en el registro"]
+  B --> F["Borradores<br/>dato, URL y cita"]
+  F --> V{"¿El código arma<br/>una ficha válida?"}
+  V -->|no| X["busqueda.invalidas<br/>con el motivo"]
   V -->|sí| CAND["Candidatos"]
-  CAT[("Catálogo")] --> CAND
+  CAT[("Catálogo del repo")] --> CAND
+  COM[("Catálogo compartido<br/>en el almacén")] --> CAND
+  COM -.->|"conocidas: no las<br/>busca otra vez"| B
   CAND --> A["Agente de selección"]
   Q --> A
-  V -->|sí| G["Almacén de la corrida"]
-  G -.->|"una persona la revisa<br/>y abre un PR"| CAT
+  V -->|sí| COM
+  COM -.->|"una persona la revisa<br/>y abre un PR"| CAT
   classDef nuevo fill:#d9f2d9,stroke:#2e7d32,color:#000
-  class B,F,V,X,CAND,G nuevo
+  class B,F,V,X,CAND,COM nuevo
 ```
 
-- El agente de búsqueda parte de los requisitos y busca robots reales que hagan la tarea.
-- Cada ficha encontrada cita su fuente con URL y fecha. Lo que la fuente no publica va en `estimados`, con el motivo.
-- El código valida cada ficha. Una ficha inválida no llega al agente de selección.
-- Las fichas válidas quedan en el almacén de la corrida. Una persona las pasa al catálogo con un PR, porque un modelo escribió esas specs y alguien debe revisarlas.
-- Si la búsqueda falla, la corrida sigue con el catálogo.
+- El agente de búsqueda parte de los requisitos y busca robots reales que hagan la tarea. Recibe la lista de fichas conocidas para buscar otras.
+- El modelo devuelve borradores. El código arma la ficha: `origen: "busqueda"`, fuente con URL y fecha, y un `id` propio.
+- Cada spec de selección lleva su `evidencia` (URL y la oración exacta de la fuente) o un `estimado` con su motivo. Sin eso, la ficha es inválida.
+- El código valida cada ficha. Una ficha inválida no llega al agente de selección y queda registrada con su motivo.
+- Las fichas válidas quedan en el catálogo compartido del almacén. Las corridas siguientes las usan como fichas conocidas.
+- Una persona las pasa al catálogo del repo con un PR, porque un modelo escribió esas specs y alguien debe revisarlas.
+- Si la búsqueda falla, la corrida sigue con las fichas conocidas.
 - **Llega en:** PR 3.
 
 ## 4. Qué le pasa a cada candidato
@@ -151,15 +155,16 @@ flowchart LR
 stateDiagram-v2
   [*] --> Encontrada: la búsqueda la devuelve
   [*] --> EnCatalogo: ya estaba en el repo
-  Encontrada --> Invalida: no cumple el esquema
-  Encontrada --> Candidata: cumple el esquema
+  Encontrada --> Invalida: no cumple el esquema, sin fuente o duplicada
+  Encontrada --> Compartida: cumple el esquema
+  Compartida --> Candidata: en esta corrida y en las siguientes
   EnCatalogo --> Candidata
   Candidata --> Descartada: falla un requisito obligatorio
   Candidata --> Alternativa: le falta el núcleo de fisica o queda bajo el tope
   Candidata --> Finalista: queda entre los 3 primeros
   Finalista --> Ganadora: mejor evaluación
   Finalista --> NoGanadora: otra evaluación fue mejor
-  Encontrada --> EnCatalogo: una persona la revisa y abre un PR
+  Compartida --> EnCatalogo: una persona la revisa y abre un PR
   Invalida --> [*]
   Descartada --> [*]
   Alternativa --> [*]
@@ -167,7 +172,8 @@ stateDiagram-v2
   NoGanadora --> [*]
 ```
 
-- `seleccion.json` guarda a las descartadas, las alternativas y las finalistas, cada una con su motivo.
+- `seleccion.json` guarda a las inválidas, las descartadas, las alternativas y las finalistas, cada una con su motivo.
+- Una ficha compartida vive en `catalogo/encontrados/<id>.json` del almacén hasta que un PR la pasa al repo.
 - `comparacion.json` guarda el orden final de las finalistas.
 
 ## Dónde llega cada parte

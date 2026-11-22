@@ -165,38 +165,44 @@ def _por_que_no(ficha: dict, tope: int) -> str:
     return motivo + ("; ficticio" if ficha["ficticio"] else "")
 
 
-def armar(finalistas: list[dict], alternativas: list[dict], descartados: list[dict]) -> dict:
-    """seleccion.json validado."""
+BUSQUEDA_OMITIDA = {"estado": "omitida", "invalidas": [],
+                    "detalle": "La búsqueda web no corrió: los candidatos son solo las fichas conocidas."}
+
+
+def armar(finalistas: list[dict], alternativas: list[dict], descartados: list[dict],
+          busqueda: dict | None = None, encontrados: list[str] | tuple[str, ...] = ()) -> dict:
+    """seleccion.json validado. `busqueda` es el bloque del paso 2; `encontrados`, los ids que trajo en esta corrida."""
     return validado("seleccion", {
         "version": 1,
         "requisitos": "requisitos.json",
-        "busqueda": {"estado": "omitida", "detalle": "La búsqueda web todavía no existe: los candidatos son "
-                                                      "solo los del catálogo.", "invalidas": []},
-        "encontrados": [],
+        "busqueda": copy.deepcopy(busqueda or BUSQUEDA_OMITIDA),
+        "encontrados": list(encontrados),
         "descartados": descartados,
         "finalistas": sorted(finalistas, key=lambda f: f["puesto"]),
         "alternativas": alternativas,
     })
 
 
-def por_reglas(requisitos: dict, fichas: list[dict], tope: int) -> dict:
+def por_reglas(requisitos: dict, fichas: list[dict], tope: int, busqueda: dict | None = None,
+               encontrados: list[str] | tuple[str, ...] = ()) -> dict:
     """Modo fijo (sin LLM). Determinista."""
     tope = validar_max_finalistas(tope)
     pasan, descartados = particion(fichas, requisitos)
     if not pasan:
         elegido = menos_fallas(fichas, requisitos)
         return armar([{"id": elegido["id"], "puesto": 1,
-                       "justificacion": justificacion_sin_candidatos(elegido, requisitos)}], [], descartados)
+                       "justificacion": justificacion_sin_candidatos(elegido, requisitos)}],
+                     [], descartados, busqueda, encontrados)
     orden = ordenadas(pasan, requisitos)
     elegidos = [f for f in orden if tiene_nucleo(f)][:tope]
     if not elegidos:
         elegido = orden[0]
         return armar([{"id": elegido["id"], "puesto": 1, "justificacion": justificacion_sin_nucleo(elegido, requisitos)}],
-                     alternativas_sin_nucleo(orden, elegido), descartados)
+                     alternativas_sin_nucleo(orden, elegido), descartados, busqueda, encontrados)
     finalistas = [{"id": f["id"], "puesto": n, "justificacion": _justificacion(f, requisitos, n)}
                   for n, f in enumerate(elegidos, 1)]
     alternativas = [{"id": f["id"], "por_que_no": _por_que_no(f, tope)} for f in orden if f not in elegidos]
-    return armar(finalistas, alternativas, descartados)
+    return armar(finalistas, alternativas, descartados, busqueda, encontrados)
 
 
 def comprobar(eleccion: dict, pasan: list[dict], tope: int) -> None:
