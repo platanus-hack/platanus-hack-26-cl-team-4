@@ -32,6 +32,7 @@ import math
 import random
 import sys
 from pathlib import Path
+from typing import Callable, NamedTuple
 
 sys.path.insert(0, str(Path(__file__).parent))
 import fisica  # noqa: E402
@@ -559,10 +560,7 @@ def Xform "World"
 '''
 
 
-def escena_usda(entorno: dict, con_texturas: bool = False) -> str:
-    """El USD de la escena. con_texturas: materiales OmniPBR que citan texturas/ (main() las escribe), rocas y cielo."""
-    if entorno["tipo"] != "parque_solar":
-        return escena_generica_usda(entorno, con_texturas)
+def escena_solar_usda(entorno: dict, con_texturas: bool = False) -> str:
     fijos = cuerpos(entorno)
     suelo = fijos[0]
     centro_xy = suelo["centro"][:2]
@@ -601,6 +599,32 @@ def Xform "World"
     }}
 }}
 '''
+
+
+def _resumen_solar(entorno: dict, con_texturas: bool) -> str:
+    return (f"escena.usd: {entorno['filas']['cantidad']} filas de {entorno['filas']['largo_m']} m, "
+            f"{len(paneles_visuales(entorno))} paneles ya instalados, "
+            f"{'con' if con_texturas else 'sin'} texturas")
+
+
+def _resumen_generico(entorno: dict, con_texturas: bool) -> str:
+    e = entorno["espacio"]
+    return (f"escena.usd: {entorno['tipo']} de {e['largo_m']} × {e['ancho_m']} m, "
+            f"{len(entorno.get('elementos', []))} elementos, {'con' if con_texturas else 'sin'} texturas")
+
+
+class Escena(NamedTuple):
+    usda: Callable[[dict, bool], str]
+    resumen: Callable[[dict, bool], str]
+
+
+ESCENAS = {"parque_solar": Escena(escena_solar_usda, _resumen_solar)}
+ESCENA_GENERICA = Escena(escena_generica_usda, _resumen_generico)
+
+
+def escena_usda(entorno: dict, con_texturas: bool = False) -> str:
+    """con_texturas: materiales OmniPBR que citan texturas/ (main() las escribe)."""
+    return ESCENAS.get(entorno["tipo"], ESCENA_GENERICA).usda(entorno, con_texturas)
 
 
 def materiales_usda(aspectos, carpeta_texturas: str | None, cerros_en: tuple[float, float] | None = None) -> str:
@@ -645,15 +669,9 @@ def main() -> None:
     a = ap.parse_args()
     entorno = json.loads((a.dir / "entorno.json").read_text(encoding="utf-8"))
     con_texturas = _escribir_texturas(a.dir)
-    (a.dir / "escena.usd").write_text(escena_usda(entorno, con_texturas), encoding="utf-8")
-    if entorno["tipo"] != "parque_solar":
-        e = entorno["espacio"]
-        print(f"escena.usd: {entorno['tipo']} de {e['largo_m']} × {e['ancho_m']} m, "
-              f"{len(entorno.get('elementos', []))} elementos, {'con' if con_texturas else 'sin'} texturas")
-        return
-    print(f"escena.usd: {entorno['filas']['cantidad']} filas de {entorno['filas']['largo_m']} m, "
-          f"{len(paneles_visuales(entorno))} paneles ya instalados, "
-          f"{'con' if con_texturas else 'sin'} texturas")
+    escena = ESCENAS.get(entorno["tipo"], ESCENA_GENERICA)
+    (a.dir / "escena.usd").write_text(escena.usda(entorno, con_texturas), encoding="utf-8")
+    print(escena.resumen(entorno, con_texturas))
 
 
 if __name__ == "__main__":
